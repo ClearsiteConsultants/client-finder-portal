@@ -1,0 +1,650 @@
+{
+  "project": "client-finder-portal",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-30",
+  "requirements": [
+    {
+      "id": "P1-001",
+      "category": "Phase 1 - Foundation",
+      "description": "Initialize the application repository as a Next.js (App Router) project using TypeScript, and establish consistent developer tooling (linting, formatting, typechecking) and a repeatable local dev workflow.",
+      "acceptanceCriteria": [
+        "Project builds and runs locally using a single documented command (e.g., `npm run dev`).",
+        "TypeScript is enabled across the codebase with strict typechecking (no implicit `any` and no typecheck errors on a clean build).",
+        "ESLint and formatting rules are configured and can be executed in CI with deterministic results.",
+        "A basic home page renders successfully and confirms the app bootstrapped correctly.",
+        "Environment variable handling is in place (e.g., `.env.local` for local development) and secrets are not committed."
+      ],
+      "stepsToVerify": [
+        "Run `npm ci` (or `npm install`) and confirm dependency installation succeeds on a fresh machine.",
+        "Run `npm run lint` and verify it exits with code 0.",
+        "Run `npm run typecheck` (or equivalent) and verify it exits with code 0.",
+        "Run `npm run build` and verify it exits with code 0.",
+        "Run `npm run dev`, load the root page in a browser, and confirm it renders without runtime errors.",
+        "Create an initial smoke test (unit test) that imports a shared utility and asserts expected behavior; run `npm test` and confirm it passes (this establishes the baseline test runner)."
+      ],
+      "passes": false,
+      "priority": 1,
+      "priorityRationale": "Phase 1 prerequisite: the project must compile, lint, and run before any features can be implemented safely."
+    },
+    {
+      "id": "P1-002",
+      "category": "Phase 1 - Foundation",
+      "description": "Set up a PostgreSQL database integration via Prisma, including initial migrations and local developer experience. This includes defining the initial schema entities required to store businesses/leads, contact info, outreach events, opt-outs, excluded businesses, email campaigns, and users. The initial schema concept is documented in DATABASE_SCHEMA.md.",
+      "acceptanceCriteria": [
+        "Prisma is configured and can connect to a PostgreSQL instance via `DATABASE_URL`.",
+        "An initial migration exists and can be applied to an empty database without errors.",
+        "The Prisma schema aligns with DATABASE_SCHEMA.md (tables, enums, key relationships, and constraints).",
+        "Core tables from the plan are represented: businesses, contact_info, excluded_businesses, outreach_tracking, email_campaigns, opt_outs, users, and search_runs.",
+        "Enums match the plan (website_status, approval_status, outreach channel).",
+        "The schema supports both discovered and manually entered leads, including a provenance/source field on businesses.",
+        "The schema supports notes per business and per outreach event.",
+        "Foreign keys and unique constraints exist where appropriate (e.g., place_id is optional but must be unique when present; outreach_tracking references business and user)."
+      ],
+      "stepsToVerify": [
+        "Start a local PostgreSQL instance (manual setup required) and set `DATABASE_URL` in `.env.local`.",
+        "Run `npx prisma migrate dev` to apply migrations; verify it succeeds.",
+        "Run `npx prisma generate` and verify the Prisma client is generated.",
+        "Create an automated test (integration) that uses a test database to insert a Business and related ContactInfo and asserts relations load correctly.",
+        "Create an automated test (integration) that inserts a Business with NULL place_id (manual lead) and confirms it persists and can be queried.",
+        "Create an automated test (integration) that inserts two Businesses with the same non-null place_id and confirms the second insert fails due to a uniqueness constraint.",
+        "Create an automated test (integration) that creates a SearchRun record and asserts summary counters persist correctly.",
+        "Run `npm test` and confirm all tests pass (including the Phase 1 baseline test)."
+      ],
+      "passes": false,
+      "priority": 1,
+      "priorityRationale": "Phase 1 prerequisite: persistence is central to lead tracking, deduplication, and compliance logging."
+    },
+    {
+      "id": "P1-003",
+      "category": "Phase 1 - Foundation",
+      "description": "Implement team authentication with NextAuth.js (or equivalent) so multiple team members can sign in and access the portal. Access control can be flat (all users have the same privileges) for v1.",
+      "acceptanceCriteria": [
+        "Unauthenticated users are redirected to a login page when attempting to access protected routes.",
+        "Authenticated users can access the core application pages (search, review queue, lead detail, dashboard).",
+        "User records exist in the database and include unique email; sessions work reliably across refresh.",
+        "No role-based authorization is required in v1, but the design does not block adding roles later."
+      ],
+      "stepsToVerify": [
+        "Configure a local auth provider (manual setup required; e.g., credentials or OAuth).",
+        "Create unit tests for auth-related helpers (session parsing, route guard utilities).",
+        "Create an integration test that attempts to call a protected API route without auth and expects 401/redirect behavior.",
+        "Run `npm test` to confirm all prior tests still pass.",
+        "Manually sign in and confirm protected pages render and show the signed-in user context."
+      ],
+      "passes": false,
+      "priority": 1,
+      "priorityRationale": "Phase 1 prerequisite: the tool is for an internal team and must be protected from public access early."
+    },
+    {
+      "id": "P1-004",
+      "category": "Phase 1 - Foundation",
+      "description": "Set up deployment readiness for Vercel, including environment variables, production database connectivity, and a minimal CI-like verification step (build + test) that can run on every change. Manual external setup steps by phase are documented in EXTERNAL_SETUP.md.",
+      "acceptanceCriteria": [
+        "The app can be deployed to Vercel without code changes.",
+        "Required environment variables are documented and referenced safely at runtime.",
+        "Production build succeeds (`next build`) and does not require local-only configuration.",
+        "A single command can run the verification suite (lint + typecheck + unit/integration tests)."
+      ],
+      "stepsToVerify": [
+        "Create a `npm run verify` script that runs `lint`, `typecheck`, and `test`.",
+        "Run `npm run verify` locally and confirm it exits 0.",
+        "Manual external setup required: create a Vercel project, configure environment variables, and (if used) provision Vercel Postgres.",
+        "Deploy to Vercel and confirm the deployed site loads and basic authenticated navigation works.",
+        "After deployment, run `npm test` locally again to ensure no regressions were introduced."
+      ],
+      "passes": false,
+      "priority": 1,
+      "priorityRationale": "Phase 1 prerequisite: ensures early feedback loops and reduces later integration risk."
+    },
+
+    {
+      "id": "P2-001",
+      "category": "Phase 2 - Business Discovery",
+      "description": "Integrate Google Maps Places API (Nearby Search / Text Search + Place Details as needed) to discover businesses in a given area, capturing place_id, name, address, business types, phone number, website URL (if any), rating, and user_ratings_total. External setup (Google Cloud project, API enablement, key restrictions) is documented in EXTERNAL_SETUP.md.",
+      "acceptanceCriteria": [
+        "A backend API endpoint exists that accepts a location input (city/zip or lat/lng), radius, and optional business type filters.",
+        "The endpoint returns normalized business objects and persists new businesses to the database.",
+        "Phone numbers are captured when available; website URLs are captured when available; the system explicitly identifies businesses with no website.",
+        "Requests use field masking/minimal fields to control costs.",
+        "API errors (quota, invalid key, network) are handled gracefully and surfaced to the UI with actionable messages."
+      ],
+      "stepsToVerify": [
+        "Manual external setup required: create a Google Cloud project, enable Places API, and configure an API key with appropriate restrictions.",
+        "Write unit tests for request/response normalization (e.g., mapping Google fields to internal schema).",
+        "Write an integration test that mocks the Google API response and verifies DB persistence + deduplication by place_id.",
+        "Run `npm test` to confirm all Phase 1 tests still pass.",
+        "Manually execute a search in the UI and confirm results appear and are stored as `pending` leads."
+      ],
+      "passes": false,
+      "priority": 2,
+      "priorityRationale": "Phase 2 deliverable: business discovery is the intake mechanism for all subsequent workflows."
+    },
+    {
+      "id": "P2-002",
+      "category": "Phase 2 - Business Discovery",
+      "description": "Implement deduplication, caching, and rate-limit-aware behavior for Google Places queries to stay within budget and prevent repeated collection of the same businesses. Cache search results for a defined TTL (e.g., 30 days) and reuse stored place details when recent.",
+      "acceptanceCriteria": [
+        "A business is uniquely identified by place_id and is not duplicated when discovered multiple times.",
+        "Repeated searches in the same area do not always trigger external API calls when cached data is valid.",
+        "The system records search history (who searched, where, when, and what criteria) to support traceability.",
+        "The system throttles requests to avoid triggering quota failures and supports retries for transient errors."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for cache key generation and TTL expiration behavior.",
+        "Create an integration test that runs the same search twice and asserts the second run does not call the external API (use a mock and call-count assertions).",
+        "Run `npm test` and confirm all existing tests pass.",
+        "Manually run two identical searches and verify the UI indicates cached results were used (if implemented) and response time is improved."
+      ],
+      "passes": false,
+      "priority": 2,
+      "priorityRationale": "Phase 2 deliverable: caching and dedupe protect budget and reduce noise in the lead list."
+    },
+    {
+      "id": "P2-003",
+      "category": "Phase 2 - Business Discovery",
+      "description": "Implement small business scoring and filtering to prioritize likely small businesses and VIP leads (no website or social-only). Scoring must incorporate review counts, business types, and exclusions.",
+      "acceptanceCriteria": [
+        "Each business receives a deterministic small_business_score (0-100) based on the defined rubric.",
+        "Businesses with no website are flagged as VIP and appear prioritized in review workflows.",
+        "Businesses matching excluded names are automatically excluded from future searches and/or automatically marked rejected.",
+        "Scoring logic is configurable enough to adjust thresholds later without major rewrites."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for scoring (table-driven tests for multiple example businesses and expected scores).",
+        "Create unit tests for exclusion matching (case-insensitive, trimmed, normalized comparisons).",
+        "Run `npm test` ensuring all previous tests pass.",
+        "Manually verify that a no-website business appears at the top of the review queue once Phase 4 UI exists (placeholder verification if not yet implemented)."
+      ],
+      "passes": false,
+      "priority": 2,
+      "priorityRationale": "Phase 2 deliverable: prioritization increases signal-to-noise and focuses on best prospects."
+    },
+    {
+      "id": "P2-004",
+      "category": "Phase 2 - Business Discovery",
+      "description": "Create the initial search UI flow that allows a signed-in user to run a discovery search (location + radius + types), view results, and persist them into the lead list.",
+      "acceptanceCriteria": [
+        "A search page exists with inputs for location and radius, plus a basic business-type selector.",
+        "Submitting the form calls the backend search endpoint and renders results.",
+        "Results include name, address, phone, website presence indicator, review count, and score.",
+        "User can import results to the database (or the search auto-persists new leads) without duplications.",
+        "The UI handles empty results and API errors gracefully."
+      ],
+      "stepsToVerify": [
+        "Write component unit tests for search form validation (e.g., missing radius or invalid location rejected).",
+        "Write an integration test for the search API route and its response shape.",
+        "Run `npm test` and confirm all earlier tests still pass.",
+        "Manual test: perform a search and confirm that leads appear later in the review queue as `pending`."
+      ],
+      "passes": false,
+      "priority": 2,
+      "priorityRationale": "Phase 2 deliverable: the team needs a usable interface to drive lead discovery."
+    },
+
+    {
+      "id": "P3-001",
+      "category": "Phase 3 - Website Validation",
+      "description": "Implement a website technical validator that classifies each business website into website_status categories (no_website, broken, technical_issues, outdated, acceptable). The validator must check response status, SSL, load time, mobile viewport hints, and basic link health.",
+      "acceptanceCriteria": [
+        "Given a website URL, the validator returns a structured result including status, key metrics (response code, load time), and detected issues.",
+        "Businesses with null/empty websites are classified as no_website and prioritized.",
+        "Validation is resilient to timeouts and network failures, with safe timeouts and clear error reporting.",
+        "Results are persisted to the business record for later manual review."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for URL normalization and classification rules.",
+        "Create integration tests that spin up a local HTTP test server to simulate 200/404/500/timeout/slow responses and confirm correct classification.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: validate a known-good site and a known-broken URL and confirm UI shows expected statuses."
+      ],
+      "passes": false,
+      "priority": 3,
+      "priorityRationale": "Phase 3 deliverable: technical validation is core to identifying ‘needs help’ prospects."
+    },
+    {
+      "id": "P3-002",
+      "category": "Phase 3 - Website Validation",
+      "description": "Implement website email scraping to discover publicly listed contact emails (e.g., mailto links, footer text, contact pages), respecting robots.txt where feasible and storing provenance (scraped, pattern_match, manual).",
+      "acceptanceCriteria": [
+        "Given a website URL, the system attempts to extract one or more email addresses and stores them as contact info with a source label.",
+        "The scraper avoids unsafe crawling behavior (bounded depth, timeouts, max pages).",
+        "Robots.txt is consulted and the system can be configured to skip scraping when disallowed.",
+        "If scraping yields no email, the system stores the website URL for manual investigation and does not fabricate an email as verified."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for email extraction regex logic with multiple realistic HTML samples.",
+        "Create integration tests using local HTML fixtures and a test HTTP server to verify extraction and source attribution.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: run scraping on a known site with a visible email and confirm it is detected and stored."
+      ],
+      "passes": false,
+      "priority": 3,
+      "priorityRationale": "Phase 3 deliverable: contact discovery improves outreach readiness while keeping budget low."
+    },
+    {
+      "id": "P3-003",
+      "category": "Phase 3 - Website Validation",
+      "description": "Detect and store social media profile URLs (Facebook, Instagram, LinkedIn) for businesses that have social-only presence or whose websites link to social profiles. Social URLs should be stored on the contact record and considered high-value outreach channels.",
+      "acceptanceCriteria": [
+        "If a business has no website but the discovery data or scraping reveals social URLs, website_status may be set to social_only.",
+        "Social URLs are normalized and stored (avoid duplicates and tracking params where possible).",
+        "The UI can display social profile links clearly on lead detail and in the review queue.",
+        "Social outreach is trackable as a channel (facebook/instagram/linkedin) in outreach_tracking."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for social URL detection/normalization.",
+        "Create integration tests with HTML fixtures that include social links.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: confirm a social-only lead is flagged and prioritized appropriately."
+      ],
+      "passes": false,
+      "priority": 3,
+      "priorityRationale": "Phase 3 deliverable: social-only businesses are prime targets and need to be surfaced consistently."
+    },
+    {
+      "id": "P3-004",
+      "category": "Phase 3 - Website Validation",
+      "description": "Implement background processing for validation/scraping so searches can ingest leads quickly and the system can validate asynchronously without blocking the UI. The system should record job status and allow retries.",
+      "acceptanceCriteria": [
+        "Search ingestion completes quickly even when many leads need validation.",
+        "Validation/scraping runs asynchronously and updates business/contact records when complete.",
+        "Failures are recorded with error details and can be retried from the UI (or automatically retried with safe limits).",
+        "The design can run on Vercel (serverless) within constraints; if a queue is required, the dependency and setup are documented."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for job state transitions (queued → running → success/failure).",
+        "Create an integration test that enqueues N validations and asserts completion updates are persisted.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: run a search and confirm validation results appear after ingestion without page timeouts."
+      ],
+      "passes": false,
+      "priority": 3,
+      "priorityRationale": "Phase 3 deliverable: asynchronous processing improves UX and reliability for bulk lead discovery."
+    },
+
+    {
+      "id": "P4-001",
+      "category": "Phase 4 - Manual Review Workflow",
+      "description": "Build the review queue UI for pending leads, prioritizing no_website and social_only leads, and supporting approve/reject actions.",
+      "acceptanceCriteria": [
+        "A review queue page exists that lists leads with key fields (name, address, website_status, score, phone/email/social indicators).",
+        "Leads are sortable/filterable, with default ordering that prioritizes VIP (no_website, social_only) first.",
+        "Approving a lead changes its approval_status to approved.",
+        "Rejecting a lead changes its approval_status to rejected.",
+        "The UI supports bulk approve/reject with confirmation prompts.",
+        "All actions are auditable (who acted and when), at minimum via outreach_tracking or a lightweight audit log."
+      ],
+      "stepsToVerify": [
+        "Create component tests for filtering/sorting and bulk actions.",
+        "Create API integration tests for approve/reject endpoints including auth checks.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: approve and reject leads and confirm status changes persist after refresh."
+      ],
+      "passes": false,
+      "priority": 4,
+      "priorityRationale": "Phase 4 deliverable: manual review is required before any outreach is sent."
+    },
+    {
+      "id": "P4-002",
+      "category": "Phase 4 - Manual Review Workflow",
+      "description": "Implement a user-managed exclude list in the database with UI controls to add/remove excluded business names. Excluded names must prevent future outreach and should reduce noise in discovery.",
+      "acceptanceCriteria": [
+        "A UI exists to add an excluded business name with an optional reason.",
+        "Excluded names are matched case-insensitively and applied during discovery and review.",
+        "If a business is discovered whose name matches an excluded entry, it is automatically rejected or hidden (policy defined and implemented consistently).",
+        "Users can remove exclusions, and the change takes effect on new discoveries.",
+        "The system records which user added an exclusion and when."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for exclusion matching rules.",
+        "Create integration tests for exclude list CRUD endpoints.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: add an excluded name and confirm newly discovered matching businesses are not added to pending review."
+      ],
+      "passes": false,
+      "priority": 4,
+      "priorityRationale": "Phase 4 deliverable: the exclude list is the simplest budget-friendly control for filtering out large/irrelevant businesses."
+    },
+    {
+      "id": "P4-003",
+      "category": "Phase 4 - Manual Review Workflow",
+      "description": "Create a lead detail view that centralizes all information for a business (discovery data, website status, website URL, contact info, social profiles, notes) and supports editing notes and follow-up scheduling.",
+      "acceptanceCriteria": [
+        "Lead detail page shows business core info and contact channels (email/phone/social) with clear source attribution.",
+        "A free-form notes field exists per business and can be edited by any authenticated user.",
+        "The system stores and displays next follow-up date for manual outreach planning.",
+        "The page displays a unified timeline of outreach events once Phase 6 is implemented (placeholder allowed until Phase 6)."
+      ],
+      "stepsToVerify": [
+        "Create component tests for notes editing and follow-up date updates.",
+        "Create integration tests for lead detail API endpoints (fetch/update) with auth.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: update notes and follow-up date and confirm persistence after refresh and across users."
+      ],
+      "passes": false,
+      "priority": 4,
+      "priorityRationale": "Phase 4 deliverable: the team needs a single source of truth per lead before outreach begins."
+    },
+    {
+      "id": "P4-004",
+      "category": "Phase 4 - Manual Review Workflow",
+      "description": "Implement lead lifecycle states and transitions (pending → approved/rejected → contacted → responded → inactive). Ensure transitions are consistent across automated email and manual outreach logs.",
+      "acceptanceCriteria": [
+        "Business approval_status values match the plan and are enforced consistently.",
+        "Creating an outreach event can transition a lead to contacted when appropriate.",
+        "A lead can be marked responded manually, with a timestamp and optional note.",
+        "Inactive state is available for leads that receive no response after configured attempts.",
+        "State transitions are validated server-side (no invalid states)."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for allowed state transitions.",
+        "Create integration tests that attempt invalid transitions and assert server rejects them.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: move a lead through the lifecycle and confirm UI reflects state changes."
+      ],
+      "passes": false,
+      "priority": 4,
+      "priorityRationale": "Phase 4 deliverable: lifecycle consistency is necessary to avoid spamming and to track progress."
+    },
+
+    {
+      "id": "P4-005",
+      "category": "Phase 4 - Manual Review Workflow",
+      "description": "Provide a manual lead entry workflow in the web UI so the team can create a business/contact record even when no matching Google Places result exists (i.e., no place_id). The workflow must support later linking a manually entered lead to a Google place_id if a match is found.",
+      "acceptanceCriteria": [
+        "A signed-in user can create a new Business from the UI without providing a place_id.",
+        "Manual entry supports at minimum: business name, address, phone, website (optional), email (optional), and social profile URLs (optional).",
+        "The system records provenance (manual vs google_maps) on the Business record.",
+        "If a user later links the lead to a place_id, the system enforces uniqueness of place_id and prevents linking to a place_id already used by another business.",
+        "Manual leads appear in the same review queue and lead detail views as discovered leads and can move through the same lifecycle.",
+        "Manual entry flow warns about potential duplicates (at minimum: same normalized name + address) before creation, but still allows creation when the user confirms."
+      ],
+      "stepsToVerify": [
+        "Create component tests for the manual lead entry form validation (required name/address; optional contact fields).",
+        "Create integration tests for the create-lead API endpoint that insert a business with NULL place_id and verify it persists correctly.",
+        "Create integration tests for the link-to-place_id endpoint: (1) link succeeds when place_id is unused, (2) link fails with a clear error when place_id is already taken.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: create a manual lead, verify it appears in review queue as pending, add notes, approve it, and log an outreach event."
+      ],
+      "passes": false,
+      "priority": 4,
+      "priorityRationale": "Phase 4 deliverable: not all good leads originate from Google; manual entry ensures the tool supports real-world sales workflows and keeps everything tracked in one system."
+    },
+
+    {
+      "id": "P5-001",
+      "category": "Phase 5 - Email Outreach System",
+      "description": "Integrate an email delivery provider (SendGrid or AWS SES) to send outreach emails. This is external-system dependent and must be configurable via environment variables. External setup (sender verification, DNS, webhooks) is documented in EXTERNAL_SETUP.md.",
+      "acceptanceCriteria": [
+        "Email provider configuration is fully environment-variable driven and not hard-coded.",
+        "The system can send a test email to a configured address from a secure admin/test endpoint.",
+        "Email sending is restricted to approved leads only.",
+        "Provider failures (rate limits, bounces, auth errors) are captured and logged."
+      ],
+      "stepsToVerify": [
+        "Manual external setup required: create and configure a SendGrid/SES account, sender identity, and API key.",
+        "Create unit tests for email payload generation (subject, body, personalization tokens).",
+        "Create integration tests using a provider mock/stub to ensure send requests are made correctly without sending real emails.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: send a test email to an internal address and confirm delivery."
+      ],
+      "passes": false,
+      "priority": 5,
+      "priorityRationale": "Phase 5 deliverable: outbound email is the first automated outreach channel (with manual review gate)."
+    },
+    {
+      "id": "P5-002",
+      "category": "Phase 5 - Email Outreach System",
+      "description": "Implement a 2-touch email sequence engine (Touch 1, wait 7 days, Touch 2) that only sends after manual approval. The system must prevent more than 2 touches and must record each touch in outreach_tracking.",
+      "acceptanceCriteria": [
+        "Touch 1 can be sent to an approved lead and is recorded with touch_number=1.",
+        "Touch 2 is only eligible after a configurable waiting period (default 7 days) and only when the lead has not responded and has not unsubscribed.",
+        "After Touch 2, the system marks the lead inactive if no response is recorded.",
+        "Per-lead rate limiting prevents accidental rapid re-sends.",
+        "All sends are idempotent (re-running the job does not duplicate sends)."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for eligibility logic (approved, not opted out, waiting period, max touches).",
+        "Create integration tests that simulate time progression and assert Touch 2 is only sent after 7 days.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: approve a lead, send Touch 1, then verify Touch 2 scheduling rules (can use admin override or clock mocking in dev)."
+      ],
+      "passes": false,
+      "priority": 5,
+      "priorityRationale": "Phase 5 deliverable: sequence automation saves time while keeping outreach controlled and non-spammy."
+    },
+    {
+      "id": "P5-003",
+      "category": "Phase 5 - Email Outreach System",
+      "description": "Implement CAN-SPAM compliant unsubscribe flow and opt-out persistence. Every outgoing email must include a working unsubscribe link, and the system must honor opt-outs for future sends.",
+      "acceptanceCriteria": [
+        "All outreach emails include company physical address and an unsubscribe link.",
+        "Unsubscribe endpoint marks the recipient as opted out and prevents future email sends.",
+        "Opt-out is applied within the system immediately and retained permanently.",
+        "Opt-out events store timestamp and relevant metadata (e.g., IP address if available).",
+        "Unsubscribe works even if the user is not authenticated."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for unsubscribe token generation/validation.",
+        "Create integration tests that simulate clicking the unsubscribe link and assert future sends are blocked.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: send an email to an internal address, click unsubscribe, then attempt to send another email and confirm it is blocked."
+      ],
+      "passes": false,
+      "priority": 5,
+      "priorityRationale": "Phase 5 deliverable: compliance must be built-in before sending any outreach."
+    },
+    {
+      "id": "P5-004",
+      "category": "Phase 5 - Email Outreach System",
+      "description": "Implement email template management (Touch 1 and Touch 2 templates with variable substitution) and basic engagement tracking (delivery status, opened, clicked) where feasible.",
+      "acceptanceCriteria": [
+        "An email_campaign can be created/edited with subjects and bodies for both touches.",
+        "Template variables ({business_name}, {address}, {website_status}) render correctly in outgoing emails.",
+        "Engagement signals (opened/clicked) can be captured and stored when provider supports webhooks.",
+        "If webhooks are not configured, the system still functions and tracks sent/bounced states.",
+        "Template preview exists in UI to reduce mistakes before sending."
+      ],
+      "stepsToVerify": [
+        "Manual external setup may be required: configure provider webhooks for events (opens/clicks/bounces).",
+        "Create unit tests for template rendering with a variety of placeholder inputs.",
+        "Create integration tests that send via a mock provider and assert rendered payload includes expected substitutions.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: create a campaign, preview the email, and send Touch 1 to an internal test lead."
+      ],
+      "passes": false,
+      "priority": 5,
+      "priorityRationale": "Phase 5 deliverable: controlled messaging and tracking support iterating outreach while staying compliant."
+    },
+
+    {
+      "id": "P6-001",
+      "category": "Phase 6 - Multi-Channel Tracking",
+      "description": "Implement manual outreach logging for phone calls, text messages (manual only), and social media outreach (Facebook/Instagram/LinkedIn). Each event should be stored in outreach_tracking with date, outcome, and notes.",
+      "acceptanceCriteria": [
+        "A user can log an outreach event for any supported channel (phone, text, facebook, instagram, linkedin).",
+        "Each event records: channel, timestamp, outcome (where applicable), and notes.",
+        "Events are associated with both the business and the user who logged them.",
+        "Logging an outreach event can update lead status to contacted when appropriate.",
+        "Text message tracking is explicitly marked as manual and does not send messages automatically."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for outreach event validation (required fields per channel).",
+        "Create integration tests for outreach_tracking create/list endpoints with auth.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: create phone/text/social events from the UI and verify they appear on the lead timeline."
+      ],
+      "passes": false,
+      "priority": 6,
+      "priorityRationale": "Phase 6 deliverable: tracking manual outreach is required for non-email leads (no website) and for progress visibility."
+    },
+    {
+      "id": "P6-002",
+      "category": "Phase 6 - Multi-Channel Tracking",
+      "description": "Create a unified timeline (activity feed) per business showing all outreach events across channels in chronological order, including automated emails and manual touches.",
+      "acceptanceCriteria": [
+        "Lead detail page shows a single timeline view of events with channel, date, outcome, and notes.",
+        "Timeline includes automated email sends (Touch 1/2) and unsubscribe events.",
+        "Timeline supports filtering by channel.",
+        "Timeline ordering is deterministic and consistent across refreshes.",
+        "All events display the user responsible when applicable."
+      ],
+      "stepsToVerify": [
+        "Create component tests for timeline rendering and filtering.",
+        "Create integration tests for the timeline query ensuring it returns events in correct order.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: log a phone call, send an email, then confirm both appear in correct sequence."
+      ],
+      "passes": false,
+      "priority": 6,
+      "priorityRationale": "Phase 6 deliverable: the timeline prevents over-contacting and provides context for conversations."
+    },
+    {
+      "id": "P6-003",
+      "category": "Phase 6 - Multi-Channel Tracking",
+      "description": "Implement follow-up scheduling and reminders at the data level: next_followup_date per business, plus UI to filter leads due for follow-up. (Notifications can be added later.)",
+      "acceptanceCriteria": [
+        "Users can set or update next_followup_date on a business.",
+        "The system can list leads due for follow-up (e.g., next_followup_date <= today) and filter/sort them.",
+        "Updating follow-up date is auditable (at minimum via updated_at and/or an event).",
+        "Follow-up fields do not interfere with the automated email schedule logic."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for follow-up date validation and due calculation.",
+        "Create integration tests for the due-for-follow-up query.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: set follow-up for a lead and confirm it appears in the ‘Due’ list when expected."
+      ],
+      "passes": false,
+      "priority": 6,
+      "priorityRationale": "Phase 6 deliverable: follow-up planning supports consistent outreach without spamming."
+    },
+    {
+      "id": "P6-004",
+      "category": "Phase 6 - Multi-Channel Tracking",
+      "description": "Implement opt-out handling across channels and guardrails to prevent over-contacting: enforce ‘do not email’ when opted out, and record ‘do not contact’ notes/flags for manual channels.",
+      "acceptanceCriteria": [
+        "Email opt-outs strictly block future email sends.",
+        "The system supports marking a business as ‘do not contact’ for manual channels (phone/text/social) and surfaces this warning prominently.",
+        "Attempting to log or initiate an outreach action for a ‘do not contact’ lead requires explicit confirmation (or is blocked, depending on policy).",
+        "All opt-out/do-not-contact signals are visible on the lead detail page and review queue.",
+        "Guardrails do not allow automated processes to override opt-out flags."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for contact-eligibility rules per channel.",
+        "Create integration tests verifying blocked email sends for opted-out leads.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: opt out a lead and confirm the UI blocks sending and warns on manual outreach logs."
+      ],
+      "passes": false,
+      "priority": 6,
+      "priorityRationale": "Phase 6 deliverable: guardrails are essential to avoid spamming and compliance issues."
+    },
+
+    {
+      "id": "P7-001",
+      "category": "Phase 7 - Dashboard & Analytics",
+      "description": "Build an overview dashboard showing lead pipeline counts and key metrics (discovered, pending, approved, contacted, responded, inactive) and website status distribution (no_website, social_only, etc.).",
+      "acceptanceCriteria": [
+        "Dashboard renders key counts and can filter metrics by date range.",
+        "Counts match database values and update as lead statuses change.",
+        "Website status distribution highlights VIP leads clearly.",
+        "Only authenticated users can access dashboard endpoints.",
+        "Performance is acceptable on realistic datasets (e.g., 5,000 leads)."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for metric calculation helpers.",
+        "Create integration tests for dashboard API endpoints returning correct aggregates.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: verify counts change after approving/rejecting/contacting leads."
+      ],
+      "passes": false,
+      "priority": 7,
+      "priorityRationale": "Phase 7 deliverable: analytics provide visibility and help tune the process and targeting."
+    },
+    {
+      "id": "P7-002",
+      "category": "Phase 7 - Dashboard & Analytics",
+      "description": "Implement campaign analytics for email outreach (sent/opened/clicked/replied/unsubscribed) and compare Touch 1 vs Touch 2 performance.",
+      "acceptanceCriteria": [
+        "A campaign analytics view shows totals and rates for each touch.",
+        "Metrics correctly include or exclude opted-out leads as appropriate.",
+        "Webhook-based metrics are ingested and persisted when configured; otherwise the UI clearly indicates limited tracking.",
+        "Data is filterable by campaign and date range."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for rate calculations (open rate, click rate, unsubscribe rate).",
+        "Create integration tests that insert synthetic outreach_tracking records and assert the analytics endpoint returns correct aggregates.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: send internal test emails and confirm events appear in analytics if webhooks are enabled."
+      ],
+      "passes": false,
+      "priority": 7,
+      "priorityRationale": "Phase 7 deliverable: campaign metrics support improving outreach messaging and cadence."
+    },
+    {
+      "id": "P7-003",
+      "category": "Phase 7 - Dashboard & Analytics",
+      "description": "Add lead export (CSV) with safe column selection, allowing the team to analyze leads externally without exposing secrets or internal-only fields.",
+      "acceptanceCriteria": [
+        "Users can export leads filtered by status and/or website_status.",
+        "CSV export includes relevant lead fields (name, address, phone, website, social links, score, status) and excludes sensitive system metadata.",
+        "Export is only accessible to authenticated users.",
+        "Export handles large datasets via streaming or pagination to avoid timeouts."
+      ],
+      "stepsToVerify": [
+        "Create unit tests for export column mapping and CSV formatting.",
+        "Create integration tests for the export endpoint including auth enforcement.",
+        "Run `npm test` and confirm all prior tests pass.",
+        "Manual test: export a filtered set and open in a spreadsheet tool to verify columns and encoding."
+      ],
+      "passes": false,
+      "priority": 7,
+      "priorityRationale": "Phase 7 deliverable: exports enable quick analysis and backup without extra tooling."
+    },
+    {
+      "id": "P7-004",
+      "category": "Phase 7 - End-to-End Validation",
+      "description": "Introduce end-to-end (E2E) test coverage once the full stack is wired (auth + DB + search + review + lead detail + outreach logging). E2E tests should verify that all layers communicate correctly.",
+      "acceptanceCriteria": [
+        "A Playwright (or equivalent) E2E test suite exists and can run locally and in CI.",
+        "At minimum, E2E covers: login, run a mocked discovery search, view pending leads, approve a lead, add notes, log a phone outreach event, and confirm timeline updates.",
+        "E2E tests use a dedicated test database and do not mutate production/staging data.",
+        "E2E suite runs in addition to unit/integration tests and does not skip them."
+      ],
+      "stepsToVerify": [
+        "Add `npm run test:e2e` and ensure it starts the app in a test mode with a test database.",
+        "Create a seed step (or fixtures) to create a test user and initial data.",
+        "Run `npm test` first, then run `npm run test:e2e`; both must pass.",
+        "In CI/verification, ensure `npm run verify` runs unit/integration tests and also runs E2E once available.",
+        "Future change policy: any new feature requirement must run the full suite (`npm run verify` + `npm run test:e2e`) before being marked passing."
+      ],
+      "passes": false,
+      "priority": 7,
+      "priorityRationale": "Phase 7 deliverable: E2E proves the whole workflow works and prevents regressions across layers."
+    },
+
+    {
+      "id": "P8-001",
+      "category": "Phase 8 - Testing & Refinement",
+      "description": "Establish a regression-quality test strategy and stabilize the application: performance guardrails, security checks, and compliance review gates. This phase ensures the system is safe to operate long-term.",
+      "acceptanceCriteria": [
+        "All unit/integration tests run reliably and complete within a reasonable time budget (e.g., under 2 minutes locally for unit/integration).",
+        "E2E tests run reliably and complete within an agreed time budget.",
+        "Basic security protections are in place for API routes (auth checks, input validation, rate limiting where appropriate).",
+        "Compliance-sensitive behaviors are verified: unsubscribe always blocks future sends; manual texting remains non-automated; opt-out flags are visible and enforced.",
+        "Performance does not degrade significantly as the lead list grows (e.g., dashboard queries are indexed and remain responsive)."
+      ],
+      "stepsToVerify": [
+        "Run `npm run verify` and `npm run test:e2e` and confirm both pass.",
+        "Add automated tests for key compliance guardrails (unsubscribe blocking, do-not-contact warnings).",
+        "Add a load/performance-focused integration test for dashboard aggregate queries on a seeded dataset.",
+        "Manual checklist review: verify external services are configured correctly (Google API key restrictions, email provider sender verification, webhook security).",
+        "Future requirement policy: every future requirement must execute the full existing suite (unit/integration + E2E) before being considered passing."
+      ],
+      "passes": false,
+      "priority": 8,
+      "priorityRationale": "Phase 8 deliverable: hardening and regression coverage reduce risk and operating issues as usage scales."
+    }
+  ]
+}
