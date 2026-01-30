@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum WebsiteStatus {
+  no_website
+  social_only
+  broken
+  technical_issues
+  outdated
+  acceptable
+  unknown
+}
+
+enum LeadStatus {
+  pending
+  approved
+  rejected
+  contacted
+  responded
+  inactive
+}
+
+enum OutreachChannel {
+  email
+  phone
+  text
+  facebook
+  instagram
+  linkedin
+}
+
+enum DeliveryStatus {
+  sent
+  delivered
+  bounced
+  failed
+}
+
+enum EmailSource {
+  scraped
+  pattern_match
+  manual
+  google_maps
+}
+
+enum SearchStatus {
+  started
+  completed
+  failed
+}
+
+enum BusinessSource {
+  google_maps
+  manual
+}
+
+// Tables
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
+  name          String?
+  passwordHash  String?   @map("password_hash")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastLogin     DateTime? @map("last_login") @db.Timestamptz(6)
+
+  // Relations
+  searchRuns           SearchRun[]
+  excludedBusinesses   ExcludedBusiness[]
+  outreachTracking     OutreachTracking[]
+  approvedBusinesses   Business[]         @relation("ApprovedBy")
+  rejectedBusinesses   Business[]         @relation("RejectedBy")
+  doNotContactBusinesses Business[]       @relation("DoNotContactSetBy")
+
+  @@index([email])
+  @@map("users")
+}
+
+model Business {
+  id                      String          @id @default(uuid()) @db.Uuid
+  placeId                 String?         @unique @map("place_id")
+  name                    String
+  address                 String
+  lat                     Decimal?        @db.Decimal(10, 7)
+  lng                     Decimal?        @db.Decimal(10, 7)
+  phone                   String?
+  website                 String?
+  businessTypes           String[]        @map("business_types")
+  rating                  Float?
+  reviewCount             Int?            @map("review_count")
+  smallBusinessScore      Int?            @map("small_business_score")
+  websiteStatus           WebsiteStatus   @default(unknown) @map("website_status")
+  leadStatus              LeadStatus      @default(pending) @map("lead_status")
+
+  // Source / provenance
+  source                  BusinessSource  @default(google_maps)
+  sourceSearchRunId       String?         @map("source_search_run_id") @db.Uuid
+  manualDedupeKey         String?         @map("manual_dedupe_key")
+
+  // Lead workflow
+  discoveredAt            DateTime        @default(now()) @map("discovered_at") @db.Timestamptz(6)
+  approvedAt              DateTime?       @map("approved_at") @db.Timestamptz(6)
+  approvedByUserId        String?         @map("approved_by_user_id") @db.Uuid
+  rejectedAt              DateTime?       @map("rejected_at") @db.Timestamptz(6)
+  rejectedByUserId        String?         @map("rejected_by_user_id") @db.Uuid
+  rejectedReason          String?         @map("rejected_reason") @db.Text
+
+  // Outreach coordination
+  lastContactAt           DateTime?       @map("last_contact_at") @db.Timestamptz(6)
+  nextFollowupAt          DateTime?       @map("next_followup_at") @db.Timestamptz(6)
+  doNotContact            Boolean         @default(false) @map("do_not_contact")
+  doNotContactReason      String?         @map("do_not_contact_reason") @db.Text
+  doNotContactSetAt       DateTime?       @map("do_not_contact_set_at") @db.Timestamptz(6)
+  doNotContactSetByUserId String?         @map("do_not_contact_set_by_user_id") @db.Uuid
+
+  // Notes
+  notes                   String?         @db.Text
+
+  // Audit
+  createdAt               DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  sourceSearchRun         SearchRun?      @relation(fields: [sourceSearchRunId], references: [id], onDelete: SetNull)
+  approvedByUser          User?           @relation("ApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  rejectedByUser          User?           @relation("RejectedBy", fields: [rejectedByUserId], references: [id], onDelete: SetNull)
+  doNotContactSetByUser   User?           @relation("DoNotContactSetBy", fields: [doNotContactSetByUserId], references: [id], onDelete: SetNull)
+  contactInfo             ContactInfo[]
+  outreachTracking        OutreachTracking[]
+  optOuts                 OptOut[]
+
+  @@index([name])
+  @@index([leadStatus, websiteStatus])
+  @@index([nextFollowupAt])
+  @@index([manualDedupeKey])
+  @@map("businesses")
+}
+
+model ContactInfo {
+  id               String       @id @default(uuid()) @db.Uuid
+  businessId       String       @map("business_id") @db.Uuid
+  email            String?
+  emailSource      EmailSource? @map("email_source")
+  emailConfidence  Int?         @map("email_confidence")
+  phone            String?
+  facebookUrl      String?      @map("facebook_url")
+  instagramUrl     String?      @map("instagram_url")
+  linkedinUrl      String?      @map("linkedin_url")
+
+  // Audit
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  business         Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("contact_info")
+}
+
+model ExcludedBusiness {
+  id                  String   @id @default(uuid()) @db.Uuid
+  businessName        String   @map("business_name")
+  businessNameNormalized String @map("business_name_normalized")
+  reason              String?
+  addedByUserId       String   @map("added_by_user_id") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  addedByUser         User     @relation(fields: [addedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([businessNameNormalized])
+  @@map("excluded_businesses")
+}
+
+model OutreachTracking {
+  id                  String          @id @default(uuid()) @db.Uuid
+  businessId          String          @map("business_id") @db.Uuid
+  createdByUserId     String?         @map("created_by_user_id") @db.Uuid
+
+  // Channel & timing
+  channel             OutreachChannel
+  occurredAt          DateTime        @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  // Email fields
+  touchNumber         Int?            @map("touch_number")
+  campaignId          String?         @map("campaign_id") @db.Uuid
+  deliveryStatus      DeliveryStatus? @map("delivery_status")
+  providerMessageId   String?         @map("provider_message_id")
+  opened              Boolean?
+  clicked             Boolean?
+  replied             Boolean?
+
+  // Manual outcome fields
+  outcome             String?
+  notes               String?         @db.Text
+
+  // Audit
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  business            Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByUser       User?           @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  campaign            EmailCampaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, occurredAt(sort: Desc)])
+  @@index([channel])
+  @@index([occurredAt])
+  @@map("outreach_tracking")
+}
+
+model EmailCampaign {
+  id                       String   @id @default(uuid()) @db.Uuid
+  name                     String
+  subjectTouch1            String   @map("subject_touch_1")
+  subjectTouch2            String   @map("subject_touch_2")
+  templateTouch1           String   @map("template_touch_1") @db.Text
+  templateTouch2           String   @map("template_touch_2") @db.Text
+  waitDaysBetweenTouches   Int      @default(7) @map("wait_days_between_touches")
+  fromName                 String?  @map("from_name")
+  fromEmail                String?  @map("from_email")
+
+  // Audit
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  outreachTracking         OutreachTracking[]
+
+  @@map("email_campaigns")
+}
+
+model OptOut {
+  id          String          @id @default(uuid()) @db.Uuid
+  businessId  String?         @map("business_id") @db.Uuid
+  email       String?
+  channel     OutreachChannel
+  optOutAt    DateTime        @default(now()) @map("opt_out_at") @db.Timestamptz(6)
+  ipAddress   String?         @map("ip_address")
+  userAgent   String?         @map("user_agent")
+  reason      String?
+
+  // Relations
+  business    Business?       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([channel, email])
+  @@index([email])
+  @@map("opt_outs")
+}
+
+model SearchRun {
+  id                      String       @id @default(uuid()) @db.Uuid
+  createdByUserId         String       @map("created_by_user_id") @db.Uuid
+
+  // Inputs
+  queryText               String?      @map("query_text")
+  locationText            String?      @map("location_text")
+  lat                     Decimal?     @db.Decimal(10, 7)
+  lng                     Decimal?     @db.Decimal(10, 7)
+  radiusMeters            Int          @map("radius_meters")
+  types                   String[]
+
+  // Execution
+  status                  SearchStatus
+  startedAt               DateTime     @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt             DateTime?    @map("completed_at") @db.Timestamptz(6)
+  errorMessage            String?      @map("error_message") @db.Text
+
+  // Results summary
+  resultsFound            Int          @default(0) @map("results_found")
+  resultsSavedNew         Int          @default(0) @map("results_saved_new")
+  resultsDedupedExisting  Int          @default(0) @map("results_deduped_existing")
+
+  // Audit
+  createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  createdByUser           User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  businesses              Business[]
+
+  @@map("search_runs")
+}

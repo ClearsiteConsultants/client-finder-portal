@@ -50,7 +50,7 @@
         "Create an automated test (integration) that creates a SearchRun record and asserts summary counters persist correctly.",
         "Run `npm test` and confirm all tests pass (including the Phase 1 baseline test)."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "priorityRationale": "Phase 1 prerequisite: persistence is central to lead tracking, deduplication, and compliance logging."
     },

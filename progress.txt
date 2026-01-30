@@ -31,3 +31,50 @@
 
 **Next Steps:**
 - Ready for P1-002: Database setup with Prisma ORM
+
+### 2026-01-30 - Task P1-002 Complete
+**Task:** Set up PostgreSQL database integration via Prisma
+**Status:** ✅ COMPLETE
+
+**What was done:**
+- Installed Prisma ORM (v7.3.0) and PostgreSQL adapter (@prisma/adapter-pg)
+- Created comprehensive Prisma schema (prisma/schema.prisma) aligned with DATABASE_SCHEMA.md:
+  - 8 core tables: users, businesses, contact_info, excluded_businesses, outreach_tracking, email_campaigns, opt_outs, search_runs
+  - 8 enums: WebsiteStatus, LeadStatus, OutreachChannel, DeliveryStatus, EmailSource, SearchStatus, BusinessSource
+  - All relationships, foreign keys, indexes, and constraints as specified
+  - Support for NULL place_id (manual leads) with unique constraint when present
+  - Proper audit fields (created_at, updated_at) on all tables
+- Created initial migration (20260130205543_init) with all schema changes
+- Set up local PostgreSQL database (quizmaster_dev and quizmaster_test)
+- Configured Prisma with prisma.config.ts using environment-based DATABASE_URL
+- Created Prisma client singleton (src/lib/prisma.ts) with PostgreSQL adapter
+- Implemented comprehensive integration tests (src/lib/prisma.test.ts):
+  - Business and ContactInfo relationship tests
+  - Manual lead support (NULL place_id) tests
+  - Unique constraint enforcement on place_id
+  - SearchRun counter persistence tests
+  - Email campaign and outreach tracking tests
+  - OptOut compliance and unique constraint tests
+  - User relations tests
+  - ExcludedBusiness normalization tests
+
+**Verification Results:**
+- ✅ Prisma configured and connects to PostgreSQL via DATABASE_URL
+- ✅ Initial migration created and applied successfully
+- ✅ Prisma schema aligns with DATABASE_SCHEMA.md (all tables, enums, relationships)
+- ✅ Core tables from plan are represented correctly
+- ✅ Enums match the plan exactly
+- ✅ Schema supports both discovered and manual leads with source field
+- ✅ Schema supports notes per business and per outreach event
+- ✅ Foreign keys and unique constraints work as expected
+- ✅ place_id is optional but unique when present (tested)
+- ✅ Multiple NULL place_id values allowed (tested)
+- ✅ npm test - Passes (15/15 tests pass)
+- ✅ npm run typecheck - Passes (no type errors)
+- ✅ npm run lint - Passes (0 errors, 0 warnings)
+- ✅ npx prisma generate - Succeeds, Prisma client generated
+
+**Git Commit:** (pending)
+
+**Next Steps:**
+- Ready for P1-003 or next priority task

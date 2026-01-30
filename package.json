@@ -17,11 +17,13 @@
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.1.0",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "autoprefixer": "^10.4.24",
+    "dotenv": "^17.2.3",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.6",
     "eslint-plugin-react": "^7.37.5",
@@ -29,12 +31,16 @@
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "postcss": "^8.5.6",
+    "prisma": "^7.3.0",
     "tailwindcss": "^4.1.18",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.3.0",
+    "@prisma/client": "^7.3.0",
     "next": "^16.1.6",
+    "pg": "^8.18.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   }
