@@ -145,3 +145,52 @@
 - Ready for P1-004 or next priority task
 - Users can be created with: node -r dotenv/config -r tsx/cjs scripts/create-user.ts email password name
 
+
+### 2026-01-30 - Task P1-004 Complete
+**Task:** Set up deployment readiness for Vercel
+**Status:** ✅ COMPLETE
+
+**What was done:**
+- Created `npm run verify` script combining lint, typecheck, and test
+- Created `npm run verify:ci` script for CI environments (lint + typecheck + build, no database)
+- Created `vercel.json` with Vercel deployment configuration
+- Created comprehensive README.md with:
+  - Quick start guide
+  - Available scripts documentation
+  - Deployment checklist for Vercel
+  - Project structure overview
+  - Environment variables reference
+  - Tech stack documentation
+- Enhanced EXTERNAL_SETUP.md with Phase 1 Deployment Guide:
+  - Local verification steps
+  - Vercel deployment steps
+  - Environment variable configuration
+  - Database migration instructions
+  - Initial user creation guide
+  - Build command documentation
+- Environment variables are safely referenced at runtime via process.env
+- All environment variables documented in .env.example
+
+**Acceptance Criteria Verification:**
+- ✅ App can be deployed to Vercel without code changes (Next.js auto-detected)
+- ✅ Required environment variables documented in .env.example and EXTERNAL_SETUP.md
+- ✅ Production build succeeds: `npm run build` completes successfully
+- ✅ Single command verification: `npm run verify` (full suite) or `npm run verify:ci` (CI)
+
+**Verification Results:**
+- ✅ npm run lint - Passes (0 errors, 0 warnings)
+- ✅ npm run typecheck - Passes (no type errors)
+- ✅ npm run build - Succeeds (production build completes)
+- ✅ npm run verify:ci - Passes (lint + typecheck + build without database)
+- ✅ vercel.json properly configures Next.js framework detection
+- ✅ Environment variables loaded from .env.local in development
+- ✅ postinstall script ensures Prisma client generation before build
+-  Deployment documentation complete in EXTERNAL_SETUP.md
+- ✅ README.md provides clear deployment checklist
+
+**Git Commit:** (pending)
+
+**Next Steps:**
+- Ready for manual Vercel deployment following EXTERNAL_SETUP.md Phase 1 Deployment Guide
+- Ready for P1-005 or next priority task
+

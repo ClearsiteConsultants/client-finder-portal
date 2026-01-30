@@ -329,3 +329,78 @@ Optional:
 - `SCRAPER_TIMEOUT_MS=`
 - `SCRAPER_MAX_PAGES=`
 - `RESPECT_ROBOTS_TXT=`
+
+### Phase 1 Deployment Guide
+
+#### Local Verification
+Before deploying to Vercel, ensure the app passes local verification:
+
+```bash
+# Run linting and type checking
+npm run lint
+npm run typecheck
+
+# Run tests (requires DATABASE_URL configured)
+npm test
+
+# Run full verification suite (includes tests)
+npm run verify
+
+# Run CI verification (lint + typecheck + build, no database required)
+npm run verify:ci
+
+# Test production build
+npm run build
+```
+
+#### Vercel Deployment Steps
+
+1. **Connect Repository to Vercel**
+   - Log in to Vercel dashboard
+   - Click "Add New Project"
+   - Import your Git repository
+   - Configure build settings (auto-detected for Next.js)
+
+2. **Configure Environment Variables**
+   
+   **Production Environment:**
+   - `DATABASE_URL` - Neon production branch connection string
+   - `DATABASE_URL_UNPOOLED` - Neon unpooled connection (for migrations)
+   - `NEXTAUTH_URL` - Your production domain (e.g., https://yourdomain.com)
+   - `NEXTAUTH_SECRET` - Generate with: `openssl rand -base64 32`
+   
+   **Preview Environment:**
+   - `DATABASE_URL` - Neon preview branch connection string
+   - `NEXTAUTH_URL` - Vercel preview URL pattern
+   - `NEXTAUTH_SECRET` - Same as production or separate preview secret
+
+3. **Database Setup**
+   - Run migrations on Neon production branch:
+     ```bash
+     DATABASE_URL=<neon-prod-url> npx prisma migrate deploy
+     ```
+   - Run migrations on Neon preview branch:
+     ```bash
+     DATABASE_URL=<neon-preview-url> npx prisma migrate deploy
+     ```
+
+4. **Create Initial User** (After First Deployment)
+   ```bash
+   # On local machine connected to production database
+   DATABASE_URL=<neon-prod-url> node -r dotenv/config -r tsx/cjs scripts/create-user.ts admin@example.com yourpassword "Admin User"
+   ```
+
+5. **Verify Deployment**
+   - Visit your deployed site
+   - Test login with created user
+   - Verify authentication redirects work
+   - Check that protected pages require login
+
+#### Build Command
+Vercel will automatically run:
+```bash
+npm install
+npm run build
+```
+
+The `postinstall` script ensures Prisma client is generated before build.
