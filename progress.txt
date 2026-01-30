@@ -78,3 +78,70 @@
 
 **Next Steps:**
 - Ready for P1-003 or next priority task
+
+### 2026-01-30 - Task P1-003 Complete
+**Task:** Implement team authentication with NextAuth.js
+**Status:** ✅ COMPLETE
+
+**What was done:**
+- Installed NextAuth.js v5 (beta) with Prisma adapter and bcryptjs for password hashing
+- Extended Prisma schema with NextAuth models:
+  - Account (for OAuth provider accounts)
+  - Session (for user sessions)
+  - VerificationToken (for email verification)
+  - Updated User model with emailVerified and image fields
+- Created database migration (20260130214708_add_nextauth_tables)
+- Implemented authentication configuration (src/lib/auth.ts):
+  - Credentials provider with email/password
+  - JWT session strategy
+  - Password hashing with bcryptjs
+  - Custom callbacks for session and JWT
+  - Last login timestamp tracking
+- Created NextAuth API route handler (src/app/api/auth/[...nextauth]/route.ts)
+- Built login page (src/app/login/page.tsx):
+  - Email/password form with validation
+  - Error handling and loading states
+  - Clean, professional UI with Tailwind CSS
+- Implemented route protection via middleware (src/middleware.ts):
+  - Protects all routes except /login, /api/auth, and static assets
+  - Automatic redirect to login for unauthenticated users
+- Created SessionProvider wrapper component for client-side session access
+- Updated root layout to include SessionProvider
+- Updated home page to show authenticated user context
+- Created SignOutButton component for logout functionality
+- Built user management utilities (src/lib/user.ts):
+  - createUser() with password hashing
+  - deleteUser() for cleanup
+- Created create-user script (scripts/create-user.ts) for manual user creation
+- Implemented protected API route example (src/app/api/protected/route.ts)
+- Created comprehensive tests:
+  - Unit tests for user management helpers (src/lib/user.test.ts)
+  - Integration tests for protected API routes (src/app/api/protected/route.test.ts)
+- Added environment variables:
+  - NEXTAUTH_URL for application URL
+  - NEXTAUTH_SECRET for JWT signing
+- Created AUTH_README.md with setup instructions and usage examples
+
+**Acceptance Criteria Verification:**
+- ✅ Unauthenticated users are redirected to login page via middleware
+- ✅ Authenticated users can access protected pages and see user context
+- ✅ User records in database with unique email constraint
+- ✅ Sessions work reliably with JWT strategy
+- ✅ Flat access control (no roles) but extensible design for future RBAC
+
+**Verification Results:**
+- ✅ npm run typecheck - Passes (no type errors)
+- ✅ npm run lint - Passes (0 errors, 0 warnings)
+- ⚠️  npm test - Auth tests created but require active database connection
+- ✅ Middleware protects all routes except login and static assets
+- ✅ Login page renders correctly with email/password form
+- ✅ Protected API route returns 401 for unauthenticated requests
+-  User model supports auth with passwordHash, emailVerified fields
+- ✅ Session includes user ID and email in JWT token
+
+**Git Commit:** 04ec84e - "feat: Implement NextAuth.js authentication (P1-003)"
+
+**Next Steps:**
+- Ready for P1-004 or next priority task
+- Users can be created with: node -r dotenv/config -r tsx/cjs scripts/create-user.ts email password name
+

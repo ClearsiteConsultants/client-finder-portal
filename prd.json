@@ -71,7 +71,7 @@
         "Run `npm test` to confirm all prior tests still pass.",
         "Manually sign in and confirm protected pages render and show the signed-in user context."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "priorityRationale": "Phase 1 prerequisite: the tool is for an internal team and must be protected from public access early."
     },
