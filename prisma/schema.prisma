@@ -68,6 +68,8 @@ model User {
   passwordHash  String?   @map("password_hash")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lastLogin     DateTime? @map("last_login") @db.Timestamptz(6)
+  emailVerified DateTime? @map("email_verified") @db.Timestamptz(6)
+  image         String?
 
   // Relations
   searchRuns           SearchRun[]
@@ -76,9 +78,50 @@ model User {
   approvedBusinesses   Business[]         @relation("ApprovedBy")
   rejectedBusinesses   Business[]         @relation("RejectedBy")
   doNotContactBusinesses Business[]       @relation("DoNotContactSetBy")
+  accounts             Account[]
+  sessions             Session[]
 
   @@index([email])
   @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @map("user_id") @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id") @db.Uuid
+  expires      DateTime @db.Timestamptz(6)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime @db.Timestamptz(6)
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
 }
 
 model Business {
