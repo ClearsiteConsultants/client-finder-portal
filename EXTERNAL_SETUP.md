@@ -384,13 +384,16 @@ npm run build
      DATABASE_URL=<neon-preview-url> npx prisma migrate deploy
      ```
 
-4. **Create Initial User** (After First Deployment)
-   ```bash
-   # On local machine connected to production database
-   DATABASE_URL=<neon-prod-url> node -r dotenv/config -r tsx/cjs scripts/create-user.ts admin@example.com yourpassword "Admin User"
-   ```
+4. **Deploy to Vercel**
+   - Push your code to trigger deployment
+   - Wait for deployment to complete
+   - Note the deployment URL(s)
 
-5. **Verify Deployment**
+5. **Run Database Migrations** (See Database Migration Guide below)
+
+6. **Create Initial User** (See User Provisioning Guide below)
+
+7. **Verify Deployment**
    - Visit your deployed site
    - Test login with created user
    - Verify authentication redirects work
@@ -404,3 +407,280 @@ npm run build
 ```
 
 The `postinstall` script ensures Prisma client is generated before build.
+
+---
+
+## Database Migration Guide
+
+### Running Migrations in Different Environments
+
+#### Local Environment
+```bash
+# Ensure .env.local has DATABASE_URL set
+npx prisma migrate deploy
+```
+
+#### Preview Environment (Vercel + Neon)
+```bash
+# Use the DATABASE_URL from your Neon preview branch
+DATABASE_URL="postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb" npx prisma migrate deploy
+```
+
+#### Production Environment (Vercel + Neon)
+```bash
+# Use the DATABASE_URL from your Neon production branch
+DATABASE_URL="postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb" npx prisma migrate deploy
+```
+
+### Finding Your Database URL
+
+**From Neon Dashboard:**
+1. Log in to Neon (https://neon.tech)
+2. Select your project
+3. Select the appropriate branch (preview/production)
+4. Copy the connection string from the Connection Details section
+
+**From Vercel Dashboard:**
+1. Log in to Vercel
+2. Go to your project → Settings → Environment Variables
+3. Find DATABASE_URL for the appropriate environment
+4. Copy the value (you may need to reveal it)
+
+### Migration Best Practices
+
+1. **Always back up production data before migrations**
+2. **Test migrations on preview/dev environments first**
+3. **Run migrations before deploying code that depends on schema changes**
+4. **Verify migration success:**
+   ```bash
+   DATABASE_URL="<your-url>" npx prisma migrate status
+   ```
+
+---
+
+## User Provisioning Guide
+
+This section provides step-by-step instructions for creating user accounts in local, preview, and production environments.
+
+### Prerequisites
+
+- Node.js and npm installed locally
+- Appropriate DATABASE_URL for the target environment
+- `tsx` package (included in devDependencies)
+- Database migrations have been run successfully
+
+### User Creation Script
+
+The repository includes `scripts/create-user.ts` for creating users. The script:
+- Hashes passwords with bcryptjs
+- Enforces unique email constraint
+- Creates users directly in the database
+- Validates input parameters
+
+**Script signature:**
+```bash
+node -r tsx/cjs scripts/create-user.ts <email> <password> <name>
+```
+
+### Local Environment
+
+**Step 1: Ensure local database is ready**
+```bash
+# Check that .env.local has DATABASE_URL
+cat .env.local | grep DATABASE_URL
+
+# Run migrations if not already done
+npx prisma migrate deploy
+```
+
+**Step 2: Create user**
+```bash
+# The script will automatically use DATABASE_URL from .env.local
+node -r tsx/cjs scripts/create-user.ts admin@example.com SecurePass123 "Admin User"
+```
+
+**Step 3: Verify**
+```bash
+# Start dev server
+npm run dev
+
+# Visit http://localhost:3000
+# Try logging in with admin@example.com / SecurePass123
+```
+
+### Preview Environment (Vercel + Neon)
+
+**Step 1: Get the preview DATABASE_URL**
+
+Option A - From Neon Dashboard:
+1. Log in to Neon
+2. Select your project
+3. Select the preview branch
+4. Copy the connection string
+
+Option B - From Vercel Dashboard:
+1. Log in to Vercel
+2. Project → Settings → Environment Variables
+3. Find DATABASE_URL for Preview environment
+4. Copy the value
+
+**Step 2: Verify migrations are up to date**
+```bash
+DATABASE_URL="postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb" npx prisma migrate status
+```
+
+**Step 3: Create user against preview database**
+```bash
+DATABASE_URL="postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb" node -r tsx/cjs scripts/create-user.ts admin@preview.example.com PreviewPass123 "Preview Admin"
+```
+
+**Step 4: Verify**
+1. Find your preview deployment URL (from Vercel or GitHub PR checks)
+2. Visit the preview URL (e.g., `https://your-app-git-branch-username.vercel.app`)
+3. Log in with the credentials you just created
+
+### Production Environment (Vercel + Neon)
+
+⚠️ **IMPORTANT: Production Security**
+- Use strong, unique passwords
+- Store credentials in a password manager
+- Limit the number of production users
+- Consider using a jump box or VPN for production access
+
+**Step 1: Get the production DATABASE_URL**
+
+From Neon Dashboard:
+1. Log in to Neon
+2. Select your project
+3. Select the **production** branch
+4. Copy the connection string
+
+**Step 2: Verify migrations are current**
+```bash
+DATABASE_URL="postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb" npx prisma migrate status
+```
+
+Expected output: "Database schema is up to date!"
+
+**Step 3: Create production user**
+```bash
+# Use a strong password!
+DATABASE_URL="postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb" node -r tsx/cjs scripts/create-user.ts admin@yourdomain.com StrongPassword456! "Production Admin"
+```
+
+**Step 4: Verify**
+1. Visit your production domain (e.g., `https://yourdomain.com`)
+2. Log in with the credentials you just created
+3. Verify access to protected areas
+
+### Common Issues and Troubleshooting
+
+#### Issue: "Cannot find module 'tsx/cjs'"
+**Solution:** Ensure dependencies are installed
+```bash
+npm install
+```
+
+#### Issue: "PrismaClientInitializationError: Can't reach database server"
+**Possible causes:**
+- DATABASE_URL is incorrect
+- Database branch doesn't exist
+- Network connectivity issues
+- Neon branch is suspended (free tier)
+
+**Solution:**
+```bash
+# Test database connection
+DATABASE_URL="<your-url>" npx prisma db pull
+```
+
+#### Issue: "Unique constraint failed on the fields: (`email`)"
+**Cause:** User with that email already exists
+
+**Solution:**
+```bash
+# List existing users
+DATABASE_URL="<your-url>" npx prisma studio
+# Or delete the existing user first (be careful in production!)
+```
+
+#### Issue: "Migration status shows pending migrations"
+**Solution:** Run migrations before creating users
+```bash
+DATABASE_URL="<your-url>" npx prisma migrate deploy
+```
+
+### Security Best Practices
+
+1. **Never commit DATABASE_URL to version control**
+   - Use `.env.local` locally (gitignored)
+   - Store in Vercel environment variables for preview/prod
+
+2. **Use strong passwords for production**
+   - Minimum 12 characters
+   - Mix of uppercase, lowercase, numbers, symbols
+   - Use a password generator
+
+3. **Rotate credentials regularly**
+   - Change passwords every 90 days
+   - Update NEXTAUTH_SECRET periodically
+
+4. **Limit database access**
+   - Use Neon's IP allowlists if available
+   - Restrict DATABASE_URL to necessary team members
+
+5. **Monitor user access**
+   - Check `last_login` field in users table
+   - Remove inactive accounts
+
+### Managing Multiple Users
+
+**Create additional users:**
+```bash
+# Development team member
+DATABASE_URL="<url>" node -r tsx/cjs scripts/create-user.ts dev@company.com Pass123 "Dev User"
+
+# Sales team member
+DATABASE_URL="<url>" node -r tsx/cjs scripts/create-user.ts sales@company.com Pass456 "Sales User"
+```
+
+**List all users (using Prisma Studio):**
+```bash
+DATABASE_URL="<url>" npx prisma studio
+# Opens browser interface to view/edit users
+```
+
+**Delete a user:**
+```bash
+# Using Prisma Studio (recommended) or write a delete script
+# For now, use Prisma Studio to safely delete users
+```
+
+### Quick Reference
+
+**Create local user:**
+```bash
+node -r tsx/cjs scripts/create-user.ts user@example.com password "Name"
+```
+
+**Create preview user:**
+```bash
+DATABASE_URL="<preview-url>" node -r tsx/cjs scripts/create-user.ts user@example.com password "Name"
+```
+
+**Create production user:**
+```bash
+DATABASE_URL="<production-url>" node -r tsx/cjs scripts/create-user.ts user@example.com password "Name"
+```
+
+**Check migration status:**
+```bash
+DATABASE_URL="<url>" npx prisma migrate status
+```
+
+**Run migrations:**
+```bash
+DATABASE_URL="<url>" npx prisma migrate deploy
+```
+
+---

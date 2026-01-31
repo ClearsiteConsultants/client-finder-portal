@@ -128,7 +128,7 @@
         "Follow the documentation to create a new user in a non-local environment.",
         "Log in using the created user and confirm access to protected areas."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "priorityRationale": "Phase 1 blocker: without reliable user provisioning, environments cannot be accessed or validated by the team."
     },

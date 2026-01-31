@@ -344,6 +344,48 @@ An automated lead discovery and outreach management system to help identify smal
 5. Create basic UI layout and navigation
 6. Set up environment variables and deployment on Vercel
 
+#### Phase 1 Blockers (Must Fix Before Phase 2)
+
+1. **Fix Vercel 500 error (Edge runtime + Node `crypto`)**
+    - **Problem**: Current route protection uses Next.js middleware, which runs on the Edge runtime. The Edge runtime does not support Node's `crypto` module, which is required by current auth/session verification.
+    - **Goal**: Production deployment must load without runtime 500s.
+    - **Acceptance**:
+       - Vercel preview + production loads home page without 500 errors.
+       - Auth protection still works (unauthenticated users cannot access protected views/routes).
+       - No Node-only modules are imported/executed in Edge runtime paths.
+    - **Verify**:
+       - Deploy to Vercel, load `/` and a protected route.
+       - Confirm login flow works end-to-end.
+
+2. **Document user account creation for Vercel + Postgres/Neon**
+    - **Goal**: Any team member can create the initial admin user (and additional users) in preview/prod safely and repeatably.
+    - **Scope**:
+       - Where to find the correct `DATABASE_URL` in Vercel.
+       - How to run migrations against preview/prod.
+       - How to run the user creation script against preview/prod.
+       - Safety guidance: avoid using prod credentials locally unless intended.
+    - **Acceptance**:
+       - Clear, step-by-step instructions exist in repo docs.
+       - Includes example commands for preview and production.
+    - **Verify**:
+       - Follow the docs to create a user in a fresh environment.
+       - Sign in using the created user.
+
+3. **Update landing page to match “Client Finder Portal” intent + add Health view**
+    - **Goal**: Replace placeholder/legacy “QuizMaster” branding and make the landing page explain the lead discovery + outreach workflow.
+    - **Requirements**:
+       - Remove all “QuizMaster” labels.
+       - Landing page content aligns with the project overview in this plan.
+       - Add a simple “Health” section/view that shows:
+          - Database connectivity status
+          - Login/session status (signed in user vs not signed in)
+    - **Acceptance**:
+       - `/` renders unauthenticated (marketing/overview) content without redirect loops.
+       - Health check renders accurately in local and Vercel environments.
+    - **Verify**:
+       - Load `/` logged out and logged in.
+       - Confirm DB status indicator changes appropriately if DB env is missing/broken.
+
 ### Phase 2: Business Discovery (Week 2-3)
 1. Implement Google Maps Places API integration
 2. Build search interface with location and type filters
