@@ -386,6 +386,19 @@ An automated lead discovery and outreach management system to help identify smal
        - Load `/` logged out and logged in.
        - Confirm DB status indicator changes appropriately if DB env is missing/broken.
 
+4. **Fix false “Signed In” state on deployed environments (no default/test user)**
+    - **Problem**: Preview/prod deployments appear to show an authenticated state even when no user has been created and no login was performed.
+    - **Goal**: Authentication status must be accurate and never imply a user is signed in unless a real session exists.
+    - **Acceptance**:
+       - In an incognito/private window on preview/prod, the app shows **Not Signed In** by default.
+       - No default/test user is created automatically in preview/prod.
+       - Protected pages/APIs require login and redirect/deny when unauthenticated.
+       - After manually creating a user for preview/prod, logging in works and the UI reflects the correct signed-in identity.
+    - **Verify**:
+       - Open preview/prod in an incognito window and confirm **Not Signed In**.
+       - Attempt to access a protected route and confirm redirect/deny.
+       - Provision a user in the target environment and confirm login works.
+
 ### Phase 2: Business Discovery (Week 2-3)
 1. Implement Google Maps Places API integration
 2. Build search interface with location and type filters

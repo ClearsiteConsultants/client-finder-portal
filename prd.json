@@ -1,7 +1,7 @@
 {
   "project": "client-finder-portal",
   "version": "1.0.0",
-  "lastUpdated": "2026-01-30",
+  "lastUpdated": "2026-01-31",
   "requirements": [
     {
       "id": "P1-001",
@@ -150,6 +150,26 @@
       "passes": true,
       "priority": 1,
       "priorityRationale": "Phase 1 blocker: baseline UX and deploy validation requires correct branding and a quick way to verify auth/DB connectivity."
+    },
+    {
+      "id": "P1-008",
+      "category": "Phase 1 - Foundation",
+      "description": "Fix incorrect authenticated-state reporting in preview/prod (e.g., showing 'Signed In' without any login or provisioned users). Ensure there is no default/test user behavior in deployed environments and that protected pages require real authentication.",
+      "acceptanceCriteria": [
+        "In an incognito/private session on preview/prod, the app shows 'Not Signed In' by default.",
+        "No default/test users are automatically created in preview/prod.",
+        "Protected routes remain protected and require a real login.",
+        "After provisioning a user in preview/prod, login works and the UI reflects the correct signed-in user."
+      ],
+      "stepsToVerify": [
+        "Open preview/prod in an incognito/private window and confirm the UI shows 'Not Signed In'.",
+        "Attempt to access a protected route and confirm redirect/deny behavior.",
+        "Provision a user in the target environment (per docs) and confirm login succeeds.",
+        "Refresh and confirm the signed-in identity persists; sign out and confirm it returns to 'Not Signed In'."
+      ],
+      "passes": true,
+      "priority": 1,
+      "priorityRationale": "Phase 1 blocker: auth must be trustworthy; incorrect 'signed in' state can lead to accidental exposure or false confidence in access controls."
     },
     {
       "id": "P2-001",
