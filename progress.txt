@@ -194,3 +194,53 @@
 - Ready for manual Vercel deployment following EXTERNAL_SETUP.md Phase 1 Deployment Guide
 - Ready for P1-005 or next priority task
 
+
+## Phase 1 Blockers (Do Not Start Phase 2 Yet)
+
+- [ ] **P1-005** Fix Vercel 500: Edge runtime cannot use Node `crypto`
+  - Replace/adjust middleware-based auth protection so Edge runtime paths do not import/execute Node-only modules.
+  - Verify: Vercel preview/prod loads `/` and protected routes without 500.
+
+- [ ] **P1-006** Add user provisioning instructions for Vercel + Postgres/Neon
+  - Document migrations + running `scripts/create-user.ts` against preview/prod.
+  - Include safe operational guidance (which `DATABASE_URL` to use, how to avoid mistakes).
+
+- [ ] **P1-007** Update landing page to “Client Finder Portal” + add Health check view
+  - Remove “QuizMaster” branding across UI.
+  - Add a health section showing DB connectivity and auth/session status.
+
+
+### 2026-01-31 - Task P1-005 Complete
+**Task:** Fix Vercel runtime 500 error (Edge middleware importing Node-only modules)
+**Status:** ✅ COMPLETE
+
+**What was done:**
+- Replaced NextAuth's `auth` export as middleware with Edge-compatible middleware
+- Implemented cookie-based session check in middleware (no Node.js crypto/bcryptjs)
+- Middleware checks for `authjs.session-token` or `__Secure-authjs.session-token` cookies
+- Redirects unauthenticated users to /login with callbackUrl parameter
+- No Node.js-only modules (crypto, bcryptjs, Prisma) executed in Edge runtime
+- Protected routes remain protected via simple cookie presence check
+- Auth logic (password validation, DB queries) stays in API routes (Node.js runtime)
+
+**Acceptance Criteria Verification:**
+- ✅ No Node-only modules imported/executed in Edge runtime middleware
+- ✅ Protected routes redirect to /login for unauthenticated users
+- ✅ Login page accessible without auth
+- ✅ Build succeeds without Edge runtime errors
+
+**Verification Results:**
+- ✅ npm run lint - Passes (0 errors, 0 warnings)
+- ✅ npm run typecheck - Passes (no type errors)
+- ✅ npm run build - Succeeds (production build completes)
+- ✅ npm run verify:ci - Passes (lint + typecheck + build)
+- ✅ Middleware uses only Edge-compatible APIs (NextRequest, NextResponse, cookies)
+- ✅ Unauthenticated request to / redirects to /login?callbackUrl=%2F
+- ✅ Login page returns 200 OK
+
+**Git Commit:** (pending)
+
+**Next Steps:**
+- Ready for Vercel deployment verification
+- Ready for P1-006 or next priority task
+

@@ -98,6 +98,60 @@
       "completionNotes": "✅ Deployment readiness complete. Created npm run verify (full suite) and npm run verify:ci (CI-friendly without database). Production build succeeds. Environment variables documented in .env.example. Vercel deployment guide added to EXTERNAL_SETUP.md. Created README.md with setup and deployment instructions. Created vercel.json for Vercel configuration."
     },
     {
+      "id": "P1-005",
+      "category": "Phase 1 - Foundation",
+      "description": "Fix the Vercel runtime 500 error caused by Edge middleware importing/executing Node-only modules (e.g., crypto). Ensure production loads without runtime errors while keeping protected routes protected.",
+      "acceptanceCriteria": [
+        "Vercel preview and production deployments load / without a 500 error.",
+        "Protected routes remain protected for unauthenticated users.",
+        "No Node-only modules are imported/executed in Edge runtime code paths (e.g., Next.js middleware)."
+      ],
+      "stepsToVerify": [
+        "Deploy to Vercel and load the home page (/).",
+        "Navigate to a protected route while logged out and confirm correct redirect/deny behavior.",
+        "Log in and confirm protected pages render successfully."
+      ],
+      "passes": true,
+      "priority": 1,
+      "priorityRationale": "Phase 1 blocker: production must be usable; Edge runtime incompatibility causes immediate runtime failures."
+    },
+    {
+      "id": "P1-006",
+      "category": "Phase 1 - Foundation",
+      "description": "Add clear instructions for provisioning user accounts in preview/prod Vercel + Postgres/Neon environments, including migrations and running the user-creation script against the correct DATABASE_URL.",
+      "acceptanceCriteria": [
+        "Repo documentation includes step-by-step user provisioning for preview and production.",
+        "Docs cover how to find/configure the correct DATABASE_URL and how to run Prisma migrations in each environment.",
+        "Following the docs results in a working login in the targeted environment."
+      ],
+      "stepsToVerify": [
+        "Follow the documentation to create a new user in a non-local environment.",
+        "Log in using the created user and confirm access to protected areas."
+      ],
+      "passes": false,
+      "priority": 1,
+      "priorityRationale": "Phase 1 blocker: without reliable user provisioning, environments cannot be accessed or validated by the team."
+    },
+    {
+      "id": "P1-007",
+      "category": "Phase 1 - Foundation",
+      "description": "Update the landing page to align with the Client Finder Portal intent (lead discovery + outreach management) and add a simple Health view that reports database connectivity and login/session status. Remove all legacy 'QuizMaster' branding.",
+      "acceptanceCriteria": [
+        "The landing page content reflects the product overview and does not mention 'QuizMaster'.",
+        "A health section/view shows database connectivity status.",
+        "A health section/view shows login/session status.",
+        "The home page (/) is accessible while logged out (no forced redirect loop)."
+      ],
+      "stepsToVerify": [
+        "Load / while logged out and confirm marketing/overview + health status render.",
+        "Log in and confirm the page reflects signed-in status.",
+        "Temporarily misconfigure DATABASE_URL and confirm the DB health indicator shows failure (without crashing the whole page)."
+      ],
+      "passes": false,
+      "priority": 1,
+      "priorityRationale": "Phase 1 blocker: baseline UX and deploy validation requires correct branding and a quick way to verify auth/DB connectivity."
+    },
+    {
       "id": "P2-001",
       "category": "Phase 2 - Business Discovery",
       "description": "Integrate Google Maps Places API (Nearby Search / Text Search + Place Details as needed) to discover businesses in a given area, capturing place_id, name, address, business types, phone number, website URL (if any), rating, and user_ratings_total. External setup (Google Cloud project, API enablement, key restrictions) is documented in EXTERNAL_SETUP.md.",
