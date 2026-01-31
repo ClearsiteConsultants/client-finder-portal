@@ -238,7 +238,7 @@ describe('Database Integration Tests', () => {
       const campaign = await prisma.emailCampaign.create({
         data: {
           name: 'Test Campaign',
-          subjectTouch1: 'Hello from QuizMaster',
+          subjectTouch1: 'Hello from Client Finder Portal',
           subjectTouch2: 'Following up',
           templateTouch1: '<html><body>Touch 1</body></html>',
           templateTouch2: '<html><body>Touch 2</body></html>',

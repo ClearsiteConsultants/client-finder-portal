@@ -3,10 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if the path is login or auth-related
+  // Check if the path is public or auth-related
   if (
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/health") ||
     pathname === "/login" ||
+    pathname === "/" ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

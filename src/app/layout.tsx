@@ -3,8 +3,8 @@ import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
-  title: "QuizMaster Pro",
-  description: "Professional Quiz Management Application",
+  title: "Client Finder Portal",
+  description: "Lead Discovery and Outreach Management",
 };
 
 export default function RootLayout({
