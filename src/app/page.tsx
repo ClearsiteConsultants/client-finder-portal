@@ -5,6 +5,7 @@ import HealthStatus from "@/components/HealthStatus";
 
 export default async function Home() {
   const session = await auth();
+  const isAuthenticated = !!session?.user;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -14,7 +15,7 @@ export default async function Home() {
             Client Finder Portal
           </h1>
           <div className="flex items-center gap-4">
-            {session ? (
+            {isAuthenticated ? (
               <>
                 <span className="text-sm text-gray-600">
                   {session.user?.email}
@@ -69,10 +70,10 @@ export default async function Home() {
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <HealthStatus isAuthenticated={!!session} />
+            <HealthStatus isAuthenticated={isAuthenticated} />
           </div>
 
-          {!session && (
+          {!isAuthenticated && (
             <div className="text-center mt-8">
               <Link
                 href="/login"
