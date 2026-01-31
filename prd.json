@@ -147,7 +147,7 @@
         "Log in and confirm the page reflects signed-in status.",
         "Temporarily misconfigure DATABASE_URL and confirm the DB health indicator shows failure (without crashing the whole page)."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "priorityRationale": "Phase 1 blocker: baseline UX and deploy validation requires correct branding and a quick way to verify auth/DB connectivity."
     },
