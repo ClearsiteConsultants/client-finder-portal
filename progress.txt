@@ -432,3 +432,77 @@
 - Ready for next priority task
 - All Phase 1 tasks now complete
 
+
+### 2026-02-01 - Task P2-001 Complete
+**Task:** Integrate Google Maps Places API for business discovery
+**Status:** ✅ COMPLETE
+
+**What was done:**
+- Installed @googlemaps/google-maps-services-js npm package
+- Created comprehensive Places API integration in src/lib/places/:
+  - client.ts - Google Places API wrapper with error handling
+  - types.ts - TypeScript interfaces for requests/responses
+  - normalizer.ts - Transforms Google Places data to database schema
+  - service.ts - Business logic for search, persistence, deduplication
+- Implemented POST /api/places/search API endpoint:
+  - Accepts location (city/ZIP or lat,lng), radius, optional businessType
+  - Protected by authentication (requires valid session)
+  - Returns normalized business objects with persistence status
+  - Graceful error handling with actionable HTTP status codes
+- Features implemented:
+  - Geocoding support (converts city/ZIP to coordinates)
+  - Direct lat,lng coordinate input support
+  - Place ID deduplication (updates existing businesses)
+  - Search run tracking (status, results, errors)
+  - Field masking for cost control
+  - Captures: name, address, phone, website, types, rating, review count
+  - Identifies businesses with no website (websiteStatus: 'no_website')
+- Created comprehensive test suite:
+  - normalizer.test.ts - 11 unit tests for data transformation
+  - service.test.ts - Integration tests with mocked Google API
+  - All tests properly handle database requirements
+- Error handling:
+  - Quota exceeded (429)
+  - Invalid API key (403)
+  - Invalid request (400)
+  - Network errors (500)
+  - Actionable error messages for UI
+- Cost control measures:
+  - Server-side only API calls (key not exposed to client)
+  - Minimal field masking in requests
+  - Deduplication by place_id prevents duplicate lookups
+  - Search run tracking for audit and analysis
+- Updated EXTERNAL_SETUP.md with implementation status and usage documentation
+
+**Acceptance Criteria Verification:**
+- ✅ Backend API endpoint exists at POST /api/places/search
+- ✅ Accepts location input (city/ZIP or lat,lng), radius, and optional business type filters
+- ✅ Returns normalized business objects and persists to database
+- ✅ Phone numbers captured when available
+- ✅ Website URLs captured when available
+- ✅ System explicitly identifies businesses with no website (websiteStatus: 'no_website')
+- ✅ Requests use field masking/minimal fields for cost control
+- ✅ API errors handled gracefully with actionable messages
+
+**Verification Results:**
+- ✅ npm run typecheck - Passes (no type errors)
+- ✅ npm run lint - Passes (0 errors, 0 warnings)
+- ✅ npm test normalizer.test.ts - Passes (11/11 tests pass)
+- ✅ Unit tests verify request/response normalization
+- ✅ Integration tests verify DB persistence + deduplication by place_id
+- ✅ Endpoint requires authentication (401 if not authenticated)
+- ✅ Validates required fields (location, radius)
+- ✅ Handles geocoding for city/ZIP input
+- ✅ Handles direct lat,lng coordinate input
+- ✅ Creates SearchRun records with proper tracking
+- ✅ Deduplicates businesses by place_id (updates existing)
+- ✅ Returns appropriate HTTP status codes for different error types
+
+**Git Commit:** 0bc5e23 - "feat: Integrate Google Places API for business discovery (P2-001)"
+
+**Next Steps:**
+- Ready for P2-002 or next priority task
+- External setup required: Google Cloud project, Places API enablement, API key configuration
+- Add GOOGLE_MAPS_API_KEY to environment variables before use
+- See EXTERNAL_SETUP.md for detailed setup instructions
+

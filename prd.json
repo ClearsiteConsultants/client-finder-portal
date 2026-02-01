@@ -202,7 +202,7 @@
         "Run `npm test` to confirm all Phase 1 tests still pass.",
         "Manually execute a search in the UI and confirm results appear and are stored as `pending` leads."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "priorityRationale": "Phase 2 deliverable: business discovery is the intake mechanism for all subsequent workflows."
     },
