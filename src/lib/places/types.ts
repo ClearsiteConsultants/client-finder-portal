@@ -13,6 +13,8 @@ export interface SearchResponse {
   nextPageToken?: string;
   status: 'success' | 'error';
   error?: string;
+  fromCache?: boolean; // Whether results came from cache
+  cacheAge?: number; // Age of cache in milliseconds
 }
 
 export interface BusinessResult {
@@ -28,6 +30,7 @@ export interface BusinessResult {
   reviewCount?: number;
   hasWebsite: boolean;
   isNew: boolean; // Whether this was newly created in DB
+  isCached?: boolean; // Whether this came from cache
 }
 
 export interface GooglePlaceResult {

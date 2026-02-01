@@ -22,6 +22,10 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body: SearchRequest = await request.json();
 
+    // Get query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const forceRefresh = searchParams.get('force_refresh') === 'true';
+
     // Validate required fields
     if (!body.location) {
       return NextResponse.json(
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Create service and execute search
     const service = new PlacesService();
-    const response = await service.search(body, session.user.id!);
+    const response = await service.search(body, session.user.id!, { forceRefresh });
 
     if (response.status === 'error') {
       // Return appropriate status code based on error type

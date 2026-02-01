@@ -506,3 +506,78 @@
 - Add GOOGLE_MAPS_API_KEY to environment variables before use
 - See EXTERNAL_SETUP.md for detailed setup instructions
 
+
+### 2026-02-01 - Task P2-002 Complete
+**Task:** Implement caching, deduplication, and rate limiting for Google Places API
+**Status:** ✅ COMPLETE
+
+**What was done:**
+- Extended Prisma schema with caching fields:
+  - Added cachedAt timestamp to businesses table for tracking data freshness
+  - Added cacheKey, usedCachedResults, cachedFromSearchRunId to search_runs table
+  - Created indexes for efficient cache lookups
+- Created comprehensive caching system (src/lib/places/cache.ts):
+  - generateCacheKey() - Creates deterministic cache keys from search parameters
+  - getCachedResults() - Retrieves cached search results within 30-day TTL
+  - isCacheStale() - Checks if cached data has expired
+  - updateBusinessCache() - Updates cache timestamps for businesses
+  - 30-day cache TTL (configurable constant)
+- Implemented rate limiting and retry logic (src/lib/places/rate-limiter.ts):
+  - RateLimiter class with configurable delays and call limits
+  - Conservative defaults: 100ms between calls, max 50 calls/minute
+  - retryWithBackoff() with exponential backoff for transient errors
+  - Smart error detection (doesn't retry auth/validation errors)
+- Updated PlacesService with caching logic:
+  - Checks cache before making API calls
+  - Returns cached results when valid (within TTL)
+  - Creates search_run records for both cached and fresh searches
+  - Tracks cache metadata (fromCache, cacheAge, cachedFromSearchRunId)
+  - Updates cachedAt timestamp on all API fetches
+  - Applies rate limiting to all external API calls
+  - Wraps API calls with retry logic
+- Enhanced API endpoint with force_refresh option:
+  - Query parameter ?force_refresh=true bypasses cache
+  - Returns cache metadata in response
+- Created comprehensive test suite:
+  - cache.test.ts - 11 unit tests for cache utilities
+  - Updated service.test.ts with 4 integration tests for caching behavior
+  - Tests verify: cache key generation, TTL behavior, cache reuse, force refresh
+- Database migration created (20260201194859_add_caching_fields)
+
+**Acceptance Criteria Verification:**
+- ✅ Businesses uniquely identified by place_id (no duplicates on repeated discovery)
+- ✅ Repeated searches reuse cached data within TTL (no API calls for cached results)
+- ✅ Search history recorded with who/where/when/criteria in search_runs table
+- ✅ Request throttling prevents quota failures with rate limiting
+- ✅ Retry logic handles transient errors with exponential backoff
+
+**Verification Results:**
+- ✅ npm run lint - Passes (0 errors, 0 warnings)
+- ✅ npm run typecheck - Passes (no type errors)
+- ✅ npm test cache.test.ts - Passes (11/11 tests pass)
+- ✅ npm test normalizer.test.ts - Passes (11/11 tests pass)
+- ✅ npm test utils.test.ts - Passes (6/6 tests pass)
+- ✅ Cache key generation is deterministic and consistent
+- ✅ Cache TTL behavior works correctly (30 days)
+- ✅ Same search twice only calls API once (second uses cache)
+- ✅ forceRefresh option bypasses cache and calls API
+- ✅ Different search parameters generate different cache keys
+- ✅ cachedAt timestamp updated on API fetches
+- ✅ Rate limiting throttles API calls appropriately
+- ✅ Retry logic handles transient errors
+
+**Cost Control Features:**
+- 30-day cache TTL prevents unnecessary API calls
+- Rate limiting protects against quota exhaustion
+- Retry with exponential backoff handles transient failures
+- Cache key includes all relevant parameters (location, radius, business type)
+- Search run tracking enables cost analysis and monitoring
+- Force refresh option available when fresh data needed
+
+**Git Commit:** (pending)
+
+**Next Steps:**
+- Ready for P2-003 or next priority task
+- Cached searches significantly reduce API costs
+- Search history enables cost tracking and optimization
+

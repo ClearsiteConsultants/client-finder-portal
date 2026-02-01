@@ -254,4 +254,149 @@ describe('PlacesService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('caching', () => {
+    it('returns cached results when searching same location within TTL', async () => {
+      const mockResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_CACHE_1',
+          name: 'Cached Business',
+          formatted_address: '123 Cache St',
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
+      mockClient.nearbySearch.mockResolvedValue(mockResults);
+
+      // First search - should call API
+      const result1 = await service.search({
+        location: 'TEST_Cache_Location',
+        radius: 5000,
+        businessType: 'restaurant',
+      }, testUserId);
+
+      expect(result1.status).toBe('success');
+      expect(result1.results).toHaveLength(1);
+      expect(result1.fromCache).toBe(false);
+      expect(mockClient.nearbySearch).toHaveBeenCalledTimes(1);
+
+      // Second search with same parameters - should use cache
+      const result2 = await service.search({
+        location: 'TEST_Cache_Location',
+        radius: 5000,
+        businessType: 'restaurant',
+      }, testUserId);
+
+      expect(result2.status).toBe('success');
+      expect(result2.results).toHaveLength(1);
+      expect(result2.fromCache).toBe(true);
+      expect(result2.cacheAge).toBeDefined();
+      expect(result2.results[0].isCached).toBe(true);
+      // API should not be called again
+      expect(mockClient.nearbySearch).toHaveBeenCalledTimes(1);
+
+      // Verify search run records
+      const searchRuns = await prisma.searchRun.findMany({
+        where: { locationText: 'TEST_Cache_Location' },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      expect(searchRuns).toHaveLength(2);
+      expect(searchRuns[0].usedCachedResults).toBe(false);
+      expect(searchRuns[0].cacheKey).toBeTruthy();
+      expect(searchRuns[1].usedCachedResults).toBe(true);
+      expect(searchRuns[1].cachedFromSearchRunId).toBe(searchRuns[0].id);
+      expect(searchRuns[1].cacheKey).toBe(searchRuns[0].cacheKey);
+    });
+
+    it('bypasses cache when forceRefresh is true', async () => {
+      const mockResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_FORCE_REFRESH',
+          name: 'Refreshed Business',
+          formatted_address: '456 Refresh St',
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
+      mockClient.nearbySearch.mockResolvedValue(mockResults);
+
+      // First search
+      await service.search({
+        location: 'TEST_Force_Refresh',
+        radius: 5000,
+      }, testUserId);
+
+      // Second search with forceRefresh should call API again
+      const result = await service.search(
+        {
+          location: 'TEST_Force_Refresh',
+          radius: 5000,
+        },
+        testUserId,
+        { forceRefresh: true }
+      );
+
+      expect(result.fromCache).toBe(false);
+      expect(mockClient.nearbySearch).toHaveBeenCalledTimes(2);
+    });
+
+    it('generates different cache keys for different parameters', async () => {
+      mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
+      mockClient.nearbySearch.mockResolvedValue([]);
+
+      // Search with different parameters
+      await service.search({
+        location: 'TEST_Different_Cache',
+        radius: 5000,
+        businessType: 'restaurant',
+      }, testUserId);
+
+      await service.search({
+        location: 'TEST_Different_Cache',
+        radius: 5000,
+        businessType: 'cafe',
+      }, testUserId);
+
+      await service.search({
+        location: 'TEST_Different_Cache',
+        radius: 10000,
+        businessType: 'restaurant',
+      }, testUserId);
+
+      // Each should have different cache keys
+      const searchRuns = await prisma.searchRun.findMany({
+        where: { locationText: 'TEST_Different_Cache' },
+      });
+
+      expect(searchRuns).toHaveLength(3);
+      const cacheKeys = searchRuns.map(sr => sr.cacheKey);
+      expect(new Set(cacheKeys).size).toBe(3); // All unique
+    });
+
+    it('updates cachedAt timestamp when fetching fresh data', async () => {
+      const mockResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_TIMESTAMP',
+          name: 'Timestamp Business',
+          formatted_address: '789 Time St',
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
+      mockClient.nearbySearch.mockResolvedValue(mockResults);
+
+      await service.search({
+        location: 'TEST_Timestamp',
+        radius: 5000,
+      }, testUserId);
+
+      const business = await prisma.business.findUnique({
+        where: { placeId: 'TEST_TIMESTAMP' },
+      });
+
+      expect(business?.cachedAt).toBeTruthy();
+      expect(business?.cachedAt).toBeInstanceOf(Date);
+    });
+  });
 });

@@ -164,6 +164,9 @@ model Business {
   // Notes
   notes                   String?         @db.Text
 
+  // Cache management
+  cachedAt                DateTime?       @map("cached_at") @db.Timestamptz(6)
+
   // Audit
   createdAt               DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -181,6 +184,7 @@ model Business {
   @@index([leadStatus, websiteStatus])
   @@index([nextFollowupAt])
   @@index([manualDedupeKey])
+  @@index([cachedAt])
   @@map("businesses")
 }
 
@@ -319,6 +323,11 @@ model SearchRun {
   resultsSavedNew         Int          @default(0) @map("results_saved_new")
   resultsDedupedExisting  Int          @default(0) @map("results_deduped_existing")
 
+  // Cache management
+  cacheKey                String?      @map("cache_key")
+  usedCachedResults       Boolean      @default(false) @map("used_cached_results")
+  cachedFromSearchRunId   String?      @map("cached_from_search_run_id") @db.Uuid
+
   // Audit
   createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -326,5 +335,6 @@ model SearchRun {
   createdByUser           User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   businesses              Business[]
 
+  @@index([cacheKey])
   @@map("search_runs")
 }

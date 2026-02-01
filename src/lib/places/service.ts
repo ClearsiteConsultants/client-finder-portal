@@ -7,18 +7,30 @@ import { normalizeGooglePlace, toPrismaCreateInput } from './normalizer';
 import type { SearchRequest, SearchResponse, BusinessResult } from './types';
 import { prisma } from '../prisma';
 import type { Business } from '@prisma/client';
+import {
+  generateCacheKey,
+  getCachedResults,
+} from './cache';
+import { RateLimiter, retryWithBackoff } from './rate-limiter';
 
 export class PlacesService {
   private client: PlacesClient;
+  private rateLimiter: RateLimiter;
 
   constructor(apiKey?: string) {
     this.client = new PlacesClient(apiKey);
+    // Conservative rate limiting: 100ms between calls, max 50 per minute
+    this.rateLimiter = new RateLimiter(100, 50);
   }
 
   /**
    * Search for businesses and persist to database
    */
-  async search(request: SearchRequest, userId: string): Promise<SearchResponse> {
+  async search(
+    request: SearchRequest,
+    userId: string,
+    options: { forceRefresh?: boolean } = {}
+  ): Promise<SearchResponse> {
     try {
       // Parse location - check if it's lat,lng or needs geocoding
       let location: { lat: number; lng: number };
@@ -30,11 +42,53 @@ export class PlacesService {
           lng: parseFloat(latLngMatch[2]),
         };
       } else {
-        // Geocode the location string
-        location = await this.client.geocode(request.location);
+        // Geocode the location string (with rate limiting)
+        await this.rateLimiter.throttle();
+        location = await retryWithBackoff(() => this.client.geocode(request.location));
       }
 
-      // Create search run record
+      // Generate cache key
+      const cacheKey = generateCacheKey(request, location);
+
+      // Check cache unless force refresh
+      if (!options.forceRefresh) {
+        const cached = await getCachedResults(cacheKey);
+        if (cached) {
+          // Create a new search run record that references the cached search
+          await prisma.searchRun.create({
+            data: {
+              createdByUserId: userId,
+              queryText: request.businessType || null,
+              locationText: request.location,
+              lat: location.lat,
+              lng: location.lng,
+              radiusMeters: request.radius,
+              types: request.businessType ? [request.businessType] : [],
+              status: 'completed',
+              completedAt: new Date(),
+              resultsFound: cached.businesses.length,
+              resultsSavedNew: 0,
+              resultsDedupedExisting: cached.businesses.length,
+              cacheKey,
+              usedCachedResults: true,
+              cachedFromSearchRunId: cached.searchRun.id,
+            },
+          });
+
+          const cacheAge = cached.searchRun.completedAt
+            ? Date.now() - cached.searchRun.completedAt.getTime()
+            : 0;
+
+          return {
+            results: cached.businesses,
+            status: 'success',
+            fromCache: true,
+            cacheAge,
+          };
+        }
+      }
+
+      // No valid cache found - create search run and fetch from API
       const searchRun = await prisma.searchRun.create({
         data: {
           createdByUserId: userId,
@@ -45,15 +99,16 @@ export class PlacesService {
           radiusMeters: request.radius,
           types: request.businessType ? [request.businessType] : [],
           status: 'started',
+          cacheKey,
+          usedCachedResults: false,
         },
       });
 
       try {
-        // Search for places
-        const places = await this.client.nearbySearch(
-          location,
-          request.radius,
-          request.businessType
+        // Search for places (with rate limiting and retry)
+        await this.rateLimiter.throttle();
+        const places = await retryWithBackoff(() =>
+          this.client.nearbySearch(location, request.radius, request.businessType)
         );
 
         // Normalize results
@@ -61,6 +116,7 @@ export class PlacesService {
 
         // Persist to database with deduplication
         const results: BusinessResult[] = [];
+        const placeIdsToCache: string[] = [];
         let newCount = 0;
         let existingCount = 0;
 
@@ -86,15 +142,23 @@ export class PlacesService {
                   businessTypes: norm.businessTypes,
                   rating: norm.rating,
                   reviewCount: norm.reviewCount,
+                  cachedAt: new Date(), // Update cache timestamp
                 },
               });
               existingCount++;
             } else {
               // Create new business
               business = await prisma.business.create({
-                data: toPrismaCreateInput(norm, searchRun.id),
+                data: {
+                  ...toPrismaCreateInput(norm, searchRun.id),
+                  cachedAt: new Date(), // Set initial cache timestamp
+                },
               });
               newCount++;
+            }
+
+            if (business.placeId) {
+              placeIdsToCache.push(business.placeId);
             }
 
             results.push({
@@ -110,6 +174,7 @@ export class PlacesService {
               reviewCount: business.reviewCount || undefined,
               hasWebsite: !!business.website,
               isNew: !existing,
+              isCached: false,
             });
           } catch (error) {
             console.error(`Error persisting business ${norm.placeId}:`, error);
@@ -132,6 +197,7 @@ export class PlacesService {
         return {
           results,
           status: 'success',
+          fromCache: false,
         };
       } catch (error) {
         // Update search run status to failed
@@ -159,7 +225,10 @@ export class PlacesService {
    */
   async getPlaceDetails(placeId: string): Promise<BusinessResult | null> {
     try {
-      const place = await this.client.getPlaceDetails(placeId);
+      // Apply rate limiting
+      await this.rateLimiter.throttle();
+
+      const place = await retryWithBackoff(() => this.client.getPlaceDetails(placeId));
       const normalized = normalizeGooglePlace(place);
 
       // Check if business already exists
@@ -181,11 +250,15 @@ export class PlacesService {
             businessTypes: normalized.businessTypes,
             rating: normalized.rating,
             reviewCount: normalized.reviewCount,
+            cachedAt: new Date(), // Update cache timestamp
           },
         });
       } else {
         business = await prisma.business.create({
-          data: toPrismaCreateInput(normalized),
+          data: {
+            ...toPrismaCreateInput(normalized),
+            cachedAt: new Date(), // Set initial cache timestamp
+          },
         });
       }
 
@@ -202,6 +275,7 @@ export class PlacesService {
         reviewCount: business.reviewCount || undefined,
         hasWebsite: !!business.website,
         isNew: !existing,
+        isCached: false,
       };
     } catch (error) {
       console.error(`Error getting place details for ${placeId}:`, error);
