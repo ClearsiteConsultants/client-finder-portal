@@ -684,3 +684,63 @@ DATABASE_URL="<url>" npx prisma migrate deploy
 ```
 
 ---
+
+### Phase 2 Implementation Status
+
+**✅ COMPLETE** - Google Places API integration implemented (P2-001).
+
+#### What Was Implemented
+- **Service Layer** (`src/lib/places/`):
+  - `client.ts` - Google Places API wrapper using `@googlemaps/google-maps-services-js`
+  - `normalizer.ts` - Transforms Google Places data to internal schema
+  - `service.ts` - Business logic for search, deduplication, and persistence
+  - `types.ts` - TypeScript interfaces for API requests/responses
+
+- **API Endpoint** (`src/app/api/places/search`):
+  - POST `/api/places/search` - Server-side endpoint for business discovery
+  - Accepts: `location` (city/ZIP or lat,lng), `radius` (meters), optional `businessType`
+  - Returns: Array of discovered businesses with persistence status
+  - Protected by authentication (requires valid session)
+  - Graceful error handling with actionable messages
+
+- **Features**:
+  - Geocoding support (converts city/ZIP to coordinates)
+  - Direct lat,lng input support
+  - Place ID deduplication (updates existing businesses)
+  - Search run tracking (status, results count, errors)
+  - Field masking for cost control
+  - Captures: name, address, phone, website, business types, rating, review count
+  - Identifies businesses with no website (`websiteStatus: 'no_website'`)
+
+- **Tests**:
+  - ✅ Unit tests for normalizer (11 tests, all passing)
+  - ✅ Integration tests for service with mocked API
+  - ✅ Type checking passes
+  - ✅ Linting passes
+
+#### Usage Example
+```typescript
+// POST /api/places/search
+{
+  "location": "Seattle, WA",  // or "47.6062,-122.3321"
+  "radius": 5000,             // meters (max 50,000)
+  "businessType": "restaurant" // optional
+}
+```
+
+#### Error Handling
+The API returns appropriate HTTP status codes:
+- `400` - Invalid request
+- `401` - Unauthorized
+- `403` - Invalid API key
+- `429` - Quota exceeded
+- `500` - Internal server error
+
+#### Cost Control
+- Server-side only (key not exposed)
+- Field masking for minimal data
+- Deduplication by place_id
+- Search run tracking
+
+---
+
