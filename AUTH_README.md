@@ -29,7 +29,7 @@ npx prisma migrate dev
 3. Create a user:
 
 ```bash
-node -r dotenv/config -r tsx/cjs scripts/create-user.ts "email@example.com" "password" "Name"
+node -r tsx/cjs scripts/create-user.ts "email@example.com" "password" "Name"
 ```
 
 ## Usage

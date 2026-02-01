@@ -20,10 +20,10 @@ cp .env.example .env.local
 # Edit .env.local with your actual values
 
 # Run database migrations
-npx prisma migrate dev
+npm run db:setup
 
 # Create initial user (optional)
-node -r dotenv/config -r tsx/cjs scripts/create-user.ts admin@example.com password "Admin User"
+node -r tsx/cjs scripts/create-user.ts admin@example.com password "Admin User"
 
 # Start development server
 npm run dev
@@ -80,7 +80,7 @@ This application is optimized for deployment on [Vercel](https://vercel.com).
 
 5. **Create initial user**
    ```bash
-   DATABASE_URL=<your-prod-url> node -r dotenv/config -r tsx/cjs scripts/create-user.ts admin@example.com yourpassword "Admin"
+   DATABASE_URL=<your-prod-url> node -r tsx/cjs scripts/create-user.ts admin@example.com yourpassword "Admin"
    ```
 
 For detailed deployment instructions, see [EXTERNAL_SETUP.md](./EXTERNAL_SETUP.md).

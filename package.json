@@ -10,6 +10,7 @@
     "lint": "eslint src/ --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "jest",
+    "db:setup": "node -r tsx/cjs scripts/db-setup.ts && prisma migrate deploy && prisma generate",
     "verify": "npm run lint && npm run typecheck && npm run test",
     "verify:ci": "npm run lint && npm run typecheck && npm run build"
   },
