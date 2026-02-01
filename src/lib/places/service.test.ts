@@ -26,8 +26,8 @@ describe('PlacesService', () => {
     testUserId = testUser.id;
 
     service = new PlacesService();
-    // Access private client for mocking
-    mockClient = (service as { client: PlacesClient }).client as jest.Mocked<PlacesClient>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockClient = (service as any).client as jest.Mocked<PlacesClient>;
   });
 
   afterEach(async () => {
