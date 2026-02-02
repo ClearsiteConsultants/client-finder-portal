@@ -656,3 +656,61 @@
 - VIP leads (no website) automatically prioritized
 - Excluded businesses auto-rejected on discovery
 
+
+---
+Date: 2026-02-02
+Task: P2-004 - Business Discovery Search UI
+Status: COMPLETED
+
+Implementation Details:
+- Created /search page with authentication guard (redirects to /login if not authenticated)
+- Implemented SearchForm component with location, radius, and business type inputs
+- Built SearchResults component to display search results with comprehensive business details
+- Form validates required fields (location and radius) before submission
+- Radius selector offers 1km to 50km options
+- Business type selector includes 10 common types plus "All Types" option
+- Results display:
+  * Business name, address, phone number
+  * Website presence indicator (with link if available)
+  * Rating (with star emoji) and review count
+  * Business types (up to 3 shown as tags)
+  * "New Lead" badge for businesses newly added to database
+  * "Cached" badge for cached results
+- Error handling for API failures, network errors, and empty results
+- Loading states during search with disabled submit button
+- Info message explaining that new leads are auto-persisted as "pending"
+- Updated homepage to link authenticated users to search page
+
+Testing:
+- Added 8 comprehensive unit tests for SearchForm component:
+  * Renders all required form inputs
+  * Validates location is required
+  * Validates radius is required and valid
+  * Rejects empty location submissions
+  * Successfully submits form with valid data
+  * Displays error messages from API
+  * Shows loading state during search
+  * Handles network errors gracefully
+- All SearchForm tests passing (8/8)
+- TypeScript type checking passing
+- Existing unrelated test failures not affected by changes
+
+Files Modified:
+- src/app/search/page.tsx (NEW)
+- src/components/search/SearchForm.tsx (NEW)
+- src/components/search/SearchResults.tsx (NEW)
+- src/components/search/__tests__/SearchForm.test.tsx (NEW)
+- src/app/page.tsx (updated "Get started" button to "Start Searching" link for authenticated users)
+
+Acceptance Criteria Met:
+ Search page exists with location, radius, and business-type inputs
+ Form submission calls backend endpoint and renders results
+ Results show name, address, phone, website presence, review count, and rating
+ Auto-persists leads to database without duplications (handled by existing PlacesService)
+ UI handles empty results and API errors gracefully
+
+Notes:
+- Backend search API (/api/places/search) was already implemented in previous phase
+- PlacesService automatically handles lead persistence and deduplication
+- Search results are marked as "isNew" when they're newly added to the database
+- All new leads are persisted with leadStatus = "pending" for review workflow
