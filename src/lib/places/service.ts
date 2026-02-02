@@ -12,6 +12,7 @@ import {
   getCachedResults,
 } from './cache';
 import { RateLimiter, retryWithBackoff } from './rate-limiter';
+import { calculateScore, checkBusinessExclusionBatch } from '../scoring';
 
 export class PlacesService {
   private client: PlacesClient;
@@ -114,6 +115,10 @@ export class PlacesService {
         // Normalize results
         const normalized = places.map((place) => normalizeGooglePlace(place));
 
+        // Check exclusions in batch
+        const businessNames = normalized.map(n => n.name);
+        const exclusionResults = await checkBusinessExclusionBatch(businessNames);
+
         // Persist to database with deduplication
         const results: BusinessResult[] = [];
         const placeIdsToCache: string[] = [];
@@ -122,6 +127,17 @@ export class PlacesService {
 
         for (const norm of normalized) {
           try {
+            // Check if business is excluded
+            const exclusionCheck = exclusionResults.get(norm.name);
+            
+            // Calculate score
+            const scoringResult = calculateScore({
+              name: norm.name,
+              reviewCount: norm.reviewCount,
+              businessTypes: norm.businessTypes,
+              website: norm.website,
+            });
+
             // Try to find existing business by place_id
             const existing = await prisma.business.findUnique({
               where: { placeId: norm.placeId },
@@ -129,7 +145,7 @@ export class PlacesService {
 
             let business: Business;
             if (existing) {
-              // Update existing business with latest data
+              // Update existing business with latest data and scoring
               business = await prisma.business.update({
                 where: { id: existing.id },
                 data: {
@@ -142,15 +158,28 @@ export class PlacesService {
                   businessTypes: norm.businessTypes,
                   rating: norm.rating,
                   reviewCount: norm.reviewCount,
+                  smallBusinessScore: scoringResult.score,
+                  websiteStatus: scoringResult.isVIP ? 'no_website' : 'unknown',
                   cachedAt: new Date(), // Update cache timestamp
                 },
               });
               existingCount++;
             } else {
-              // Create new business
+              // Create new business with scoring
+              // If excluded, auto-reject
+              const leadStatus = exclusionCheck?.isExcluded ? 'rejected' : 'pending';
+              const rejectedReason = exclusionCheck?.isExcluded 
+                ? `Auto-rejected: matched exclude list (${exclusionCheck.reason || 'no reason provided'})`
+                : undefined;
+              
               business = await prisma.business.create({
                 data: {
                   ...toPrismaCreateInput(norm, searchRun.id),
+                  smallBusinessScore: scoringResult.score,
+                  websiteStatus: scoringResult.isVIP ? 'no_website' : 'unknown',
+                  leadStatus,
+                  rejectedAt: exclusionCheck?.isExcluded ? new Date() : undefined,
+                  rejectedReason,
                   cachedAt: new Date(), // Set initial cache timestamp
                 },
               });

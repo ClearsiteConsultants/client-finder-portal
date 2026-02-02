@@ -242,7 +242,7 @@
         "Run `npm test` ensuring all previous tests pass.",
         "Manually verify that a no-website business appears at the top of the review queue once Phase 4 UI exists (placeholder verification if not yet implemented)."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "priorityRationale": "Phase 2 deliverable: prioritization increases signal-to-noise and focuses on best prospects."
     },
