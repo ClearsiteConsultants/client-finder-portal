@@ -335,7 +335,7 @@
         "Run `npm test` and confirm all prior tests pass.",
         "Manual test: confirm a social-only lead is flagged and prioritized appropriately."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "priorityRationale": "Phase 3 deliverable: social-only businesses are prime targets and need to be surfaced consistently."
     },

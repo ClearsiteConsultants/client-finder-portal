@@ -783,3 +783,50 @@ Status: Complete ✓
 **Next steps**: 
 - Task marked complete in PRD
 - Ready for integration with business contact enrichment workflow
+
+## 2026-02-03 - Implemented Social Media Detection (P3-003)
+
+### Task Completed
+Implemented social media profile URL detection and normalization for businesses with social-only presence.
+
+### What Was Done
+1. **Created social-media-scraper.ts module** (`src/lib/scraping/social-media-scraper.ts`)
+   - Added functions to detect and extract Facebook, Instagram, and LinkedIn URLs from HTML content
+   - Implemented URL normalization to remove tracking parameters and standardize formats
+   - Added logic to filter out generic/invalid social media pages (e.g., /home, /marketplace)
+   - Created `isSocialOnly()` helper to determine if a business should be flagged as social_only
+
+2. **Created comprehensive test suite** (`src/lib/scraping/social-media-scraper.test.ts`)
+   - 42 unit tests covering all normalization scenarios
+   - Tests for all three social platforms (Facebook, Instagram, LinkedIn)
+   - Tests for HTML extraction with various fixtures
+   - Tests for edge cases (tracking params, invalid URLs, generic pages)
+   - All tests passing ✅
+
+3. **Key Features**
+   - Normalizes Facebook URLs (handles both facebook.com and fb.com)
+   - Normalizes Instagram URLs with proper www prefix
+   - Normalizes LinkedIn URLs (supports both /company/ and /in/ paths)
+   - Removes tracking parameters from all social URLs
+   - Deduplicates multiple occurrences of the same URL
+   - Validates URLs have meaningful paths (not just domain root)
+
+### Database Schema
+The existing Prisma schema already supports this feature:
+- `ContactInfo` table has `facebookUrl`, `instagramUrl`, `linkedinUrl` fields
+- `WebsiteStatus` enum includes `social_only` option
+- `OutreachChannel` enum includes `facebook`, `instagram`, `linkedin` channels
+
+### Tests & Type Checks
+- All 42 new tests passing ✅
+- TypeScript compilation successful with no errors ✅
+- Pre-existing test failures unrelated to this implementation
+
+### Acceptance Criteria Met
+ Social URLs can be detected and normalized (removes tracking params)
+ Database schema supports social_only status
+ Social URLs stored on ContactInfo model
+ Social channels trackable in OutreachChannel enum
+ Unit tests created and passing
+ Integration tests with HTML fixtures created and passing
+
