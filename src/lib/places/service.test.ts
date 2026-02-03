@@ -10,6 +10,14 @@ import type { GooglePlaceResult } from './types';
 // Mock the PlacesClient
 jest.mock('./client');
 
+// Mock the JobQueueService
+jest.mock('../jobs/queue-service', () => ({
+  JobQueueService: jest.fn().mockImplementation(() => ({
+    enqueueJob: jest.fn().mockResolvedValue('mock-job-id'),
+    enqueueJobsBatch: jest.fn().mockResolvedValue([]),
+  })),
+}));
+
 describe('PlacesService', () => {
   let service: PlacesService;
   let mockClient: jest.Mocked<PlacesClient>;

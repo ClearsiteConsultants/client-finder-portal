@@ -60,6 +60,19 @@ enum BusinessSource {
   manual
 }
 
+enum ValidationJobType {
+  website_validation
+  email_scraping
+  social_scraping
+}
+
+enum ValidationJobStatus {
+  queued
+  running
+  success
+  failure
+}
+
 // Tables
 model User {
   id            String    @id @default(uuid()) @db.Uuid
@@ -179,6 +192,7 @@ model Business {
   contactInfo             ContactInfo[]
   outreachTracking        OutreachTracking[]
   optOuts                 OptOut[]
+  validationJobs          ValidationJob[]
 
   @@index([name])
   @@index([leadStatus, websiteStatus])
@@ -337,4 +351,27 @@ model SearchRun {
 
   @@index([cacheKey])
   @@map("search_runs")
+}
+
+model ValidationJob {
+  id           String               @id @default(uuid()) @db.Uuid
+  businessId   String               @map("business_id") @db.Uuid
+  jobType      ValidationJobType    @map("job_type")
+  status       ValidationJobStatus  @default(queued)
+  
+  // Execution tracking
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  startedAt    DateTime?            @map("started_at") @db.Timestamptz(6)
+  completedAt  DateTime?            @map("completed_at") @db.Timestamptz(6)
+  
+  // Error handling
+  retryCount   Int                  @default(0) @map("retry_count")
+  lastError    String?              @map("last_error") @db.Text
+  
+  // Relations
+  business     Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  @@index([status, createdAt])
+  @@index([businessId, jobType])
+  @@map("validation_jobs")
 }

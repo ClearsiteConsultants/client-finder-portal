@@ -13,15 +13,18 @@ import {
 } from './cache';
 import { RateLimiter, retryWithBackoff } from './rate-limiter';
 import { calculateScore, checkBusinessExclusionBatch } from '../scoring';
+import { JobQueueService } from '../jobs/queue-service';
 
 export class PlacesService {
   private client: PlacesClient;
   private rateLimiter: RateLimiter;
+  private jobQueue: JobQueueService;
 
   constructor(apiKey?: string) {
     this.client = new PlacesClient(apiKey);
     // Conservative rate limiting: 100ms between calls, max 50 per minute
     this.rateLimiter = new RateLimiter(100, 50);
+    this.jobQueue = new JobQueueService();
   }
 
   /**
@@ -188,6 +191,28 @@ export class PlacesService {
 
             if (business.placeId) {
               placeIdsToCache.push(business.placeId);
+            }
+
+            // Enqueue background validation jobs for this business
+            // Only enqueue for non-excluded businesses with potential data to validate
+            if (!exclusionCheck?.isExcluded) {
+              if (business.website && business.websiteStatus === 'unknown') {
+                await this.jobQueue.enqueueJob({
+                  businessId: business.id,
+                  jobType: 'website_validation',
+                });
+              }
+              // Enqueue email and social scraping for businesses with websites
+              if (business.website) {
+                await this.jobQueue.enqueueJob({
+                  businessId: business.id,
+                  jobType: 'email_scraping',
+                });
+                await this.jobQueue.enqueueJob({
+                  businessId: business.id,
+                  jobType: 'social_scraping',
+                });
+              }
             }
 
             results.push({

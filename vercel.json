@@ -3,4 +3,11 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"]
+  // Uncomment to enable automatic background job processing via cron:
+  // "crons": [
+  //   {
+  //     "path": "/api/jobs/process",
+  //     "schedule": "*/5 * * * *"
+  //   }
+  // ]
 }

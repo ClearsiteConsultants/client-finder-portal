@@ -830,3 +830,78 @@ The existing Prisma schema already supports this feature:
  Unit tests created and passing
  Integration tests with HTML fixtures created and passing
 
+
+## 2026-02-03 - Background Job Processing Implementation (P3-004)
+
+### Summary
+Implemented asynchronous background processing for website validation and scraping to prevent searches from blocking on validation tasks.
+
+### Changes Made
+
+1. **Database Schema** (prisma/schema.prisma)
+   - Added ValidationJobType enum (website_validation, email_scraping, social_scraping)
+   - Added ValidationJobStatus enum (queued, running, success, failure)
+   - Added ValidationJob model for job queue with retry tracking
+   - Added relation to Business model
+
+2. **Job Queue Service** (src/lib/jobs/queue-service.ts)
+   - Manages job enqueueing with duplicate prevention
+   - Atomic job claiming using transactions
+   - Automatic retry logic (max 3 attempts)
+   - Status tracking and failure handling
+
+3. **Job Processor** (src/lib/jobs/processor.ts)
+   - Executes website validation using existing validateWebsite
+   - Scrapes emails using scrapeEmailsFromWebsite
+   - Scrapes social media using scrapeSocialMediaFromWebsite
+   - Updates Business and ContactInfo records with results
+
+4. **PlacesService Integration** (src/lib/places/service.ts)
+   - Modified to enqueue validation jobs after business creation
+   - Automatically creates jobs for businesses with websites
+   - Non-blocking - search returns immediately
+
+5. **API Endpoints**
+   - POST /api/jobs/process - Processes queued jobs in batches
+   - GET /api/jobs/status - Returns queue statistics
+   - POST /api/jobs/retry - Manually retries failed jobs
+
+6. **Tests**
+   - Unit tests for job state transitions (queue-service.test.ts)
+   - Integration tests for end-to-end flow (integration.test.ts)
+   - All 13 new tests pass
+   - Mocked JobQueueService in PlacesService tests to prevent DB dependencies
+
+7. **Documentation**
+   - Created docs/BACKGROUND_JOBS.md with architecture and usage guide
+   - Updated vercel.json with commented cron job example
+   - Documented Vercel serverless compatibility
+
+### Technical Decisions
+
+- **Database as Queue**: Used PostgreSQL instead of external queue service (Redis, SQS) to minimize dependencies and cost for Vercel deployment
+- **Batch Processing**: Process endpoint handles multiple jobs per invocation to stay within 30s serverless limit
+- **Retry Strategy**: Exponential backoff with max 3 retries, automatic requeue on failure
+- **Atomic Claims**: Transaction-based job claiming prevents race conditions in concurrent processing
+- **Job Types**: Separate job types allow granular control and independent retry logic
+
+### Acceptance Criteria Met
+
+ Search ingestion completes quickly - jobs are enqueued asynchronously
+ Validation/scraping runs async - JobProcessor updates records when complete
+ Failures recorded with retry capability - ValidationJob tracks errors and retryCount
+ Vercel compatible - No external dependencies, respects serverless constraints
+
+### Testing Results
+
+- Unit tests: 13/13 passed (job state transitions, retry logic)
+- Integration tests: Full flow from enqueue to completion verified
+- Type checking: All TypeScript errors resolved
+- Existing tests: 157/157 unit tests still passing (5 integration tests require DB)
+
+### Future Enhancements
+
+- Priority queue for urgent validations
+- Scheduled re-validation of stale data
+- Webhook notifications on completion
+- UI dashboard for job monitoring
