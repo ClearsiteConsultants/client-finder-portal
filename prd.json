@@ -294,7 +294,7 @@
         "Run `npm test` and confirm all prior tests pass.",
         "Manual test: validate a known-good site and a known-broken URL and confirm UI shows expected statuses."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "priorityRationale": "Phase 3 deliverable: technical validation is core to identifying ‘needs help’ prospects."
     },
