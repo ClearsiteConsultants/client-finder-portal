@@ -739,3 +739,47 @@ Implemented:
 - Results include structured data: status, responseCode, loadTimeMs, hasSSL, hasMobileViewport, detectedIssues, error
 
 Status: Complete ✓
+
+## 2026-02-03 - Task P3-002: Website Email Scraping
+
+**Status**: ✅ Completed
+
+**What was implemented**:
+- Created `src/lib/scraping/email-scraper.ts` with comprehensive email scraping functionality
+- Email extraction from:
+  - mailto: links (90% confidence)
+  - Plain text email patterns (70% confidence)
+- Email validation with false positive filtering:
+  - Filters out file extensions (png, jpg, css, js, etc.)
+  - Filters out test/demo/noreply addresses
+  - Validates email format and length
+- Robots.txt checking:
+  - Respects robots.txt disallow directives
+  - Configurable to skip or respect robots.txt
+  - Defaults to allowing on error
+- Bounded crawling for safety:
+  - Max 5 pages per website
+  - Max depth of 2 levels
+  - 10 second timeout per page
+  - Prioritizes contact pages (/contact, /about, etc.)
+- Source attribution with EmailSource enum ('scraped')
+- Created comprehensive test suite with 19 tests (all passing)
+
+**Files created**:
+- `/workspace/src/lib/scraping/email-scraper.ts` (338 lines)
+- `/workspace/src/lib/scraping/email-scraper.test.ts` (285 lines)
+
+**Test results**:
+- ✅ All 19 email scraper tests pass
+- ✅ TypeScript type checking passes
+- ✅ No regression in existing tests (pre-existing failures unrelated to this task)
+
+**Acceptance criteria verification**:
+1. ✅ Extracts emails and stores with source label ('scraped')
+2. ✅ Bounded crawling: max pages (5), timeout (10s), max depth (2)
+3. ✅ Robots.txt consulted and configurable
+4. ✅ No email fabrication - returns empty array when none found
+
+**Next steps**: 
+- Task marked complete in PRD
+- Ready for integration with business contact enrichment workflow
