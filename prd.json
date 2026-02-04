@@ -1,7 +1,7 @@
 {
   "project": "client-finder-portal",
   "version": "1.0.0",
-  "lastUpdated": "2026-02-04T23:45:00Z",
+  "lastUpdated": "2026-02-04T23:54:00Z",
   "requirements": [
     {
       "id": "P1-001",
@@ -421,7 +421,7 @@
         "Run `npm test` and confirm all prior tests pass.",
         "Manual test: update notes and follow-up date and confirm persistence after refresh and across users."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "priorityRationale": "Phase 4 deliverable: the team needs a single source of truth per lead before outreach begins."
     },
