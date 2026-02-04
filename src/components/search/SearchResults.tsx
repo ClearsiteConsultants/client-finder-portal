@@ -1,6 +1,7 @@
 "use client";
 
 import type { BusinessResult } from "@/lib/places/types";
+import { googleMapsPlaceUrl } from "@/lib/places/maps";
 
 interface SearchResultsProps {
   results: BusinessResult[];
@@ -81,6 +82,18 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
                     ) : (
                       <span className="text-slate-500">None</span>
                     )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                    <span className="font-medium">Maps:</span>
+                    <a
+                      href={googleMapsPlaceUrl(business.placeId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      View
+                    </a>
                   </div>
 
                   {business.rating !== undefined && business.rating !== null && (

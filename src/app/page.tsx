@@ -61,12 +61,20 @@ export default async function Home() {
                     Get started
                   </Link>
                 ) : (
-                  <Link
-                    href="/search"
-                    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  >
-                    Start Searching
-                  </Link>
+                  <>
+                    <Link
+                      href="/search"
+                      className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    >
+                      Start Searching
+                    </Link>
+                    <Link
+                      href="/review"
+                      className="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
+                    >
+                      Review Queue
+                    </Link>
+                  </>
                 )}
                 <a
                   href="#health"

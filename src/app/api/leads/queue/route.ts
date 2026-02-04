@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
 
       return {
         id: lead.id,
+        placeId: lead.placeId,
         name: lead.name,
         address: lead.address,
         phone: lead.phone,

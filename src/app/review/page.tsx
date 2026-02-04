@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import TopNav from '@/components/TopNav';
+import { googleMapsPlaceUrl } from '@/lib/places/maps';
 
 type Lead = {
   id: string;
+  placeId: string | null;
   name: string;
   address: string;
   phone: string | null;
@@ -30,7 +33,7 @@ type QueueResponse = {
 };
 
 export default function ReviewQueuePage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,21 +165,33 @@ export default function ReviewQueuePage() {
   };
 
   if (status === 'loading' || loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+        Loading...
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Review Queue</h1>
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+      <TopNav />
+
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold">Review Queue</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Approve or reject leads and manage the pipeline
+          </p>
+        </div>
 
       {/* Filters and Controls */}
-      <div className="mb-6 flex flex-wrap gap-4 items-center">
+      <div className="mb-6 flex flex-wrap items-end gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Status</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Status</label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded px-3 py-2"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
           >
             <option value="">All</option>
             <option value="pending">Pending</option>
@@ -186,11 +201,11 @@ export default function ReviewQueuePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Website Status</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Website Status</label>
           <select
             value={websiteStatusFilter}
             onChange={(e) => setWebsiteStatusFilter(e.target.value)}
-            className="border rounded px-3 py-2"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
           >
             <option value="">All</option>
             <option value="no_website">No Website</option>
@@ -202,11 +217,11 @@ export default function ReviewQueuePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Sort By</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Sort By</label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="border rounded px-3 py-2"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
           >
             <option value="priority">Priority (VIP first)</option>
             <option value="name">Name</option>
@@ -215,18 +230,30 @@ export default function ReviewQueuePage() {
           </select>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Sort Order</label>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+          >
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
+
         <div className="ml-auto flex gap-2">
           <button
             onClick={() => setShowConfirm('approve')}
             disabled={selectedIds.size === 0}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed dark:disabled:bg-slate-700 dark:disabled:text-slate-300"
           >
             Approve ({selectedIds.size})
           </button>
           <button
             onClick={() => setShowConfirm('reject')}
             disabled={selectedIds.size === 0}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed dark:disabled:bg-slate-700 dark:disabled:text-slate-300"
           >
             Reject ({selectedIds.size})
           </button>
@@ -236,7 +263,7 @@ export default function ReviewQueuePage() {
       {/* Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 text-slate-900 shadow-xl dark:bg-slate-950 dark:text-slate-50">
             <h2 className="text-xl font-bold mb-4">
               Confirm {showConfirm === 'approve' ? 'Approval' : 'Rejection'}
             </h2>
@@ -245,11 +272,11 @@ export default function ReviewQueuePage() {
             </p>
             {showConfirm === 'reject' && (
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Reason (optional)</label>
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Reason (optional)</label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
                   rows={3}
                   placeholder="Enter reason for rejection..."
                 />
@@ -261,7 +288,7 @@ export default function ReviewQueuePage() {
                   setShowConfirm(null);
                   setRejectReason('');
                 }}
-                className="px-4 py-2 border rounded hover:bg-gray-100"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
               >
                 Cancel
               </button>
@@ -281,9 +308,9 @@ export default function ReviewQueuePage() {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="min-w-full">
-          <thead className="bg-gray-50">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
             <tr>
               <th className="px-4 py-3 text-left">
                 <input
@@ -294,15 +321,16 @@ export default function ReviewQueuePage() {
               </th>
               <th className="px-4 py-3 text-left font-medium">Name</th>
               <th className="px-4 py-3 text-left font-medium">Address</th>
+              <th className="px-4 py-3 text-left font-medium">Maps</th>
               <th className="px-4 py-3 text-left font-medium">Website Status</th>
               <th className="px-4 py-3 text-left font-medium">Score</th>
               <th className="px-4 py-3 text-left font-medium">Contact</th>
               <th className="px-4 py-3 text-left font-medium">Rating</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-slate-200 text-slate-900 dark:divide-slate-800 dark:text-slate-50">
             {leads.map((lead) => (
-              <tr key={lead.id} className="hover:bg-gray-50">
+              <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
@@ -311,7 +339,21 @@ export default function ReviewQueuePage() {
                   />
                 </td>
                 <td className="px-4 py-3">{lead.name}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{lead.address}</td>
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{lead.address}</td>
+                <td className="px-4 py-3">
+                  {lead.placeId ? (
+                    <a
+                      href={googleMapsPlaceUrl(lead.placeId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      View
+                    </a>
+                  ) : (
+                    <span className="text-slate-500 dark:text-slate-400">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">{getWebsiteStatusBadge(lead.websiteStatus)}</td>
                 <td className="px-4 py-3">{lead.smallBusinessScore || 'N/A'}</td>
                 <td className="px-4 py-3">
@@ -332,26 +374,27 @@ export default function ReviewQueuePage() {
 
       {/* Pagination */}
       <div className="mt-6 flex justify-between items-center">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-slate-600 dark:text-slate-300">
           Showing page {page} of {totalPages}
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
           >
             Previous
           </button>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
           >
             Next
           </button>
         </div>
       </div>
+      </main>
     </div>
   );
 }

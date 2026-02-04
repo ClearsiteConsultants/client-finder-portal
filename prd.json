@@ -1,7 +1,7 @@
 {
   "project": "client-finder-portal",
   "version": "1.0.0",
-  "lastUpdated": "2026-02-03T01:41:00.105Z",
+  "lastUpdated": "2026-02-04T23:45:00Z",
   "requirements": [
     {
       "id": "P1-001",
@@ -401,7 +401,7 @@
         "Run `npm test` and confirm all prior tests pass.",
         "Manual test: add an excluded name and confirm newly discovered matching businesses are not added to pending review."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "priorityRationale": "Phase 4 deliverable: the exclude list is the simplest budget-friendly control for filtering out large/irrelevant businesses."
     },

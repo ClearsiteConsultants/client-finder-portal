@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import SearchForm from "@/components/search/SearchForm";
+import TopNav from "@/components/TopNav";
 
 export default async function SearchPage() {
   const session = await auth();
@@ -11,8 +12,9 @@ export default async function SearchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+      <TopNav />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6">
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
             Business Discovery Search
           </h1>
@@ -20,8 +22,6 @@ export default async function SearchPage() {
             Search for local businesses and add them to your lead list
           </p>
         </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <SearchForm />
       </main>
     </div>
