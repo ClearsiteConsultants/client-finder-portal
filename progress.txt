@@ -1007,3 +1007,39 @@ Tests: Unit tests for exclusion logic exist and work (require DB connection for 
 Note: Integration tests require database connection. The implementation is complete and builds successfully.
 All business logic, API endpoints, and UI are functional.
 
+
+## 2026-02-04 - Phase 4: Lead Detail View (P4-003)
+
+### Implementation
+- Created `/leads/[id]` page component to display comprehensive lead details
+- Created API endpoints at `/api/leads/[id]` for GET (fetch) and PATCH (update) operations
+- Added support for editing notes and follow-up dates per lead
+- Made business names clickable in the review queue to navigate to detail view
+- Implemented proper authentication checks using NextAuth v5 `auth()` helper
+- Created basic integration tests for API endpoints
+
+### Files Created/Modified
+- NEW: `src/app/leads/[id]/page.tsx` - Lead detail page with editable notes and follow-up scheduling
+- NEW: `src/app/api/leads/[id]/route.ts` - API routes for fetching and updating lead details
+- NEW: `src/app/api/leads/[id]/route.test.ts` - Integration tests for API endpoints
+- MODIFIED: `src/app/review/page.tsx` - Added links from business names to detail page
+
+### Features Implemented
+ Lead detail page displays all business information (address, phone, website, etc.)
+ Contact channels clearly shown with source attribution (Google Maps)
+ Free-form notes field that can be edited by any authenticated user
+ Next follow-up date field for manual outreach planning
+ Unified timeline placeholder for Phase 6 outreach events
+ Proper authentication and authorization on all endpoints
+ Type-safe implementation with zero new TypeScript errors
+
+### Testing
+- Component structure tests pass
+- Type checking passes for new code
+- Manual verification needed: notes persistence and follow-up date updates
+
+### Database Schema
+No changes needed - existing `notes` and `nextFollowupAt` fields in Business model used
+
+### Status
+ Ready for manual testing and verification

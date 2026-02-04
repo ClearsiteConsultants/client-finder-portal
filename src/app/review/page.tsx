@@ -338,7 +338,14 @@ export default function ReviewQueuePage() {
                     onChange={(e) => handleSelectOne(lead.id, e.target.checked)}
                   />
                 </td>
-                <td className="px-4 py-3">{lead.name}</td>
+                <td className="px-4 py-3">
+                  <a
+                    href={`/leads/${lead.id}`}
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {lead.name}
+                  </a>
+                </td>
                 <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{lead.address}</td>
                 <td className="px-4 py-3">
                   {lead.placeId ? (
