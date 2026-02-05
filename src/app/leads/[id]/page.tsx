@@ -43,6 +43,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState('');
   const [nextFollowupAt, setNextFollowupAt] = useState('');
+  const [showLinkPlaceId, setShowLinkPlaceId] = useState(false);
+  const [placeIdInput, setPlaceIdInput] = useState('');
+  const [linkingPlaceId, setLinkingPlaceId] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -99,6 +102,37 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
       console.error('Error updating business:', error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLinkPlaceId = async () => {
+    if (!placeIdInput.trim()) return;
+    
+    setLinkingPlaceId(true);
+    try {
+      const response = await fetch('/api/leads/link-place', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: params.id,
+          placeId: placeIdInput.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBusiness(data.business);
+        setShowLinkPlaceId(false);
+        setPlaceIdInput('');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to link place_id');
+      }
+    } catch (error) {
+      console.error('Error linking place_id:', error);
+      alert('Failed to link place_id');
+    } finally {
+      setLinkingPlaceId(false);
     }
   };
 
@@ -241,6 +275,55 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                     </dd>
                   </div>
                 )}
+                {!business.placeId && business.source === 'manual' && (
+                  <div>
+                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Google Place ID</dt>
+                    <dd className="mt-1 text-sm">
+                      {!showLinkPlaceId ? (
+                        <button
+                          onClick={() => setShowLinkPlaceId(true)}
+                          className="text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          Link to Google Place ID
+                        </button>
+                      ) : (
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={placeIdInput}
+                            onChange={(e) => setPlaceIdInput(e.target.value)}
+                            placeholder="Enter place_id"
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                          />
+                          <button
+                            onClick={handleLinkPlaceId}
+                            disabled={linkingPlaceId}
+                            className="rounded-lg bg-blue-600 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {linkingPlaceId ? 'Linking...' : 'Link'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowLinkPlaceId(false);
+                              setPlaceIdInput('');
+                            }}
+                            className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Source</dt>
+                  <dd className="mt-1 text-sm">
+                    <span className={`px-2 py-1 text-xs rounded ${business.source === 'manual' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {business.source === 'manual' ? 'Manual Entry' : 'Google Maps'}
+                    </span>
+                  </dd>
+                </div>
               </dl>
             </div>
 

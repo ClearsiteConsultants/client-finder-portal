@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { googleMapsPlaceUrl } from '@/lib/places/maps';
+import ManualLeadForm from '@/components/ManualLeadForm';
 
 type Lead = {
   id: string;
@@ -46,6 +47,7 @@ export default function ReviewQueuePage() {
   const [websiteStatusFilter, setWebsiteStatusFilter] = useState('');
   const [showConfirm, setShowConfirm] = useState<'approve' | 'reject' | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [showManualForm, setShowManualForm] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -178,10 +180,20 @@ export default function ReviewQueuePage() {
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Review Queue</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Approve or reject leads and manage the pipeline
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">Review Queue</h1>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                Approve or reject leads and manage the pipeline
+              </p>
+            </div>
+            <button
+              onClick={() => setShowManualForm(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              + Create Manual Lead
+            </button>
+          </div>
         </div>
 
       {/* Filters and Controls */}
@@ -305,6 +317,17 @@ export default function ReviewQueuePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Manual Lead Form Modal */}
+      {showManualForm && (
+        <ManualLeadForm
+          onClose={() => setShowManualForm(false)}
+          onSuccess={() => {
+            setShowManualForm(false);
+            fetchLeads();
+          }}
+        />
       )}
 
       {/* Table */}

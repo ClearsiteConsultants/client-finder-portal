@@ -1083,3 +1083,47 @@ No changes needed - existing `notes` and `nextFollowupAt` fields in Business mod
 - Invalid state transitions return 400 errors with detailed explanations
 - The lifecycle supports the full workflow: pending → approved → contacted → responded → inactive
 
+
+## 2026-02-05 - P4-005: Manual Lead Entry Workflow
+
+### Implementation Summary
+Implemented a comprehensive manual lead entry system that allows users to create business records without a Google Places ID.
+
+### Changes Made
+
+1. **UI Components:**
+   - Created `ManualLeadForm.tsx` component with validation for required fields (name, address)
+   - Added optional fields for phone, email, website, and social media URLs (Instagram, Facebook)
+   - Integrated duplicate warning system that checks for existing businesses with same name+address
+   - Added "Create Manual Lead" button to review queue page (`/review`)
+   - Added link place_id functionality to lead detail page for manual leads
+
+2. **API Endpoints:**
+   - `/api/leads/create-manual` - POST endpoint to create a business with source='manual' and NULL place_id
+   - `/api/leads/check-duplicate` - POST endpoint to check for duplicate businesses by normalized name+address
+   - `/api/leads/link-place` - POST endpoint to link a manual lead to a place_id with uniqueness validation
+
+3. **Features:**
+   - Records provenance (manual vs google_maps) on Business.source field
+   - Manual leads appear in same review queue as discovered leads
+   - Duplicate detection warns users before creation but allows override
+   - Link place_id enforces uniqueness - prevents linking to already-used place_id
+   - Manual leads can move through same lifecycle (pending → approved → contacted, etc.)
+
+4. **Tests:**
+   - Created integration tests for create-manual endpoint (validates NULL place_id, manual source)
+   - Created integration tests for link-place endpoint (validates uniqueness, allows same business re-link)
+   - Tests verify manual leads can be created, appear in queue, and link to place_id later
+
+### Technical Notes
+- Used existing ContactInfo model to store email and social media contacts
+- Form validates email format and website URL format
+- Duplicate checking uses normalized name/address (removes non-alphanumeric)
+- Source field automatically changes from 'manual' to 'google_maps' when place_id is linked
+
+### Status
+ Manual lead creation working
+ Duplicate detection functional
+ Place ID linking with uniqueness validation working
+ Integration with existing review queue complete
+ Type checks passing for new code
