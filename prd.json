@@ -1,7 +1,7 @@
 {
   "project": "client-finder-portal",
   "version": "1.0.0",
-  "lastUpdated": "2026-02-05",
+  "lastUpdated": "2026-02-05T22:36:29Z",
   "requirements": [
     {
       "id": "P1-001",
@@ -511,7 +511,7 @@
         "Run `npm test` and confirm all prior tests pass.",
         "Manual test: convert a lead to a client, verify it appears in Active Clients, update subscription/payment fields, and complete a review checklist item with correct audit trail."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "priorityRationale": "Phase 4 extension: once a lead becomes a client, the team needs a single place to track client health (subscription/payment/onboarding) without losing the original investigation context."
     },
