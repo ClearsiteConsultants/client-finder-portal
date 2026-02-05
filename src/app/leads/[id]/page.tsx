@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { googleMapsPlaceUrl } from '@/lib/places/maps';
 
@@ -35,9 +35,11 @@ type Business = {
   updatedAt: string;
 };
 
-export default function LeadDetailPage({ params }: { params: { id: string } }) {
+export default function LeadDetailPage() {
   const { status } = useSession();
   const router = useRouter();
+  const params = useParams<{ id?: string | string[] }>();
+  const leadId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,14 +57,19 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchBusiness();
-    }
-  }, [status, params.id]);
+      if (!leadId) {
+        setLoading(false);
+        return;
+      }
 
-  const fetchBusiness = async () => {
+      fetchBusiness(leadId);
+    }
+  }, [status, leadId]);
+
+  const fetchBusiness = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/leads/${params.id}`);
+      const response = await fetch(`/api/leads/${id}`);
       if (response.ok) {
         const data: Business = await response.json();
         setBusiness(data);
@@ -83,9 +90,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleSave = async () => {
+    if (!leadId) return;
     setSaving(true);
     try {
-      const response = await fetch(`/api/leads/${params.id}`, {
+      const response = await fetch(`/api/leads/${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,6 +114,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleLinkPlaceId = async () => {
+    if (!leadId) return;
     if (!placeIdInput.trim()) return;
     
     setLinkingPlaceId(true);
@@ -114,7 +123,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          businessId: params.id,
+          businessId: leadId,
           placeId: placeIdInput.trim(),
         }),
       });
@@ -170,6 +179,14 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
         Loading...
+      </div>
+    );
+  }
+
+  if (!leadId) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+        Missing lead id.
       </div>
     );
   }

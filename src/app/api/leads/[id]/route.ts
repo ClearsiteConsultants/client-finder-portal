@@ -4,8 +4,9 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await auth();
   
   if (!session) {
@@ -14,7 +15,7 @@ export async function GET(
 
   try {
     const business = await prisma.business.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         approvedByUser: {
           select: {
@@ -49,8 +50,9 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await auth();
   
   if (!session) {
@@ -75,7 +77,7 @@ export async function PATCH(
     }
 
     const business = await prisma.business.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         approvedByUser: {
