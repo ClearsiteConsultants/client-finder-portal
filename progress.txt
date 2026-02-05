@@ -1043,3 +1043,43 @@ No changes needed - existing `notes` and `nextFollowupAt` fields in Business mod
 
 ### Status
  Ready for manual testing and verification
+
+## 2026-02-04 - Lead Lifecycle State Transitions (P4-004)
+
+### Implemented
+1. Created lead-lifecycle.ts module with state transition validation logic
+   - Defined valid state transitions (pending → approved/rejected, approved → contacted, contacted → responded/inactive, responded → inactive)
+   - Implemented isValidTransition(), getValidNextStates(), validateTransition(), and assertValidTransition() functions
+   - Created InvalidStateTransitionError for handling invalid transitions
+
+2. Created comprehensive unit tests for lead-lifecycle module (25 tests, all passing)
+   - Tests cover all valid and invalid state transitions
+   - Tests validate error handling and descriptive error messages
+
+3. Updated existing API endpoints with state validation:
+   - /api/leads/approve - Now validates only pending/approved leads can be approved
+   - /api/leads/reject - Now validates only pending/approved leads can be rejected
+
+4. Created new API endpoints for lifecycle transitions:
+   - /api/leads/contacted - Marks approved leads as contacted (sets lastContactAt)
+   - /api/leads/responded - Marks contacted leads as responded (updates notes)
+   - /api/leads/inactive - Marks contacted/responded leads as inactive (updates notes with reason)
+
+5. All new endpoints include:
+   - Server-side state transition validation
+   - Authentication/authorization checks
+   - Proper error responses for invalid transitions
+   - Descriptive error messages explaining why transitions are invalid
+
+### Tests
+- Created 25 unit tests for state transition logic - ALL PASSING
+- Created 5 integration tests for API endpoint existence
+- Verified TypeScript compilation with no errors
+- All existing tests remain passing (183 passed tests total)
+
+### Notes
+- Used existing Business model fields (lastContactAt, notes) instead of adding new timestamp fields
+- State transitions are now enforced consistently across all API endpoints
+- Invalid state transitions return 400 errors with detailed explanations
+- The lifecycle supports the full workflow: pending → approved → contacted → responded → inactive
+

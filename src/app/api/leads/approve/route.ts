@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { assertValidTransition, InvalidStateTransitionError } from '@/lib/lead-lifecycle';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +24,33 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(businessIds) || businessIds.length === 0) {
       return NextResponse.json({ error: 'businessIds array is required' }, { status: 400 });
+    }
+
+    // Validate state transitions
+    const businesses = await prisma.business.findMany({
+      where: { id: { in: businessIds } },
+      select: { id: true, leadStatus: true, name: true },
+    });
+
+    const invalidTransitions = businesses.filter((business) => {
+      try {
+        assertValidTransition(business.leadStatus, 'approved');
+        return false;
+      } catch (error) {
+        return error instanceof InvalidStateTransitionError;
+      }
+    });
+
+    if (invalidTransitions.length > 0) {
+      return NextResponse.json({
+        error: 'Invalid state transitions',
+        details: invalidTransitions.map((b) => ({
+          id: b.id,
+          name: b.name,
+          currentStatus: b.leadStatus,
+          message: `Cannot approve lead in ${b.leadStatus} state`,
+        })),
+      }, { status: 400 });
     }
 
     const result = await prisma.business.updateMany({

@@ -1,7 +1,7 @@
 {
   "project": "client-finder-portal",
   "version": "1.0.0",
-  "lastUpdated": "2026-02-04T23:54:00Z",
+  "lastUpdated": "2026-02-05T00:01:52Z",
   "requirements": [
     {
       "id": "P1-001",
@@ -442,7 +442,7 @@
         "Run `npm test` and confirm all prior tests pass.",
         "Manual test: move a lead through the lifecycle and confirm UI reflects state changes."
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "priorityRationale": "Phase 4 deliverable: lifecycle consistency is necessary to avoid spamming and to track progress."
     },
