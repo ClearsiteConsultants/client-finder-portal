@@ -1127,3 +1127,49 @@ Implemented a comprehensive manual lead entry system that allows users to create
  Place ID linking with uniqueness validation working
  Integration with existing review queue complete
  Type checks passing for new code
+
+## 2026-02-05 - Lead to Client Conversion (P4-006)
+
+### Completed
+- **Schema Updates**: Added client tracking fields to Business model:
+  - is_client (boolean, default false)
+  - converted_at (timestamp, nullable)
+  - converted_by_user_id (UUID FK to User, nullable)
+  - client_status (string, nullable)
+  - subscription_status (string, nullable) 
+  - initial_payment_status (string, nullable)
+  - next_payment_due_date (timestamp, nullable)
+  - Added convertedBusinesses relation to User model
+
+- **Business Logic**: Extended lead-lifecycle.ts with conversion functionality:
+  - canConvertToClient() - validates if a business can be converted
+  - assertCanConvertToClient() - throws InvalidConversionError if not eligible
+  - Policy: Only approved leads can be converted to clients
+  - Prevents duplicate conversions (already a client)
+
+- **API Endpoint**: Created POST /api/leads/convert-to-client
+  - Requires authentication
+  - Validates business exists and is eligible for conversion
+  - Records audit trail (converted_by_user_id, converted_at)
+  - Accepts optional client fields (client_status, subscription_status, etc.)
+  - Returns updated business with convertedByUser relation
+
+- **Testing**: Comprehensive unit tests
+  - 36 tests in lead-lifecycle.test.ts all pass
+  - Tests cover all conversion eligibility scenarios
+  - Tests verify error handling for invalid states
+  - API endpoint tests created (Jest module resolution prevents execution)
+
+### Next Steps
+- UI: Add "Convert to Client" button on lead detail page  
+- UI: Add client indicator badges in lead lists/views
+- UI: Create form for setting client-specific fields post-conversion
+- Database: Run migration to apply schema changes
+- Integration: Ensure clients are excluded from lead-outreach automation
+
+### Technical Notes
+- Generated new Prisma client with updated schema
+- Used consistent patterns with existing codebase (auth(), prisma)
+- Maintained backward compatibility - existing data unaffected
+- Type-safe implementation with Zod validation for API inputs
+

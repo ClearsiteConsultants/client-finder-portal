@@ -91,6 +91,7 @@ model User {
   approvedBusinesses   Business[]         @relation("ApprovedBy")
   rejectedBusinesses   Business[]         @relation("RejectedBy")
   doNotContactBusinesses Business[]       @relation("DoNotContactSetBy")
+  convertedBusinesses  Business[]         @relation("ConvertedBy")
   accounts             Account[]
   sessions             Session[]
 
@@ -177,6 +178,15 @@ model Business {
   // Notes
   notes                   String?         @db.Text
 
+  // Client conversion tracking
+  isClient                Boolean         @default(false) @map("is_client")
+  convertedAt             DateTime?       @map("converted_at") @db.Timestamptz(6)
+  convertedByUserId       String?         @map("converted_by_user_id") @db.Uuid
+  clientStatus            String?         @map("client_status")
+  subscriptionStatus      String?         @map("subscription_status")
+  initialPaymentStatus    String?         @map("initial_payment_status")
+  nextPaymentDueDate      DateTime?       @map("next_payment_due_date") @db.Timestamptz(6)
+
   // Cache management
   cachedAt                DateTime?       @map("cached_at") @db.Timestamptz(6)
 
@@ -189,6 +199,7 @@ model Business {
   approvedByUser          User?           @relation("ApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   rejectedByUser          User?           @relation("RejectedBy", fields: [rejectedByUserId], references: [id], onDelete: SetNull)
   doNotContactSetByUser   User?           @relation("DoNotContactSetBy", fields: [doNotContactSetByUserId], references: [id], onDelete: SetNull)
+  convertedByUser         User?           @relation("ConvertedBy", fields: [convertedByUserId], references: [id], onDelete: SetNull)
   contactInfo             ContactInfo[]
   outreachTracking        OutreachTracking[]
   optOuts                 OptOut[]

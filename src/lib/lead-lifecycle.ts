@@ -3,7 +3,7 @@
  * Defines valid state transitions and validation logic
  */
 
-import { LeadStatus } from '@prisma/client';
+import { LeadStatus, Business } from '@prisma/client';
 
 export type LeadStatusTransition = {
   from: LeadStatus;
@@ -89,5 +89,50 @@ export function assertValidTransition(
   const result = validateTransition(from, to);
   if (!result.allowed) {
     throw new InvalidStateTransitionError(from, to, result.reason);
+  }
+}
+
+/**
+ * Validates if a lead can be converted to a client
+ * By default, only approved leads can be converted
+ */
+export function canConvertToClient(business: Pick<Business, 'leadStatus' | 'isClient'>): {
+  canConvert: boolean;
+  reason?: string;
+} {
+  if (business.isClient) {
+    return {
+      canConvert: false,
+      reason: 'Business is already a client'
+    };
+  }
+  
+  if (business.leadStatus !== 'approved') {
+    return {
+      canConvert: false,
+      reason: `Only approved leads can be converted to clients. Current status: ${business.leadStatus}`
+    };
+  }
+  
+  return { canConvert: true };
+}
+
+/**
+ * Error thrown when an invalid conversion is attempted
+ */
+export class InvalidConversionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidConversionError';
+  }
+}
+
+/**
+ * Asserts a business can be converted to a client, throws if not
+ */
+export function assertCanConvertToClient(business: Pick<Business, 'leadStatus' | 'isClient'>): void {
+  const result = canConvertToClient(business);
+  if (!result.canConvert) {
+    throw new InvalidConversionError(result.reason || 'Cannot convert to client');
   }
 }

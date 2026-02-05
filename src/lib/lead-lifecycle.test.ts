@@ -5,6 +5,9 @@ import {
   validateTransition,
   assertValidTransition,
   InvalidStateTransitionError,
+  canConvertToClient,
+  assertCanConvertToClient,
+  InvalidConversionError,
 } from './lead-lifecycle';
 
 describe('Lead Lifecycle State Transitions', () => {
@@ -143,6 +146,109 @@ describe('Lead Lifecycle State Transitions', () => {
       expect(() => assertValidTransition('pending', 'contacted')).toThrow(
         /Invalid transition from pending to contacted/
       );
+    });
+  });
+
+  describe('canConvertToClient', () => {
+    it('allows conversion of approved lead', () => {
+      const result = canConvertToClient({
+        leadStatus: 'approved',
+        isClient: false,
+      });
+      expect(result.canConvert).toBe(true);
+      expect(result.reason).toBeUndefined();
+    });
+
+    it('disallows conversion of already converted business', () => {
+      const result = canConvertToClient({
+        leadStatus: 'approved',
+        isClient: true,
+      });
+      expect(result.canConvert).toBe(false);
+      expect(result.reason).toContain('already a client');
+    });
+
+    it('disallows conversion of pending lead', () => {
+      const result = canConvertToClient({
+        leadStatus: 'pending',
+        isClient: false,
+      });
+      expect(result.canConvert).toBe(false);
+      expect(result.reason).toContain('Only approved leads');
+    });
+
+    it('disallows conversion of rejected lead', () => {
+      const result = canConvertToClient({
+        leadStatus: 'rejected',
+        isClient: false,
+      });
+      expect(result.canConvert).toBe(false);
+      expect(result.reason).toContain('Only approved leads');
+    });
+
+    it('disallows conversion of contacted lead', () => {
+      const result = canConvertToClient({
+        leadStatus: 'contacted',
+        isClient: false,
+      });
+      expect(result.canConvert).toBe(false);
+      expect(result.reason).toContain('Only approved leads');
+    });
+
+    it('disallows conversion of responded lead', () => {
+      const result = canConvertToClient({
+        leadStatus: 'responded',
+        isClient: false,
+      });
+      expect(result.canConvert).toBe(false);
+      expect(result.reason).toContain('Only approved leads');
+    });
+
+    it('disallows conversion of inactive lead', () => {
+      const result = canConvertToClient({
+        leadStatus: 'inactive',
+        isClient: false,
+      });
+      expect(result.canConvert).toBe(false);
+      expect(result.reason).toContain('Only approved leads');
+    });
+  });
+
+  describe('assertCanConvertToClient', () => {
+    it('does not throw for approved lead', () => {
+      expect(() =>
+        assertCanConvertToClient({
+          leadStatus: 'approved',
+          isClient: false,
+        })
+      ).not.toThrow();
+    });
+
+    it('throws InvalidConversionError for already converted business', () => {
+      expect(() =>
+        assertCanConvertToClient({
+          leadStatus: 'approved',
+          isClient: true,
+        })
+      ).toThrow(InvalidConversionError);
+    });
+
+    it('throws InvalidConversionError for non-approved lead', () => {
+      expect(() =>
+        assertCanConvertToClient({
+          leadStatus: 'pending',
+          isClient: false,
+        })
+      ).toThrow(InvalidConversionError);
+    });
+
+    it('throws error with descriptive message', () => {
+      expect(() =>
+        assertCanConvertToClient({
+          leadStatus: 'pending',
+          isClient: false,
+        })
+      ).toThrow(/Only approved leads/);
     });
   });
 });
