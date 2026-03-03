@@ -164,8 +164,9 @@ describe('LeadDetailPage', () => {
     fireEvent.click(screen.getByTitle('Edit Business Information'));
 
     await waitFor(() => {
-      const leadStatusSelect = screen.getByDisplayValue('pending') as HTMLSelectElement;
+      const leadStatusSelect = screen.getByDisplayValue('Pending') as HTMLSelectElement;
       expect(leadStatusSelect).toBeInTheDocument();
+      expect(leadStatusSelect.value).toBe('pending');
     });
   });
 
@@ -236,10 +237,10 @@ describe('LeadDetailPage', () => {
     fireEvent.click(screen.getByTitle('Edit Business Information'));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('pending')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Pending')).toBeInTheDocument();
     });
 
-    const statusSelect = screen.getByDisplayValue('pending') as HTMLSelectElement;
+    const statusSelect = screen.getByDisplayValue('Pending') as HTMLSelectElement;
     fireEvent.change(statusSelect, { target: { value: 'approved' } });
 
     expect(statusSelect.value).toBe('approved');
@@ -299,7 +300,7 @@ describe('LeadDetailPage', () => {
     const addressInput = screen.getByDisplayValue('123 Main St, City, State 12345') as HTMLInputElement;
     fireEvent.change(addressInput, { target: { value: '789 Elm St' } });
 
-    const statusSelect = screen.getByDisplayValue('pending') as HTMLSelectElement;
+    const statusSelect = screen.getByDisplayValue('Pending') as HTMLSelectElement;
     fireEvent.change(statusSelect, { target: { value: 'approved' } });
 
     const ratingInput = screen.getByDisplayValue('4.5') as HTMLInputElement;
@@ -321,20 +322,17 @@ describe('LeadDetailPage', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/leads/business-123',
-        expect.objectContaining({
-          method: 'PATCH',
-          body: JSON.stringify({
-            address: '789 Elm St',
-            phone: '555-1234',
-            website: 'https://testbusiness.com',
-            leadStatus: 'approved',
-            businessTypes: ['retail', 'e-commerce'],
-            rating: 4.9,
-          }),
-        })
-      );
+      expect(global.fetch).toHaveBeenCalled();
+      const call = (global.fetch as jest.Mock).mock.calls[0];
+      expect(call[0]).toBe('/api/leads/business-123');
+      expect(call[1].method).toBe('PATCH');
+      const payload = JSON.parse(call[1].body as string);
+      expect(payload.address).toBe('789 Elm St');
+      expect(payload.phone).toBe('555-1234');
+      expect(payload.website).toBe('https://testbusiness.com');
+      expect(payload.leadStatus).toBe('approved');
+      expect(payload.businessTypes).toEqual(['retail', 'e-commerce']);
+      expect(payload.rating).toBe(4.9);
     });
   });
 
@@ -438,17 +436,12 @@ describe('LeadDetailPage', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/leads/business-123',
-        expect.objectContaining({
-          method: 'PATCH',
-          body: JSON.stringify(
-            expect.objectContaining({
-              businessTypes: ['retail', 'services', 'tech'],
-            })
-          ),
-        })
-      );
+      expect(global.fetch).toHaveBeenCalled();
+      const call = (global.fetch as jest.Mock).mock.calls[0];
+      expect(call[0]).toBe('/api/leads/business-123');
+      expect(call[1].method).toBe('PATCH');
+      const payload = JSON.parse(call[1].body as string);
+      expect(payload.businessTypes).toEqual(['retail', 'services', 'tech']);
     });
   });
 

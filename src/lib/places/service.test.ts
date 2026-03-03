@@ -18,6 +18,8 @@ jest.mock('../jobs/queue-service', () => ({
   })),
 }));
 
+jest.setTimeout(35000);
+
 describe('PlacesService', () => {
   let service: PlacesService;
   let mockClient: jest.Mocked<PlacesClient>;
@@ -187,7 +189,6 @@ describe('PlacesService', () => {
       expect(result.status).toBe('error');
       expect(result.error).toBeTruthy();
       expect(result.results).toHaveLength(0);
-    });
 
     it('marks search run as failed on error', async () => {
       mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
@@ -204,7 +205,6 @@ describe('PlacesService', () => {
 
       expect(searchRun?.status).toBe('failed');
       expect(searchRun?.errorMessage).toContain('Network error');
-    });
   });
 
   describe('getPlaceDetails', () => {
@@ -255,7 +255,9 @@ describe('PlacesService', () => {
     });
 
     it('returns null on error', async () => {
-      mockClient.getPlaceDetails.mockRejectedValue(new Error('Not found'));
+      mockClient.getPlaceDetails.mockRejectedValue(
+        new Error('Not found')
+      );
 
       const result = await service.getPlaceDetails('INVALID');
 

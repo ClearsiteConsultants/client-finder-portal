@@ -196,7 +196,7 @@ export default function ManualLeadForm({ onClose, onSuccess }: ManualLeadFormPro
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Required Fields */}
           <div>
             <label htmlFor="business-name" className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">

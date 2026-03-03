@@ -9,7 +9,7 @@ describe('ManualLeadForm', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockClear();
+    (global.fetch as jest.Mock).mockReset();
   });
 
   it('should render the form with required fields', () => {
@@ -52,7 +52,9 @@ describe('ManualLeadForm', () => {
     fireEvent.click(submitButton);
 
     // Errors should appear immediately without checking duplicates
-    expect(screen.getByText(/invalid email format/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/invalid email format/i)).toBeInTheDocument();
+    });
   });
 
   it('should validate website URL format', async () => {
@@ -75,7 +77,9 @@ describe('ManualLeadForm', () => {
     fireEvent.click(submitButton);
 
     // Errors should appear immediately without checking duplicates
-    expect(screen.getByText(/website must start with/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/website must start with/i)).toBeInTheDocument();
+    });
   });
 
   it('should check for duplicates before creating', async () => {
