@@ -4,12 +4,12 @@
 
 import { NextRequest } from 'next/server';
 
-const mockGetServerSession = jest.fn();
+const mockAuth = jest.fn();
 const mockPrismaFindUnique = jest.fn();
 const mockPrismaUpdate = jest.fn();
 
-jest.mock('next-auth', () => ({
-  getServerSession: (...args: any[]) => mockGetServerSession(...args),
+jest.mock('@/lib/auth', () => ({
+  auth: (...args: any[]) => mockAuth(...args),
 }));
 
 jest.mock('@/lib/prisma', () => ({
@@ -26,13 +26,13 @@ import { POST } from './route';
 describe('POST /api/leads/link-place', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetServerSession.mockClear();
+    mockAuth.mockClear();
     mockPrismaFindUnique.mockClear();
     mockPrismaUpdate.mockClear();
   });
 
   it('should reject unauthenticated requests', async () => {
-    mockGetServerSession.mockResolvedValueOnce(null);
+    mockAuth.mockResolvedValueOnce(null);
 
     const req = new NextRequest('http://localhost/api/leads/link-place', {
       method: 'POST',
@@ -47,7 +47,7 @@ describe('POST /api/leads/link-place', () => {
   });
 
   it('should link a manual lead to a place_id when place_id is unused', async () => {
-    mockGetServerSession.mockResolvedValueOnce({
+    mockAuth.mockResolvedValueOnce({
       user: { id: 'user-123', email: 'test@example.com' },
       expires: '2024-12-31',
     });
@@ -85,7 +85,7 @@ describe('POST /api/leads/link-place', () => {
   });
 
   it('should fail when place_id is already taken by another business', async () => {
-    mockGetServerSession.mockResolvedValueOnce({
+    mockAuth.mockResolvedValueOnce({
       user: { id: 'user-123', email: 'test@example.com' },
       expires: '2024-12-31',
     });
@@ -109,7 +109,7 @@ describe('POST /api/leads/link-place', () => {
   });
 
   it('should allow re-linking the same business to the same place_id', async () => {
-    mockGetServerSession.mockResolvedValueOnce({
+    mockAuth.mockResolvedValueOnce({
       user: { id: 'user-123', email: 'test@example.com' },
       expires: '2024-12-31',
     });
@@ -140,7 +140,7 @@ describe('POST /api/leads/link-place', () => {
   });
 
   it('should require businessId and placeId', async () => {
-    mockGetServerSession.mockResolvedValueOnce({
+    mockAuth.mockResolvedValueOnce({
       user: { id: 'user-123', email: 'test@example.com' },
       expires: '2024-12-31',
     });

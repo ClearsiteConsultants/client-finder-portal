@@ -4,12 +4,12 @@
 
 import { NextRequest } from 'next/server';
 
-const mockGetServerSession = jest.fn();
+const mockAuth = jest.fn();
 const mockPrismaCreate = jest.fn();
 const mockContactCreate = jest.fn();
 
-jest.mock('next-auth', () => ({
-  getServerSession: (...args: any[]) => mockGetServerSession(...args),
+jest.mock('@/lib/auth', () => ({
+  auth: (...args: any[]) => mockAuth(...args),
 }));
 
 jest.mock('@/lib/prisma', () => ({
@@ -28,13 +28,13 @@ import { POST } from './route';
 describe('POST /api/leads/create-manual', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetServerSession.mockClear();
+    mockAuth.mockClear();
     mockPrismaCreate.mockClear();
     mockContactCreate.mockClear();
   });
 
   it('should reject unauthenticated requests', async () => {
-    mockGetServerSession.mockResolvedValueOnce(null);
+    mockAuth.mockResolvedValueOnce(null);
 
     const req = new NextRequest('http://localhost/api/leads/create-manual', {
       method: 'POST',
@@ -49,7 +49,7 @@ describe('POST /api/leads/create-manual', () => {
   });
 
   it('should create a business with manual source and NULL place_id', async () => {
-    mockGetServerSession.mockResolvedValueOnce({
+    mockAuth.mockResolvedValueOnce({
       user: { id: 'user-123', email: 'test@example.com' },
       expires: '2024-12-31',
     });
@@ -99,7 +99,7 @@ describe('POST /api/leads/create-manual', () => {
   });
 
   it('should require name and address', async () => {
-    mockGetServerSession.mockResolvedValueOnce({
+    mockAuth.mockResolvedValueOnce({
       user: { id: 'user-123', email: 'test@example.com' },
       expires: '2024-12-31',
     });
@@ -117,7 +117,7 @@ describe('POST /api/leads/create-manual', () => {
   });
 
   it('should create contacts for optional fields', async () => {
-    mockGetServerSession.mockResolvedValueOnce({
+    mockAuth.mockResolvedValueOnce({
       user: { id: 'user-123', email: 'test@example.com' },
       expires: '2024-12-31',
     });

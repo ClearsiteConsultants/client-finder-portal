@@ -13,7 +13,7 @@ jest.mock('@/lib/auth', () => ({
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('Exclusions API', () => {
-  const mockUserId = 'test-user-id';
+  const mockUserId = '11111111-1111-1111-1111-111111111111';
   const mockUserEmail = 'test@example.com';
 
   beforeAll(async () => {

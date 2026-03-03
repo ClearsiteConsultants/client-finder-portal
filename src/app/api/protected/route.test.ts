@@ -2,14 +2,22 @@
  * @jest-environment node
  */
 
-describe("/api/protected", () => {
-  it("should return 401 when user is not authenticated", async () => {
-    // Mock the auth function to return null
-    jest.doMock("@/lib/auth", () => ({
-      auth: jest.fn().mockResolvedValue(null),
-    }));
+const mockAuth = jest.fn();
 
-    const { GET } = await import("@/app/api/protected/route");
+jest.mock('@/lib/auth', () => ({
+  auth: (...args: any[]) => mockAuth(...args),
+}));
+
+import { GET } from './route';
+
+describe("/api/protected", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should return 401 when user is not authenticated", async () => {
+    mockAuth.mockResolvedValueOnce(null);
+
     const response = await GET();
     const data = await response.json();
 
@@ -18,19 +26,15 @@ describe("/api/protected", () => {
   });
 
   it("should return user data when authenticated", async () => {
-    // Mock the auth function to return a session
-    jest.doMock("@/lib/auth", () => ({
-      auth: jest.fn().mockResolvedValue({
-        user: {
-          id: "123",
-          email: "test@example.com",
-          name: "Test User",
-        },
-        expires: "2024-12-31",
-      }),
-    }));
+    mockAuth.mockResolvedValueOnce({
+      user: {
+        id: "123",
+        email: "test@example.com",
+        name: "Test User",
+      },
+      expires: "2024-12-31",
+    });
 
-    const { GET } = await import("@/app/api/protected/route");
     const response = await GET();
     const data = await response.json();
 
