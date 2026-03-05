@@ -308,6 +308,7 @@ export function normalizeBusinessName(name: string): string {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\bmc\s+/g, 'mc')
     .replace(/\s+/g, ' ')
     .trim();
 }

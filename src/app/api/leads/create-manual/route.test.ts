@@ -6,7 +6,6 @@ import { NextRequest } from 'next/server';
 
 const mockAuth = jest.fn();
 const mockPrismaCreate = jest.fn();
-const mockContactCreate = jest.fn();
 
 jest.mock('@/lib/auth', () => ({
   auth: (...args: any[]) => mockAuth(...args),
@@ -16,9 +15,6 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     business: {
       create: (...args: any[]) => mockPrismaCreate(...args),
-    },
-    contact: {
-      create: (...args: any[]) => mockContactCreate(...args),
     },
   },
 }));
@@ -30,7 +26,6 @@ describe('POST /api/leads/create-manual', () => {
     jest.clearAllMocks();
     mockAuth.mockClear();
     mockPrismaCreate.mockClear();
-    mockContactCreate.mockClear();
   });
 
   it('should reject unauthenticated requests', async () => {
@@ -68,7 +63,6 @@ describe('POST /api/leads/create-manual', () => {
     };
 
     mockPrismaCreate.mockResolvedValueOnce(mockBusiness);
-    mockContactCreate.mockResolvedValue({ id: 'contact-123' });
 
     const req = new NextRequest('http://localhost/api/leads/create-manual', {
       method: 'POST',
@@ -132,7 +126,6 @@ describe('POST /api/leads/create-manual', () => {
     };
 
     mockPrismaCreate.mockResolvedValueOnce(mockBusiness);
-    mockContactCreate.mockResolvedValue({ id: 'contact-123' });
 
     const req = new NextRequest('http://localhost/api/leads/create-manual', {
       method: 'POST',
@@ -146,16 +139,20 @@ describe('POST /api/leads/create-manual', () => {
     });
 
     const response = await POST(req);
-    const data = await response.json();
+    await response.json();
 
     expect(response.status).toBe(201);
-    expect(mockContactCreate).toHaveBeenCalledTimes(3);
-    expect(mockContactCreate).toHaveBeenCalledWith({
+    expect(mockPrismaCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        businessId: 'business-123',
-        contactType: 'email',
-        contactValue: 'contact@test.com',
-        isPrimary: true,
+        name: 'Test Business',
+        address: '123 Main St',
+        contactInfo: {
+          create: {
+            email: 'contact@test.com',
+            facebookUrl: 'https://facebook.com/test',
+            instagramUrl: 'https://instagram.com/test',
+          },
+        },
       }),
     });
   });

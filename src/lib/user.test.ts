@@ -5,6 +5,11 @@ import { compare } from "bcryptjs";
 describe("User authentication helpers", () => {
   const testEmail = "test-auth@example.com";
   const testPassword = "TestPassword123!";
+  let consoleLogSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+  });
 
   afterEach(async () => {
     try {
@@ -15,6 +20,7 @@ describe("User authentication helpers", () => {
   });
 
   afterAll(async () => {
+    consoleLogSpy.mockRestore();
     await prisma.$disconnect();
   });
 

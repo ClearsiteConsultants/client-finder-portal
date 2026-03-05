@@ -13,22 +13,25 @@ import {
 import { normalizeBusinessName } from './scorer';
 
 // Mock user ID for tests
-const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
+const TEST_USER_ID = '00000000-0000-0000-0000-00000000aa01';
+const TEST_USER_EMAIL = 'exclusions-test-user@example.com';
 
 // Helper to create a test user
 async function createTestUser() {
-  try {
-    await prisma.user.create({
-      data: {
-        id: TEST_USER_ID,
-        email: 'test@example.com',
-        name: 'Test User',
-        passwordHash: 'not-a-real-hash',
-      },
-    });
-  } catch {
-    // User might already exist
-  }
+  await prisma.user.upsert({
+    where: { id: TEST_USER_ID },
+    update: {
+      email: TEST_USER_EMAIL,
+      name: 'Test User',
+      passwordHash: 'not-a-real-hash',
+    },
+    create: {
+      id: TEST_USER_ID,
+      email: TEST_USER_EMAIL,
+      name: 'Test User',
+      passwordHash: 'not-a-real-hash',
+    },
+  });
 }
 
 // Clean up test data
@@ -51,6 +54,9 @@ describe('exclusions', () => {
 
   afterAll(async () => {
     await cleanupTestData();
+    await prisma.user.deleteMany({
+      where: { id: TEST_USER_ID },
+    });
     await prisma.$disconnect();
   });
 

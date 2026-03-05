@@ -19,6 +19,19 @@ if (typeof global.fetch === 'undefined') {
   (global as any).Response = Response;
 }
 
+if (typeof (global as any).Response !== 'undefined' && typeof (global as any).Response.json !== 'function') {
+  (global as any).Response.json = (data: unknown, init?: ResponseInit) => {
+    const existingHeaders = (init?.headers || {}) as Record<string, string>;
+    return new (global as any).Response(JSON.stringify(data), {
+      ...init,
+      headers: {
+        'content-type': 'application/json',
+        ...existingHeaders,
+      },
+    });
+  };
+}
+
 // Set up test database URL
 if (!process.env.DATABASE_URL) {
   process.env.DATABASE_URL = process.env.DATABASE_URL_TEST || 'postgresql://postgres:postgres@localhost:5432/quizmaster_test';

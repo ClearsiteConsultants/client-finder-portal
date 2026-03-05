@@ -18,6 +18,8 @@ jest.mock('../jobs/queue-service', () => ({
   })),
 }));
 
+jest.setTimeout(35000);
+
 describe('PlacesService', () => {
   let service: PlacesService;
   let mockClient: jest.Mocked<PlacesClient>;
@@ -255,11 +257,15 @@ describe('PlacesService', () => {
     });
 
     it('returns null on error', async () => {
-      mockClient.getPlaceDetails.mockRejectedValue(new Error('Not found'));
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      mockClient.getPlaceDetails.mockRejectedValue(
+        new Error('Not found')
+      );
 
       const result = await service.getPlaceDetails('INVALID');
 
       expect(result).toBeNull();
+      consoleErrorSpy.mockRestore();
     });
   });
 

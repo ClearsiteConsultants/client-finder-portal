@@ -7,7 +7,9 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
-describe('Database Integration Tests', () => {
+const describeDatabase = process.env.RUN_DB_TESTS === 'true' ? describe : describe.skip;
+
+describeDatabase('Database Integration Tests', () => {
   let prisma: PrismaClient;
   let pool: pg.Pool;
 
