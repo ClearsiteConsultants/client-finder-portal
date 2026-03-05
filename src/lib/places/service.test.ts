@@ -189,6 +189,7 @@ describe('PlacesService', () => {
       expect(result.status).toBe('error');
       expect(result.error).toBeTruthy();
       expect(result.results).toHaveLength(0);
+    });
 
     it('marks search run as failed on error', async () => {
       mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
@@ -205,6 +206,7 @@ describe('PlacesService', () => {
 
       expect(searchRun?.status).toBe('failed');
       expect(searchRun?.errorMessage).toContain('Network error');
+    });
   });
 
   describe('getPlaceDetails', () => {
@@ -255,6 +257,7 @@ describe('PlacesService', () => {
     });
 
     it('returns null on error', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       mockClient.getPlaceDetails.mockRejectedValue(
         new Error('Not found')
       );
@@ -262,6 +265,7 @@ describe('PlacesService', () => {
       const result = await service.getPlaceDetails('INVALID');
 
       expect(result).toBeNull();
+      consoleErrorSpy.mockRestore();
     });
   });
 
