@@ -19,7 +19,7 @@ export function getNonWebsiteStatus(socialProfiles: SocialProfiles): WebsiteStat
   return hasAnySocialProfile(socialProfiles) ? 'social_only' : 'no_website';
 }
 
-export function getInitialGoogleMapsStatus(hasWebsite: boolean): WebsiteStatus {
+export function getInitialGoogleMapsStatus(hasWebsite: boolean): 'no_website' | 'technical_issues' {
   // Google imports do not include social URLs. Use a deterministic, non-unknown
   // status and let background website validation refine this for website leads.
   return hasWebsite ? 'technical_issues' : 'no_website';
