@@ -357,7 +357,7 @@ export default function ReviewQueuePage() {
               <th className="px-4 py-3 text-left">
                 <input
                   type="checkbox"
-                  checked={selectedIds.size === leads.length && leads.length > 0}
+                  checked={leads.length > 0 && leads.every((lead) => selectedIds.has(lead.id))}
                   onChange={(e) => handleSelectAll(e.target.checked)}
                 />
               </th>
