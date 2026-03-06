@@ -202,7 +202,10 @@ export default function ReviewQueuePage() {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Status</label>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
           >
             <option value="">All</option>
@@ -216,7 +219,10 @@ export default function ReviewQueuePage() {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Website Status</label>
           <select
             value={websiteStatusFilter}
-            onChange={(e) => setWebsiteStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setWebsiteStatusFilter(e.target.value);
+              setPage(1);
+            }}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
           >
             <option value="">All</option>
@@ -232,7 +238,10 @@ export default function ReviewQueuePage() {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Sort By</label>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
           >
             <option value="priority">Priority (VIP first)</option>
@@ -246,7 +255,10 @@ export default function ReviewQueuePage() {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Sort Order</label>
           <select
             value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            onChange={(e) => {
+              setSortOrder(e.target.value as 'asc' | 'desc');
+              setPage(1);
+            }}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
           >
             <option value="asc">Ascending</option>
@@ -255,6 +267,13 @@ export default function ReviewQueuePage() {
         </div>
 
         <div className="ml-auto flex gap-2">
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            disabled={selectedIds.size === 0}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+          >
+            Deselect All
+          </button>
           <button
             onClick={() => setShowConfirm('approve')}
             disabled={selectedIds.size === 0}
