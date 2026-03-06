@@ -151,7 +151,7 @@ model Business {
   rating                  Float?
   reviewCount             Int?            @map("review_count")
   smallBusinessScore      Int?            @map("small_business_score")
-  websiteStatus           WebsiteStatus   @default(unknown) @map("website_status")
+  websiteStatus           WebsiteStatus   @default(no_website) @map("website_status")
   leadStatus              LeadStatus      @default(pending) @map("lead_status")
 
   // Source / provenance

@@ -15,6 +15,7 @@ interface FetchMetrics {
   endTime: number;
   responseCode: number;
   hasSSL: boolean;
+  html: string;
 }
 
 const TIMEOUT_MS = 10000; // 10 seconds
@@ -64,12 +65,14 @@ async function fetchWithMetrics(url: string): Promise<FetchMetrics> {
 
     clearTimeout(timeoutId);
     const endTime = Date.now();
+    const html = await response.text();
 
     return {
       startTime,
       endTime,
       responseCode: response.status,
       hasSSL: url.startsWith('https://'),
+      html,
     };
   } catch (error) {
     clearTimeout(timeoutId);
@@ -80,31 +83,64 @@ async function fetchWithMetrics(url: string): Promise<FetchMetrics> {
 /**
  * Checks for mobile viewport meta tag
  */
-async function checkMobileViewport(url: string): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+function checkMobileViewport(html: string): boolean {
+  const lowerHtml = html.toLowerCase();
+  return (
+    lowerHtml.includes('viewport') &&
+    (lowerHtml.includes('width=device-width') || lowerHtml.includes('initial-scale'))
+  );
+}
 
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: controller.signal,
-      redirect: 'follow',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; ClientFinderBot/1.0)',
-      },
-    });
+async function detectOutdatedIssues(baseUrl: string, html: string): Promise<string[]> {
+  const issues: string[] = [];
 
-    clearTimeout(timeoutId);
-
-    const html = await response.text();
-    const hasMobileViewport = html.toLowerCase().includes('viewport') &&
-                             (html.toLowerCase().includes('width=device-width') ||
-                              html.toLowerCase().includes('initial-scale'));
-
-    return hasMobileViewport;
-  } catch {
-    return false;
+  // Mixed content indicates old/insecure page composition.
+  if (/(?:src|href)=['\"]http:\/\//i.test(html)) {
+    issues.push('Mixed content (HTTP assets on HTTPS page)');
   }
+
+  const links = Array.from(html.matchAll(/<a\s+[^>]*href=['"]([^'"]+)['"]/gi))
+    .map(match => match[1])
+    .filter(link => {
+      const trimmed = link.trim().toLowerCase();
+      return (
+        trimmed.length > 0 &&
+        !trimmed.startsWith('#') &&
+        !trimmed.startsWith('mailto:') &&
+        !trimmed.startsWith('tel:') &&
+        !trimmed.startsWith('javascript:')
+      );
+    })
+    .slice(0, 5);
+
+  for (const link of links) {
+    try {
+      const resolved = new URL(link, baseUrl).toString();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch(resolved, {
+        method: 'GET',
+        signal: controller.signal,
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; ClientFinderBot/1.0)',
+        },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.status >= 400) {
+        issues.push(`Broken link detected (${response.status})`);
+        break;
+      }
+    } catch {
+      issues.push('Broken link detected (unreachable)');
+      break;
+    }
+  }
+
+  return issues;
 }
 
 /**
@@ -114,6 +150,7 @@ function classifyWebsite(
   url: string | null,
   metrics: FetchMetrics | null,
   hasMobileViewport: boolean,
+  outdatedIssues: string[],
   error: Error | null
 ): { status: WebsiteStatus; issues: string[] } {
   const issues: string[] = [];
@@ -148,30 +185,29 @@ function classifyWebsite(
   }
 
   // Check for technical issues
+  const technicalIssues: string[] = [];
+
   if (!hasSSL) {
-    issues.push('No HTTPS/SSL');
+    technicalIssues.push('No HTTPS/SSL');
   }
 
   if (loadTimeMs > SLOW_LOAD_THRESHOLD_MS) {
-    issues.push(`Slow load time: ${loadTimeMs}ms`);
+    technicalIssues.push(`Slow load time: ${loadTimeMs}ms`);
   }
 
   if (!hasMobileViewport) {
-    issues.push('No mobile viewport meta tag');
+    technicalIssues.push('No mobile viewport meta tag');
   }
 
-  // Determine final status
-  if (issues.length === 0) {
-    return { status: 'acceptable', issues };
+  if (outdatedIssues.length > 0) {
+    return { status: 'outdated', issues: outdatedIssues };
   }
 
-  // If it has SSL issues or is very slow, it's outdated
-  if (!hasSSL || loadTimeMs > SLOW_LOAD_THRESHOLD_MS) {
-    return { status: 'outdated', issues };
+  if (technicalIssues.length > 0) {
+    return { status: 'technical_issues', issues: technicalIssues };
   }
 
-  // Otherwise, technical issues
-  return { status: 'technical_issues', issues };
+  return { status: 'acceptable', issues };
 }
 
 /**
@@ -193,13 +229,15 @@ export async function validateWebsite(
   let metrics: FetchMetrics | null = null;
   let error: Error | null = null;
   let hasMobileViewport: boolean | undefined = undefined;
+  let outdatedIssues: string[] = [];
 
   try {
     metrics = await fetchWithMetrics(normalizedUrl);
     
     // Only check mobile viewport if the initial fetch succeeded
     if (metrics.responseCode >= 200 && metrics.responseCode < 400) {
-      hasMobileViewport = await checkMobileViewport(normalizedUrl);
+      hasMobileViewport = checkMobileViewport(metrics.html);
+      outdatedIssues = await detectOutdatedIssues(normalizedUrl, metrics.html);
     }
   } catch (err) {
     error = err as Error;
@@ -209,6 +247,7 @@ export async function validateWebsite(
     normalizedUrl,
     metrics,
     hasMobileViewport ?? false,
+    outdatedIssues,
     error
   );
 

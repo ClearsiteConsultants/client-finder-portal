@@ -38,7 +38,7 @@ describe('normalizeGooglePlace', () => {
       rating: 4.5,
       reviewCount: 100,
       source: 'google_maps',
-      websiteStatus: 'unknown',
+      websiteStatus: 'technical_issues',
     });
   });
 
@@ -78,7 +78,7 @@ describe('normalizeGooglePlace', () => {
     expect(normalized.websiteStatus).toBe('no_website');
   });
 
-  it('sets websiteStatus to unknown when website is present', () => {
+  it('sets websiteStatus to technical_issues when website is present', () => {
     const googlePlace: GooglePlaceResult = {
       place_id: 'ChIJ222222222',
       name: 'Has Website Business',
@@ -87,7 +87,7 @@ describe('normalizeGooglePlace', () => {
     };
 
     const normalized = normalizeGooglePlace(googlePlace);
-    expect(normalized.websiteStatus).toBe('unknown');
+    expect(normalized.websiteStatus).toBe('technical_issues');
   });
 
   it('prefers formatted_phone_number over international_phone_number', () => {
@@ -136,7 +136,7 @@ describe('normalizeGooglePlaces', () => {
 
     expect(normalized).toHaveLength(2);
     expect(normalized[0].placeId).toBe('ChIJ1');
-    expect(normalized[0].websiteStatus).toBe('unknown');
+    expect(normalized[0].websiteStatus).toBe('technical_issues');
     expect(normalized[1].placeId).toBe('ChIJ2');
     expect(normalized[1].websiteStatus).toBe('no_website');
   });
@@ -161,7 +161,7 @@ describe('toPrismaCreateInput', () => {
       rating: 4.5,
       reviewCount: 100,
       source: 'google_maps' as const,
-      websiteStatus: 'unknown' as const,
+      websiteStatus: 'technical_issues' as const,
     };
 
     const input = toPrismaCreateInput(normalized);
@@ -178,7 +178,7 @@ describe('toPrismaCreateInput', () => {
       rating: 4.5,
       reviewCount: 100,
       source: 'google_maps',
-      websiteStatus: 'unknown',
+      websiteStatus: 'technical_issues',
       leadStatus: 'pending',
       sourceSearchRun: undefined,
     });

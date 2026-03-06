@@ -5,6 +5,7 @@
 import { prisma } from '../prisma';
 import { ValidationJobType } from '@prisma/client';
 import { validateWebsite } from '../validation/website-validator';
+import { getNonWebsiteStatus } from '../validation/website-status';
 import { scrapeEmailsFromWebsite } from '../scraping/email-scraper';
 import { scrapeSocialMediaFromWebsite } from '../scraping/social-media-scraper';
 
@@ -21,6 +22,16 @@ export class JobProcessor {
     try {
       const business = await prisma.business.findUnique({
         where: { id: businessId },
+        include: {
+          contactInfo: {
+            select: {
+              facebookUrl: true,
+              instagramUrl: true,
+              linkedinUrl: true,
+            },
+            take: 1,
+          },
+        },
       });
 
       if (!business) {
@@ -28,10 +39,17 @@ export class JobProcessor {
       }
 
       if (!business.website) {
-        // No website to validate
+        // No website: derive no_website vs social_only from social profiles.
+        const social = business.contactInfo[0];
         await prisma.business.update({
           where: { id: businessId },
-          data: { websiteStatus: 'no_website' },
+          data: {
+            websiteStatus: getNonWebsiteStatus({
+              facebookUrl: social?.facebookUrl,
+              instagramUrl: social?.instagramUrl,
+              linkedinUrl: social?.linkedinUrl,
+            }),
+          },
         });
         return { success: true };
       }

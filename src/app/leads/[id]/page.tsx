@@ -64,6 +64,8 @@ export default function LeadDetailPage() {
   const [editedAddress, setEditedAddress] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
   const [editedWebsite, setEditedWebsite] = useState('');
+  const [editedWebsiteStatus, setEditedWebsiteStatus] = useState('no_website');
+  const [websiteStatusManuallyEdited, setWebsiteStatusManuallyEdited] = useState(false);
   const [editedLeadStatus, setEditedLeadStatus] = useState('');
   const [editedBusinessTypes, setEditedBusinessTypes] = useState<string[]>([]);
   const [editedRating, setEditedRating] = useState<number | null>(null);
@@ -175,6 +177,8 @@ export default function LeadDetailPage() {
     setEditedAddress(business.address);
     setEditedPhone(business.phone || '');
     setEditedWebsite(business.website || '');
+    setEditedWebsiteStatus(business.websiteStatus);
+    setWebsiteStatusManuallyEdited(false);
     setEditedLeadStatus(business.leadStatus);
     setEditedBusinessTypes(business.businessTypes);
     setEditedRating(business.rating);
@@ -212,22 +216,28 @@ export default function LeadDetailPage() {
 
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = {
+        address: editedAddress,
+        phone: editedPhone || null,
+        website: editedWebsite || null,
+        placeId: editedPlaceId || null,
+        source: editedSource,
+        leadStatus: editedLeadStatus,
+        businessTypes: editedBusinessTypes,
+        rating: editedRating !== null ? editedRating : null,
+        facebookUrl: editedFacebookUrl || null,
+        instagramUrl: editedInstagramUrl || null,
+        linkedinUrl: editedLinkedinUrl || null,
+      };
+
+      if (websiteStatusManuallyEdited) {
+        payload.websiteStatus = editedWebsiteStatus;
+      }
+
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: editedAddress,
-          phone: editedPhone || null,
-          website: editedWebsite || null,
-          placeId: editedPlaceId || null,
-          source: editedSource,
-          leadStatus: editedLeadStatus,
-          businessTypes: editedBusinessTypes,
-          rating: editedRating !== null ? editedRating : null,
-          facebookUrl: editedFacebookUrl || null,
-          instagramUrl: editedInstagramUrl || null,
-          linkedinUrl: editedLinkedinUrl || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -280,10 +290,9 @@ export default function LeadDetailPage() {
       technical_issues: 'bg-yellow-100 text-yellow-800',
       outdated: 'bg-yellow-100 text-yellow-800',
       acceptable: 'bg-green-100 text-green-800',
-      unknown: 'bg-gray-100 text-gray-800',
     };
     return (
-      <span className={`px-2 py-1 text-xs rounded ${colors[status] || colors.unknown}`}>
+      <span className={`px-2 py-1 text-xs rounded ${colors[status] || colors.no_website}`}>
         {status.replace('_', ' ')}
       </span>
     );
@@ -401,6 +410,27 @@ export default function LeadDetailPage() {
                     {businessInfoErrors.website && (
                       <p className="mt-1 text-xs text-red-600 dark:text-red-400">{businessInfoErrors.website}</p>
                     )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                      Website Status
+                    </label>
+                    <select
+                      value={editedWebsiteStatus}
+                      onChange={(e) => {
+                        setEditedWebsiteStatus(e.target.value);
+                        setWebsiteStatusManuallyEdited(true);
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                    >
+                      <option value="no_website">No Website</option>
+                      <option value="social_only">Social Only</option>
+                      <option value="broken">Broken</option>
+                      <option value="technical_issues">Technical Issues</option>
+                      <option value="outdated">Outdated</option>
+                      <option value="acceptable">Acceptable</option>
+                    </select>
                   </div>
 
                   <div>

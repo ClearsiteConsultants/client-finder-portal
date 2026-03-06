@@ -114,7 +114,7 @@ describeDatabase('Database Integration Tests', () => {
           name: 'Manual Business Entry',
           address: '456 Oak Ave',
           source: 'manual',
-          websiteStatus: 'unknown',
+          websiteStatus: 'no_website',
           leadStatus: 'pending',
         },
       });

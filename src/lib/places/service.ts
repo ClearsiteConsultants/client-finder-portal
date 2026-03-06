@@ -162,7 +162,7 @@ export class PlacesService {
                   rating: norm.rating,
                   reviewCount: norm.reviewCount,
                   smallBusinessScore: scoringResult.score,
-                  websiteStatus: scoringResult.isVIP ? 'no_website' : 'unknown',
+                  websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
                   cachedAt: new Date(), // Update cache timestamp
                 },
               });
@@ -179,7 +179,7 @@ export class PlacesService {
                 data: {
                   ...toPrismaCreateInput(norm, searchRun.id),
                   smallBusinessScore: scoringResult.score,
-                  websiteStatus: scoringResult.isVIP ? 'no_website' : 'unknown',
+                  websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
                   leadStatus,
                   rejectedAt: exclusionCheck?.isExcluded ? new Date() : undefined,
                   rejectedReason,
@@ -196,7 +196,7 @@ export class PlacesService {
             // Enqueue background validation jobs for this business
             // Only enqueue for non-excluded businesses with potential data to validate
             if (!exclusionCheck?.isExcluded) {
-              if (business.website && business.websiteStatus === 'unknown') {
+              if (business.website) {
                 await this.jobQueue.enqueueJob({
                   businessId: business.id,
                   jobType: 'website_validation',
@@ -304,6 +304,7 @@ export class PlacesService {
             businessTypes: normalized.businessTypes,
             rating: normalized.rating,
             reviewCount: normalized.reviewCount,
+            websiteStatus: normalized.websiteStatus,
             cachedAt: new Date(), // Update cache timestamp
           },
         });

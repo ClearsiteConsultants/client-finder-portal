@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Prisma, LeadStatus, BusinessSource } from '@prisma/client';
+import { Prisma, LeadStatus, BusinessSource, WebsiteStatus } from '@prisma/client';
+import { deriveWebsiteStatus } from '@/lib/validation/website-status';
 
 export async function GET(
   request: NextRequest,
@@ -81,6 +82,7 @@ export async function PATCH(
       placeId,
       source,
       leadStatus,
+      websiteStatus,
       businessTypes,
       rating,
       facebookUrl,
@@ -88,7 +90,20 @@ export async function PATCH(
       linkedinUrl,
     } = body;
 
+    if (websiteStatus === 'unknown') {
+      return NextResponse.json(
+        { error: 'websiteStatus "unknown" is no longer supported' },
+        { status: 400 }
+      );
+    }
+
     const updateData: Prisma.BusinessUpdateInput = {};
+    const normalizedWebsite = website !== undefined ? website?.trim() || null : undefined;
+    const normalizedFacebookUrl = facebookUrl !== undefined ? facebookUrl?.trim() || null : undefined;
+    const normalizedInstagramUrl = instagramUrl !== undefined ? instagramUrl?.trim() || null : undefined;
+    const normalizedLinkedinUrl = linkedinUrl !== undefined ? linkedinUrl?.trim() || null : undefined;
+    const socialFieldsProvided =
+      facebookUrl !== undefined || instagramUrl !== undefined || linkedinUrl !== undefined;
 
     if (notes !== undefined) {
       updateData.notes = notes;
@@ -107,7 +122,7 @@ export async function PATCH(
     }
 
     if (website !== undefined) {
-      updateData.website = website ? website.trim() : null;
+      updateData.website = normalizedWebsite;
     }
 
     if (placeId !== undefined) {
@@ -122,6 +137,10 @@ export async function PATCH(
       updateData.leadStatus = leadStatus as LeadStatus;
     }
 
+    if (websiteStatus !== undefined) {
+      updateData.websiteStatus = websiteStatus as WebsiteStatus;
+    }
+
     if (businessTypes !== undefined) {
       updateData.businessTypes = Array.isArray(businessTypes) 
         ? businessTypes.map((t: string) => t.trim()).filter((t: string) => t)
@@ -130,6 +149,42 @@ export async function PATCH(
 
     if (rating !== undefined) {
       updateData.rating = rating !== null ? Number(rating) : null;
+    }
+
+    if (websiteStatus === undefined && (website !== undefined || socialFieldsProvided)) {
+      const existingBusiness = await prisma.business.findUnique({
+        where: { id },
+        select: {
+          website: true,
+          contactInfo: {
+            select: {
+              facebookUrl: true,
+              instagramUrl: true,
+              linkedinUrl: true,
+            },
+            take: 1,
+          },
+        },
+      });
+
+      if (!existingBusiness) {
+        return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+      }
+
+      const existingContact = existingBusiness.contactInfo[0];
+      const effectiveWebsite = normalizedWebsite !== undefined ? normalizedWebsite : existingBusiness.website;
+      const effectiveFacebook = normalizedFacebookUrl !== undefined ? normalizedFacebookUrl : existingContact?.facebookUrl;
+      const effectiveInstagram = normalizedInstagramUrl !== undefined ? normalizedInstagramUrl : existingContact?.instagramUrl;
+      const effectiveLinkedin = normalizedLinkedinUrl !== undefined ? normalizedLinkedinUrl : existingContact?.linkedinUrl;
+
+      updateData.websiteStatus = await deriveWebsiteStatus({
+        website: effectiveWebsite,
+        socialProfiles: {
+          facebookUrl: effectiveFacebook,
+          instagramUrl: effectiveInstagram,
+          linkedinUrl: effectiveLinkedin,
+        },
+      });
     }
 
     // Update business
@@ -165,7 +220,7 @@ export async function PATCH(
     });
 
     // Handle social media updates in ContactInfo
-    if (facebookUrl !== undefined || instagramUrl !== undefined || linkedinUrl !== undefined) {
+    if (socialFieldsProvided) {
       const existingContact = await prisma.contactInfo.findFirst({
         where: { businessId: id },
       });
@@ -173,22 +228,22 @@ export async function PATCH(
       if (existingContact) {
         // Update existing contact info
         const contactUpdateData: Prisma.ContactInfoUpdateInput = {};
-        if (facebookUrl !== undefined) contactUpdateData.facebookUrl = facebookUrl;
-        if (instagramUrl !== undefined) contactUpdateData.instagramUrl = instagramUrl;
-        if (linkedinUrl !== undefined) contactUpdateData.linkedinUrl = linkedinUrl;
+        if (facebookUrl !== undefined) contactUpdateData.facebookUrl = normalizedFacebookUrl;
+        if (instagramUrl !== undefined) contactUpdateData.instagramUrl = normalizedInstagramUrl;
+        if (linkedinUrl !== undefined) contactUpdateData.linkedinUrl = normalizedLinkedinUrl;
 
         await prisma.contactInfo.update({
           where: { id: existingContact.id },
           data: contactUpdateData,
         });
-      } else if (facebookUrl || instagramUrl || linkedinUrl) {
+      } else if (normalizedFacebookUrl || normalizedInstagramUrl || normalizedLinkedinUrl) {
         // Create new contact info if any social media link is provided
         await prisma.contactInfo.create({
           data: {
             businessId: id,
-            facebookUrl: facebookUrl || null,
-            instagramUrl: instagramUrl || null,
-            linkedinUrl: linkedinUrl || null,
+            facebookUrl: normalizedFacebookUrl,
+            instagramUrl: normalizedInstagramUrl,
+            linkedinUrl: normalizedLinkedinUrl,
           },
         });
       }

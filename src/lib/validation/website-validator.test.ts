@@ -69,6 +69,15 @@ describe('validateWebsite with test server', () => {
       } else if (url === '/200-no-viewport') {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<html><head></head><body>OK</body></html>');
+      } else if (url === '/200-mixed-content') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<html><head><meta name="viewport" content="width=device-width"></head><body><img src="http://cdn.example.com/logo.png" /></body></html>');
+      } else if (url === '/200-broken-link') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<html><head><meta name="viewport" content="width=device-width"></head><body><a href="/missing-page">Missing</a></body></html>');
+      } else if (url === '/missing-page') {
+        res.writeHead(404, { 'Content-Type': 'text/html' });
+        res.end('<html><body>Missing</body></html>');
       } else if (url === '/404-not-found') {
         res.writeHead(404, { 'Content-Type': 'text/html' });
         res.end('<html><body>Not Found</body></html>');
@@ -103,29 +112,27 @@ describe('validateWebsite with test server', () => {
     server.close(done);
   });
 
-  it('should classify 200 OK with viewport as acceptable (if HTTPS)', async () => {
-    // Note: Local test server is HTTP, so it will be classified as outdated
-    // This test verifies metrics collection works correctly
+  it('should classify 200 OK with viewport as technical_issues when SSL is missing', async () => {
     const result = await validateWebsite(`${baseUrl}/200-ok`);
     expect(result.responseCode).toBe(200);
     expect(result.hasSSL).toBe(false); // Local test server is HTTP
     expect(result.hasMobileViewport).toBe(true);
-    // Without HTTPS, it will be outdated, not acceptable
-    expect(result.status).toBe('outdated');
+    expect(result.status).toBe('technical_issues');
     expect(result.detectedIssues).toContain('No HTTPS/SSL');
   });
 
-  it('should classify 200 OK without SSL as outdated', async () => {
+  it('should classify 200 OK without SSL as technical_issues', async () => {
     const result = await validateWebsite(`${baseUrl}/200-ok`);
-    expect(result.status).toBe('outdated');
+    expect(result.status).toBe('technical_issues');
     expect(result.responseCode).toBe(200);
     expect(result.hasSSL).toBe(false);
     expect(result.detectedIssues).toContain('No HTTPS/SSL');
   });
 
   it('should classify 200 OK without mobile viewport as technical_issues', async () => {
-    // Note: This will also fail SSL check, so it will be outdated
+    // This will also fail SSL check, both of which are technical_issues.
     const result = await validateWebsite(`${baseUrl}/200-no-viewport`);
+    expect(result.status).toBe('technical_issues');
     expect(result.responseCode).toBe(200);
     expect(result.hasMobileViewport).toBe(false);
     expect(result.detectedIssues).toContain('No mobile viewport meta tag');
@@ -145,13 +152,25 @@ describe('validateWebsite with test server', () => {
     expect(result.detectedIssues).toContain('HTTP 500 error');
   });
 
-  it('should classify slow response as outdated', async () => {
+  it('should classify slow response as technical_issues', async () => {
     const result = await validateWebsite(`${baseUrl}/slow-response`);
-    expect(result.status).toBe('outdated');
+    expect(result.status).toBe('technical_issues');
     expect(result.responseCode).toBe(200);
     expect(result.loadTimeMs).toBeGreaterThan(5000);
     expect(result.detectedIssues.some(issue => issue.includes('Slow load time'))).toBe(true);
   }, 15000); // Increase Jest timeout for this test
+
+  it('should classify mixed content as outdated', async () => {
+    const result = await validateWebsite(`${baseUrl}/200-mixed-content`);
+    expect(result.status).toBe('outdated');
+    expect(result.detectedIssues).toContain('Mixed content (HTTP assets on HTTPS page)');
+  });
+
+  it('should classify broken links as outdated', async () => {
+    const result = await validateWebsite(`${baseUrl}/200-broken-link`);
+    expect(result.status).toBe('outdated');
+    expect(result.detectedIssues.some(issue => issue.startsWith('Broken link detected'))).toBe(true);
+  });
 
   it('should classify timeout as broken', async () => {
     const result = await validateWebsite(`${baseUrl}/timeout`);

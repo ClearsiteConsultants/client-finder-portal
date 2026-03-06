@@ -119,7 +119,7 @@ describe('Job Queue Integration', () => {
       id: mockBusinessId,
       name: 'Test Business',
       website: 'https://example.com',
-      websiteStatus: 'unknown' as const,
+      websiteStatus: 'technical_issues' as const,
     };
 
     (prisma.business.findUnique as jest.Mock).mockResolvedValue(mockBusiness);

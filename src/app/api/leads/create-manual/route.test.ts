@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server';
 
 const mockAuth = jest.fn();
 const mockPrismaCreate = jest.fn();
+const mockDeriveWebsiteStatus = jest.fn();
 
 jest.mock('@/lib/auth', () => ({
   auth: (...args: any[]) => mockAuth(...args),
@@ -19,6 +20,10 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
+jest.mock('@/lib/validation/website-status', () => ({
+  deriveWebsiteStatus: (...args: any[]) => mockDeriveWebsiteStatus(...args),
+}));
+
 import { POST } from './route';
 
 describe('POST /api/leads/create-manual', () => {
@@ -26,6 +31,7 @@ describe('POST /api/leads/create-manual', () => {
     jest.clearAllMocks();
     mockAuth.mockClear();
     mockPrismaCreate.mockClear();
+    mockDeriveWebsiteStatus.mockResolvedValue('technical_issues');
   });
 
   it('should reject unauthenticated requests', async () => {
@@ -58,7 +64,7 @@ describe('POST /api/leads/create-manual', () => {
       placeId: null,
       source: 'manual',
       leadStatus: 'pending',
-      websiteStatus: 'unknown',
+      websiteStatus: 'technical_issues',
       businessTypes: [],
     };
 
@@ -88,6 +94,7 @@ describe('POST /api/leads/create-manual', () => {
         address: '123 Main St',
         source: 'manual',
         leadStatus: 'pending',
+        websiteStatus: 'technical_issues',
       }),
     });
   });
@@ -151,9 +158,49 @@ describe('POST /api/leads/create-manual', () => {
             email: 'contact@test.com',
             facebookUrl: 'https://facebook.com/test',
             instagramUrl: 'https://instagram.com/test',
+            linkedinUrl: null,
           },
         },
       }),
+    });
+  });
+
+  it('derives social_only when no website but social profiles are provided', async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: 'user-123', email: 'test@example.com' },
+      expires: '2024-12-31',
+    });
+    mockDeriveWebsiteStatus.mockResolvedValueOnce('social_only');
+
+    mockPrismaCreate.mockResolvedValueOnce({
+      id: 'business-123',
+      name: 'Social Lead',
+      address: '123 Main St',
+      source: 'manual',
+      websiteStatus: 'social_only',
+      businessTypes: [],
+    });
+
+    const req = new NextRequest('http://localhost/api/leads/create-manual', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Social Lead',
+        address: '123 Main St',
+        facebook: 'https://facebook.com/sociallead',
+      }),
+    });
+
+    const response = await POST(req);
+    await response.json();
+
+    expect(response.status).toBe(201);
+    expect(mockDeriveWebsiteStatus).toHaveBeenCalledWith({
+      website: null,
+      socialProfiles: {
+        facebookUrl: 'https://facebook.com/sociallead',
+        instagramUrl: null,
+        linkedinUrl: null,
+      },
     });
   });
 });

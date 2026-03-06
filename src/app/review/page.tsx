@@ -157,10 +157,9 @@ export default function ReviewQueuePage() {
       technical_issues: 'bg-yellow-100 text-yellow-800',
       outdated: 'bg-yellow-100 text-yellow-800',
       acceptable: 'bg-green-100 text-green-800',
-      unknown: 'bg-gray-100 text-gray-800',
     };
     return (
-      <span className={`px-2 py-1 text-xs rounded ${colors[status] || colors.unknown}`}>
+      <span className={`px-2 py-1 text-xs rounded ${colors[status] || colors.no_website}`}>
         {status.replace('_', ' ')}
       </span>
     );
@@ -229,6 +228,7 @@ export default function ReviewQueuePage() {
             <option value="no_website">No Website</option>
             <option value="social_only">Social Only</option>
             <option value="broken">Broken</option>
+            <option value="technical_issues">Technical Issues</option>
             <option value="outdated">Outdated</option>
             <option value="acceptable">Acceptable</option>
           </select>

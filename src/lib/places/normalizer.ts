@@ -4,6 +4,7 @@
 
 import type { GooglePlaceResult } from './types';
 import type { Prisma } from '@prisma/client';
+import { getInitialGoogleMapsStatus } from '../validation/website-status';
 
 export interface NormalizedBusiness {
   placeId: string;
@@ -17,7 +18,7 @@ export interface NormalizedBusiness {
   rating: number | null;
   reviewCount: number | null;
   source: 'google_maps';
-  websiteStatus: 'no_website' | 'unknown';
+  websiteStatus: 'no_website' | 'technical_issues';
 }
 
 /**
@@ -38,7 +39,7 @@ export function normalizeGooglePlace(place: GooglePlaceResult): NormalizedBusine
     rating: place.rating ?? null,
     reviewCount: place.user_ratings_total ?? null,
     source: 'google_maps',
-    websiteStatus: hasWebsite ? 'unknown' : 'no_website',
+    websiteStatus: getInitialGoogleMapsStatus(hasWebsite),
   };
 }
 
