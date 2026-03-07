@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 
 const mockAuth = jest.fn();
 const mockPrismaFindUnique = jest.fn();
-const mockPrismaUpdate = jest.fn();
+const mockPrismaUpdateMany = jest.fn();
 
 jest.mock('@/lib/auth', () => ({
   auth: () => mockAuth(),
@@ -17,7 +17,7 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     business: {
       findUnique: (...args: any[]) => mockPrismaFindUnique(...args),
-      update: (...args: any[]) => mockPrismaUpdate(...args),
+      updateMany: (...args: any[]) => mockPrismaUpdateMany(...args),
     },
   },
 }));
@@ -32,7 +32,7 @@ describe('POST /api/leads/convert-to-client', () => {
     jest.clearAllMocks();
     mockAuth.mockClear();
     mockPrismaFindUnique.mockClear();
-    mockPrismaUpdate.mockClear();
+    mockPrismaUpdateMany.mockClear();
   });
 
   it('should reject unauthorized requests', async () => {
@@ -160,7 +160,16 @@ describe('POST /api/leads/convert-to-client', () => {
       name: 'Test Business',
     } as any);
 
-    mockPrismaUpdate.mockResolvedValue({
+    mockPrismaUpdateMany.mockResolvedValue({ count: 1 });
+
+    mockPrismaFindUnique.mockResolvedValueOnce({
+      id: mockBusinessId,
+      leadStatus: 'approved',
+      isClient: false,
+      name: 'Test Business',
+    } as any);
+
+    mockPrismaFindUnique.mockResolvedValueOnce({
       id: mockBusinessId,
       leadStatus: 'approved',
       isClient: true,
@@ -186,14 +195,18 @@ describe('POST /api/leads/convert-to-client', () => {
     expect(data.success).toBe(true);
     expect(data.business.isClient).toBe(true);
     expect(data.business.convertedByUserId).toBe(mockUserId);
-    expect(mockPrismaUpdate).toHaveBeenCalledWith({
-      where: { id: mockBusinessId },
+    expect(mockPrismaUpdateMany).toHaveBeenCalledWith({
+      where: {
+        id: mockBusinessId,
+        leadStatus: 'approved',
+        isClient: false,
+      },
       data: expect.objectContaining({
         isClient: true,
+        clientStatus: 'active',
         convertedByUserId: mockUserId,
         convertedAt: expect.any(Date),
       }),
-      include: expect.any(Object),
     });
   });
 
@@ -210,7 +223,16 @@ describe('POST /api/leads/convert-to-client', () => {
       name: 'Test Business',
     } as any);
 
-    mockPrismaUpdate.mockResolvedValue({
+    mockPrismaUpdateMany.mockResolvedValue({ count: 1 });
+
+    mockPrismaFindUnique.mockResolvedValueOnce({
+      id: mockBusinessId,
+      leadStatus: 'approved',
+      isClient: false,
+      name: 'Test Business',
+    } as any);
+
+    mockPrismaFindUnique.mockResolvedValueOnce({
       id: mockBusinessId,
       isClient: true,
       clientStatus: 'active',
@@ -232,15 +254,45 @@ describe('POST /api/leads/convert-to-client', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(mockPrismaUpdate).toHaveBeenCalledWith({
-      where: { id: mockBusinessId },
+    expect(mockPrismaUpdateMany).toHaveBeenCalledWith({
+      where: {
+        id: mockBusinessId,
+        leadStatus: 'approved',
+        isClient: false,
+      },
       data: expect.objectContaining({
         isClient: true,
         clientStatus: 'active',
         subscriptionStatus: 'trial',
         initialPaymentStatus: 'pending',
       }),
-      include: expect.any(Object),
     });
+  });
+
+  it('should reject conversion when atomic update does not affect any record', async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: mockUserId, email: 'test@example.com' },
+      expires: '2024-12-31',
+    });
+
+    mockPrismaFindUnique.mockResolvedValueOnce({
+      id: mockBusinessId,
+      leadStatus: 'approved',
+      isClient: false,
+      name: 'Test Business',
+    } as any);
+
+    mockPrismaUpdateMany.mockResolvedValue({ count: 0 });
+
+    const request = new NextRequest('http://localhost:3000/api/leads/convert-to-client', {
+      method: 'POST',
+      body: JSON.stringify({ businessId: mockBusinessId }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain('Only approved leads');
   });
 });

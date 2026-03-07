@@ -33,6 +33,10 @@ type Business = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  isClient?: boolean;
+  convertedAt?: string | null;
+  clientStatus?: string | null;
+  convertedByUser?: { id: string; name: string | null; email: string | null } | null;
   contactInfo?: Array<{
     id: string;
     email: string | null;
@@ -53,6 +57,7 @@ export default function LeadDetailPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [convertingToClient, setConvertingToClient] = useState(false);
   const [notes, setNotes] = useState('');
   const [nextFollowupAt, setNextFollowupAt] = useState('');
   const [showLinkPlaceId, setShowLinkPlaceId] = useState(false);
@@ -282,6 +287,47 @@ export default function LeadDetailPage() {
     }
   };
 
+  const handleConvertToClient = async () => {
+    if (!leadId || !business) return;
+
+    if (business.leadStatus !== 'approved') {
+      alert('Only approved leads can be converted to an active client.');
+      return;
+    }
+
+    if (business.isClient) {
+      router.push(`/clients/${business.id}`);
+      return;
+    }
+
+    setConvertingToClient(true);
+    try {
+      const response = await fetch('/api/leads/convert-to-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: leadId,
+          clientStatus: 'active',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to convert lead to active client');
+        return;
+      }
+
+      setBusiness(data.business);
+      router.push(`/clients/${data.business.id}`);
+    } catch (error) {
+      console.error('Error converting lead to client:', error);
+      alert('Failed to convert lead to active client');
+    } finally {
+      setConvertingToClient(false);
+    }
+  };
+
   const getWebsiteStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       no_website: 'bg-red-100 text-red-800',
@@ -330,6 +376,9 @@ export default function LeadDetailPage() {
   if (!business) {
     return null;
   }
+
+  const isClient = Boolean(business.isClient);
+  const canConvertToClient = !isClient && business.leadStatus === 'approved';
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
@@ -836,14 +885,50 @@ export default function LeadDetailPage() {
                     )}
                   </div>
                 )}
+                {isClient && business.convertedAt && (
+                  <div>
+                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Converted To Client</dt>
+                    <dd className="mt-1 text-sm">
+                      {new Date(business.convertedAt).toLocaleDateString()}
+                      {business.convertedByUser && (
+                        <>
+                          {' '}by {business.convertedByUser.name || business.convertedByUser.email}
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <h2 className="text-lg font-semibold mb-4">Actions</h2>
+              {isClient ? (
+                <button
+                  onClick={() => router.push(`/clients/${business.id}`)}
+                  className="mb-3 w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+                >
+                  View Active Client
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleConvertToClient}
+                    disabled={!canConvertToClient || convertingToClient}
+                    className="mb-2 w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed dark:disabled:bg-slate-700 dark:disabled:text-slate-300"
+                  >
+                    {convertingToClient ? 'Converting...' : 'Convert To Active Client'}
+                  </button>
+                  {!canConvertToClient && (
+                    <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                      Lead must have status <span className="font-semibold">approved</span> before conversion.
+                    </p>
+                  )}
+                </>
+              )}
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                disabled={deleting}
+                disabled={deleting || convertingToClient}
                 className="w-full rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed dark:disabled:bg-slate-700 dark:disabled:text-slate-300"
               >
                 {deleting ? 'Deleting...' : 'Delete Lead'}

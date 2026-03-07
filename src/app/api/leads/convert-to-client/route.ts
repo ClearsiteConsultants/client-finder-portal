@@ -52,20 +52,35 @@ export async function POST(request: NextRequest) {
     // Validate conversion eligibility
     assertCanConvertToClient(business);
 
-    // Perform the conversion
-    const updatedBusiness = await prisma.business.update({
-      where: { id: business.id },
+    // Perform conversion atomically to prevent stale-status conversions.
+    const conversionResult = await prisma.business.updateMany({
+      where: {
+        id: business.id,
+        leadStatus: 'approved',
+        isClient: false,
+      },
       data: {
         isClient: true,
         convertedAt: new Date(),
         convertedByUserId: session.user.id,
-        clientStatus: validatedData.clientStatus,
+        clientStatus: validatedData.clientStatus ?? 'active',
         subscriptionStatus: validatedData.subscriptionStatus,
         initialPaymentStatus: validatedData.initialPaymentStatus,
-        nextPaymentDueDate: validatedData.nextPaymentDueDate 
-          ? new Date(validatedData.nextPaymentDueDate) 
+        nextPaymentDueDate: validatedData.nextPaymentDueDate
+          ? new Date(validatedData.nextPaymentDueDate)
           : undefined,
       },
+    });
+
+    if (conversionResult.count === 0) {
+      return NextResponse.json(
+        { error: 'Only approved leads can be converted to an active client' },
+        { status: 400 }
+      );
+    }
+
+    const updatedBusiness = await prisma.business.findUnique({
+      where: { id: business.id },
       include: {
         convertedByUser: {
           select: {
@@ -76,6 +91,13 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    if (!updatedBusiness) {
+      return NextResponse.json(
+        { error: 'Business not found after conversion' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

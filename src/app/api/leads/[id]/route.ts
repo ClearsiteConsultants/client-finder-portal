@@ -19,6 +19,13 @@ export async function GET(
     const business = await prisma.business.findUnique({
       where: { id },
       include: {
+        convertedByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
         approvedByUser: {
           select: {
             id: true,
@@ -192,6 +199,13 @@ export async function PATCH(
       where: { id },
       data: updateData,
       include: {
+        convertedByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
         approvedByUser: {
           select: {
             id: true,
@@ -252,6 +266,13 @@ export async function PATCH(
       const updatedBusiness = await prisma.business.findUnique({
         where: { id },
         include: {
+          convertedByUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
           approvedByUser: {
             select: {
               id: true,

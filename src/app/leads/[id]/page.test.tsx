@@ -56,6 +56,10 @@ describe('LeadDetailPage', () => {
     notes: null,
     createdAt: '2026-01-15T10:00:00Z',
     updatedAt: '2026-01-15T10:00:00Z',
+    isClient: false,
+    convertedAt: null,
+    clientStatus: null,
+    convertedByUser: null,
     contactInfo: [
       {
         id: 'contact-123',
@@ -403,6 +407,76 @@ describe('LeadDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Website must start with http:// or https://')).toBeInTheDocument();
+    });
+  });
+
+  it('should disable convert button when lead is not approved', async () => {
+    render(<LeadDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Business Inc')).toBeInTheDocument();
+    });
+
+    const convertButton = screen.getByRole('button', { name: 'Convert To Active Client' });
+    expect(convertButton).toBeDisabled();
+    expect(screen.getByText(/Lead must have status/i)).toBeInTheDocument();
+  });
+
+  it('should enable convert button for approved lead and call conversion endpoint', async () => {
+    const approvedBusiness = {
+      ...mockBusiness,
+      leadStatus: 'approved',
+    };
+
+    (global.fetch as jest.Mock).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/api/leads/convert-to-client')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            business: {
+              ...approvedBusiness,
+              isClient: true,
+              clientStatus: 'active',
+              convertedAt: '2026-02-05T12:00:00Z',
+              convertedByUser: {
+                id: 'user-1',
+                name: 'Test User',
+                email: 'test@example.com',
+              },
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => approvedBusiness,
+      };
+    });
+
+    render(<LeadDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Business Inc')).toBeInTheDocument();
+    });
+
+    const convertButton = screen.getByRole('button', { name: 'Convert To Active Client' });
+    expect(convertButton).toBeEnabled();
+
+    fireEvent.click(convertButton);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/leads/convert-to-client',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+      expect(mockPush).toHaveBeenCalledWith('/clients/business-123');
     });
   });
 
