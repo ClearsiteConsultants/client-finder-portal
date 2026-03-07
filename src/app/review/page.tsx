@@ -211,6 +211,9 @@ export default function ReviewQueuePage() {
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
+            <option value="contacted">Contacted</option>
+            <option value="responded">Responded</option>
+            <option value="inactive">Inactive</option>
           </select>
         </div>
 

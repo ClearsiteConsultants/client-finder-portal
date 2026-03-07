@@ -25,8 +25,6 @@ export async function GET(request: NextRequest) {
     
     if (statusFilter) {
       where.leadStatus = statusFilter;
-    } else {
-      where.leadStatus = 'pending';
     }
 
     if (websiteStatusFilter) {
