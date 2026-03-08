@@ -73,7 +73,7 @@ describe('Exclusions API', () => {
 
       expect(response.status).toBe(201);
       expect(data.id).toBeDefined();
-      expect(data.message).toBe('Business added to exclude list');
+      expect(data.message).toBe('Entry added to exclude list');
 
       // Verify created record by ID
       const excluded = await prisma.excludedBusiness.findUnique({
@@ -118,6 +118,41 @@ describe('Exclusions API', () => {
       const request = new Request('http://localhost/api/exclusions', {
         method: 'POST',
         body: JSON.stringify({}),
+      });
+
+      const response = await POST(request as any);
+      expect(response.status).toBe(400);
+    });
+
+    it('should add a business type to exclude list', async () => {
+      const request = new Request('http://localhost/api/exclusions', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessType: 'restaurant',
+          reason: 'Skip this vertical',
+        }),
+      });
+
+      const response = await POST(request as any);
+      const data = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(data.id).toBeDefined();
+      expect(data.message).toBe('Entry added to exclude list');
+
+      const excluded = await prisma.excludedBusiness.findUnique({
+        where: { id: data.id },
+      });
+      expect(excluded?.businessNameNormalized).toBe('type:restaurant');
+    });
+
+    it('should return 400 if both businessName and businessType are provided', async () => {
+      const request = new Request('http://localhost/api/exclusions', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName: 'Starbucks',
+          businessType: 'cafe',
+        }),
       });
 
       const response = await POST(request as any);

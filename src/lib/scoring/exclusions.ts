@@ -12,6 +12,26 @@ export interface ExclusionCheckResult {
   isExcluded: boolean;
   excludedBusinessId?: string;
   reason?: string;
+  exclusionMode?: 'business_name' | 'business_type';
+  matchedValue?: string;
+}
+
+const BUSINESS_TYPE_PREFIX = 'type:';
+
+function normalizeBusinessType(businessType: string): string {
+  return businessType.trim().toLowerCase();
+}
+
+function toBusinessTypeToken(businessType: string): string {
+  return `${BUSINESS_TYPE_PREFIX}${normalizeBusinessType(businessType)}`;
+}
+
+function isBusinessTypeToken(value: string): boolean {
+  return value.startsWith(BUSINESS_TYPE_PREFIX);
+}
+
+function tokenToBusinessType(value: string): string {
+  return value.slice(BUSINESS_TYPE_PREFIX.length);
 }
 
 function buildNormalizationCandidates(normalizedName: string): string[] {
@@ -56,11 +76,62 @@ export async function checkBusinessExclusion(
       isExcluded: true,
       excludedBusinessId: excludedBusiness.id,
       reason: excludedBusiness.reason || undefined,
+      exclusionMode: 'business_name',
+      matchedValue: businessName,
     };
   }
   
   return {
     isExcluded: false,
+  };
+}
+
+/**
+ * Check if any business types match entries in the exclude list.
+ */
+export async function checkBusinessTypeExclusion(
+  businessTypes: string[]
+): Promise<ExclusionCheckResult> {
+  if (!businessTypes.length) {
+    return { isExcluded: false };
+  }
+
+  const tokens = Array.from(
+    new Set(
+      businessTypes
+        .map((type) => type?.trim())
+        .filter((type): type is string => !!type)
+        .map(toBusinessTypeToken)
+    )
+  );
+
+  if (!tokens.length) {
+    return { isExcluded: false };
+  }
+
+  const excludedBusiness = await prisma.excludedBusiness.findFirst({
+    where: {
+      businessNameNormalized: {
+        in: tokens,
+      },
+    },
+    select: {
+      id: true,
+      reason: true,
+      businessNameNormalized: true,
+    },
+  });
+
+  if (!excludedBusiness) {
+    return { isExcluded: false };
+  }
+
+  return {
+    isExcluded: true,
+    excludedBusinessId: excludedBusiness.id,
+    reason: excludedBusiness.reason || undefined,
+    exclusionMode: 'business_type',
+    matchedValue: tokenToBusinessType(excludedBusiness.businessNameNormalized),
   };
 }
 
@@ -129,6 +200,80 @@ export async function checkBusinessExclusionBatch(
 }
 
 /**
+ * Check multiple businesses against both name and type exclusion rules.
+ */
+export async function checkBusinessExclusionBatchWithTypes(
+  businesses: Array<{ name: string; businessTypes: string[] }>
+): Promise<Map<string, ExclusionCheckResult>> {
+  const nameResults = await checkBusinessExclusionBatch(businesses.map((b) => b.name));
+
+  const typeTokens = Array.from(
+    new Set(
+      businesses
+        .flatMap((business) => business.businessTypes)
+        .map((type) => type?.trim())
+        .filter((type): type is string => !!type)
+        .map(toBusinessTypeToken)
+    )
+  );
+
+  const excludedTypeRows = typeTokens.length
+    ? await prisma.excludedBusiness.findMany({
+        where: {
+          businessNameNormalized: {
+            in: typeTokens,
+          },
+        },
+        select: {
+          id: true,
+          reason: true,
+          businessNameNormalized: true,
+        },
+      })
+    : [];
+
+  const typeMap = new Map(
+    excludedTypeRows.map((row) => [
+      row.businessNameNormalized,
+      {
+        isExcluded: true,
+        excludedBusinessId: row.id,
+        reason: row.reason || undefined,
+        exclusionMode: 'business_type' as const,
+        matchedValue: tokenToBusinessType(row.businessNameNormalized),
+      },
+    ])
+  );
+
+  const results = new Map<string, ExclusionCheckResult>();
+  for (const business of businesses) {
+    const nameResult = nameResults.get(business.name);
+    if (nameResult?.isExcluded) {
+      results.set(business.name, {
+        ...nameResult,
+        exclusionMode: 'business_name',
+        matchedValue: business.name,
+      });
+      continue;
+    }
+
+    let typeResult: ExclusionCheckResult | undefined;
+    for (const type of business.businessTypes) {
+      const token = toBusinessTypeToken(type);
+      const match = typeMap.get(token);
+      if (match) {
+        typeResult = match;
+        break;
+      }
+    }
+
+    results.set(business.name, typeResult || { isExcluded: false });
+  }
+
+  return results;
+}
+
+/**
  * Add a business to the exclude list
  */
 export async function addBusinessToExcludeList(
@@ -163,6 +308,39 @@ export async function addBusinessToExcludeList(
 }
 
 /**
+ * Add a business type to the exclude list.
+ */
+export async function addBusinessTypeToExcludeList(
+  businessType: string,
+  userId: string,
+  reason?: string
+): Promise<string> {
+  const normalizedType = normalizeBusinessType(businessType);
+  const token = toBusinessTypeToken(normalizedType);
+
+  const existing = await prisma.excludedBusiness.findFirst({
+    where: {
+      businessNameNormalized: token,
+    },
+  });
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const excludedBusiness = await prisma.excludedBusiness.create({
+    data: {
+      businessName: normalizedType,
+      businessNameNormalized: token,
+      reason,
+      addedByUserId: userId,
+    },
+  });
+
+  return excludedBusiness.id;
+}
+
+/**
  * Remove a business from the exclude list
  */
 export async function removeBusinessFromExcludeList(
@@ -182,6 +360,8 @@ export async function getExcludedBusinesses(): Promise<
   Array<{
     id: string;
     businessName: string;
+    exclusionMode: 'business_name' | 'business_type';
+    businessType: string | null;
     reason: string | null;
     addedBy: string;
     createdAt: Date;
@@ -203,7 +383,15 @@ export async function getExcludedBusinesses(): Promise<
   
   return excluded.map(item => ({
     id: item.id,
-    businessName: item.businessName,
+    businessName: isBusinessTypeToken(item.businessNameNormalized)
+      ? tokenToBusinessType(item.businessNameNormalized)
+      : item.businessName,
+    exclusionMode: isBusinessTypeToken(item.businessNameNormalized)
+      ? 'business_type'
+      : 'business_name',
+    businessType: isBusinessTypeToken(item.businessNameNormalized)
+      ? tokenToBusinessType(item.businessNameNormalized)
+      : null,
     reason: item.reason,
     addedBy: item.addedByUser.name || item.addedByUser.email,
     createdAt: item.createdAt,

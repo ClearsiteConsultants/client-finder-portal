@@ -3,20 +3,9 @@
 import { useState } from "react";
 import { SearchResults } from "./SearchResults";
 import type { BusinessResult } from "@/lib/places/types";
-
-const BUSINESS_TYPES = [
-  { value: "", label: "All Business Types" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "cafe", label: "Cafe" },
-  { value: "bar", label: "Bar" },
-  { value: "retail", label: "Retail Store" },
-  { value: "gym", label: "Gym / Fitness" },
-  { value: "salon", label: "Salon / Spa" },
-  { value: "auto_repair", label: "Auto Repair" },
-  { value: "dentist", label: "Dentist" },
-  { value: "lawyer", label: "Lawyer" },
-  { value: "real_estate_agency", label: "Real Estate" },
-];
+import {
+  GOOGLE_PLACES_BUSINESS_TYPES,
+} from "@/lib/places/business-types";
 
 export default function SearchForm() {
   const [location, setLocation] = useState("");
@@ -122,9 +111,10 @@ export default function SearchForm() {
               onChange={(e) => setBusinessType(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
-              {BUSINESS_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
+              <option value="">All Business Types</option>
+              {GOOGLE_PLACES_BUSINESS_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
                 </option>
               ))}
             </select>

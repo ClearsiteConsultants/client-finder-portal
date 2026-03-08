@@ -12,7 +12,7 @@ import {
   getCachedResults,
 } from './cache';
 import { RateLimiter, retryWithBackoff } from './rate-limiter';
-import { calculateScore, checkBusinessExclusionBatch } from '../scoring';
+import { calculateScore, checkBusinessExclusionBatchWithTypes } from '../scoring';
 import { JobQueueService } from '../jobs/queue-service';
 
 export class PlacesService {
@@ -118,9 +118,13 @@ export class PlacesService {
         // Normalize results
         const normalized = places.map((place) => normalizeGooglePlace(place));
 
-        // Check exclusions in batch
-        const businessNames = normalized.map(n => n.name);
-        const exclusionResults = await checkBusinessExclusionBatch(businessNames);
+        // Check exclusions in batch (name + business type)
+        const exclusionResults = await checkBusinessExclusionBatchWithTypes(
+          normalized.map((n) => ({
+            name: n.name,
+            businessTypes: n.businessTypes,
+          }))
+        );
 
         // Persist to database with deduplication
         const results: BusinessResult[] = [];
@@ -172,7 +176,7 @@ export class PlacesService {
               // If excluded, auto-reject
               const leadStatus = exclusionCheck?.isExcluded ? 'rejected' : 'pending';
               const rejectedReason = exclusionCheck?.isExcluded 
-                ? `Auto-rejected: matched exclude list (${exclusionCheck.reason || 'no reason provided'})`
+                ? `Auto-rejected: matched ${exclusionCheck.exclusionMode === 'business_type' ? 'excluded business type' : 'exclude list'} (${exclusionCheck.reason || 'no reason provided'})`
                 : undefined;
               
               business = await prisma.business.create({

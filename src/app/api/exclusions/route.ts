@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import {
   getExcludedBusinesses,
   addBusinessToExcludeList,
+  addBusinessTypeToExcludeList,
   removeBusinessFromExcludeList,
 } from '@/lib/scoring/exclusions';
 
@@ -33,8 +34,8 @@ export async function GET() {
 
 /**
  * POST /api/exclusions
- * Add a business to the exclude list
- * Body: { businessName: string, reason?: string }
+ * Add an exclusion entry
+ * Body: { businessName?: string, businessType?: string, reason?: string }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -44,30 +45,38 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { businessName, reason } = body;
+    const { businessName, businessType, reason } = body;
+    const hasBusinessName = typeof businessName === 'string' && businessName.trim().length > 0;
+    const hasBusinessType = typeof businessType === 'string' && businessType.trim().length > 0;
 
-    if (!businessName || typeof businessName !== 'string') {
+    if (!hasBusinessName && !hasBusinessType) {
       return NextResponse.json(
-        { error: 'businessName is required and must be a string' },
+        { error: 'Either businessName or businessType is required' },
         { status: 400 }
       );
     }
 
-    if (businessName.trim().length === 0) {
+    if (hasBusinessName && hasBusinessType) {
       return NextResponse.json(
-        { error: 'businessName cannot be empty' },
+        { error: 'Provide only one of businessName or businessType' },
         { status: 400 }
       );
     }
 
-    const excludedBusinessId = await addBusinessToExcludeList(
-      businessName.trim(),
-      session.user.id,
-      reason?.trim() || undefined
-    );
+    const excludedBusinessId = hasBusinessType
+      ? await addBusinessTypeToExcludeList(
+          businessType.trim(),
+          session.user.id,
+          reason?.trim() || undefined
+        )
+      : await addBusinessToExcludeList(
+          businessName.trim(),
+          session.user.id,
+          reason?.trim() || undefined
+        );
 
     return NextResponse.json(
-      { id: excludedBusinessId, message: 'Business added to exclude list' },
+      { id: excludedBusinessId, message: 'Entry added to exclude list' },
       { status: 201 }
     );
   } catch (error) {

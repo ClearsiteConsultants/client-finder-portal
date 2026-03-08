@@ -5,8 +5,11 @@
 import { prisma } from '../prisma';
 import {
   checkBusinessExclusion,
+  checkBusinessTypeExclusion,
   checkBusinessExclusionBatch,
+  checkBusinessExclusionBatchWithTypes,
   addBusinessToExcludeList,
+  addBusinessTypeToExcludeList,
   removeBusinessFromExcludeList,
   getExcludedBusinesses,
 } from './exclusions';
@@ -194,6 +197,44 @@ describe('exclusions', () => {
     });
   });
 
+  describe('business type exclusions', () => {
+    beforeEach(async () => {
+      await addBusinessTypeToExcludeList('restaurant', TEST_USER_ID, 'Excluded vertical');
+      await addBusinessTypeToExcludeList('gym', TEST_USER_ID);
+    });
+
+    it('should detect an excluded business type', async () => {
+      const result = await checkBusinessTypeExclusion(['food', 'restaurant']);
+
+      expect(result.isExcluded).toBe(true);
+      expect(result.exclusionMode).toBe('business_type');
+      expect(result.matchedValue).toBe('restaurant');
+      expect(result.reason).toBe('Excluded vertical');
+    });
+
+    it('should not exclude when no types match', async () => {
+      const result = await checkBusinessTypeExclusion(['dentist', 'doctor']);
+
+      expect(result.isExcluded).toBe(false);
+    });
+
+    it('should check batch exclusions by name and type', async () => {
+      await addBusinessToExcludeList('Starbucks', TEST_USER_ID, 'Chain');
+
+      const results = await checkBusinessExclusionBatchWithTypes([
+        { name: 'Starbucks', businessTypes: ['cafe'] },
+        { name: 'Local Grill', businessTypes: ['restaurant', 'food'] },
+        { name: 'Healthy Clinic', businessTypes: ['doctor'] },
+      ]);
+
+      expect(results.get('Starbucks')?.isExcluded).toBe(true);
+      expect(results.get('Starbucks')?.exclusionMode).toBe('business_name');
+      expect(results.get('Local Grill')?.isExcluded).toBe(true);
+      expect(results.get('Local Grill')?.exclusionMode).toBe('business_type');
+      expect(results.get('Healthy Clinic')?.isExcluded).toBe(false);
+    });
+  });
+
   describe('removeBusinessFromExcludeList', () => {
     it('should remove a business from the exclude list', async () => {
       const id = await addBusinessToExcludeList('Starbucks', TEST_USER_ID);
@@ -213,6 +254,7 @@ describe('exclusions', () => {
       await addBusinessToExcludeList('Starbucks', TEST_USER_ID, 'Coffee chain');
       await addBusinessToExcludeList('McDonald\'s', TEST_USER_ID, 'Fast food');
       await addBusinessToExcludeList('Walmart', TEST_USER_ID);
+      await addBusinessTypeToExcludeList('restaurant', TEST_USER_ID, 'Type exclusion');
     });
 
     it('should return all excluded businesses', async () => {
@@ -228,6 +270,9 @@ describe('exclusions', () => {
       expect(starbucks?.reason).toBe('Coffee chain');
       expect(starbucks?.addedBy).toBeTruthy();
       expect(starbucks?.createdAt).toBeInstanceOf(Date);
+
+      const restaurantType = excluded.find(e => e.exclusionMode === 'business_type' && e.businessType === 'restaurant');
+      expect(restaurantType).toBeTruthy();
     });
 
     it('should be ordered by most recent first', async () => {

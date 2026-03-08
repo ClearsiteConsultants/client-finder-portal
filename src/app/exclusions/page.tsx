@@ -4,14 +4,21 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
+import {
+  GOOGLE_PLACES_BUSINESS_TYPES,
+} from '@/lib/places/business-types';
 
 type ExcludedBusiness = {
   id: string;
   businessName: string;
+  exclusionMode: 'business_name' | 'business_type';
+  businessType: string | null;
   reason: string | null;
   addedBy: string;
   createdAt: string;
 };
+
+type ExclusionMode = 'business_name' | 'business_type';
 
 export default function ExclusionsPage() {
   const { status } = useSession();
@@ -20,7 +27,9 @@ export default function ExclusionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newBusinessName, setNewBusinessName] = useState('');
+  const [newBusinessType, setNewBusinessType] = useState('');
   const [newReason, setNewReason] = useState('');
+  const [newExclusionMode, setNewExclusionMode] = useState<ExclusionMode>('business_name');
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -54,7 +63,11 @@ export default function ExclusionsPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBusinessName.trim()) return;
+    const hasName = newBusinessName.trim().length > 0;
+    const hasType = newBusinessType.trim().length > 0;
+
+    if (newExclusionMode === 'business_name' && !hasName) return;
+    if (newExclusionMode === 'business_type' && !hasType) return;
 
     try {
       setAdding(true);
@@ -63,7 +76,8 @@ export default function ExclusionsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          businessName: newBusinessName.trim(),
+          businessName: newExclusionMode === 'business_name' ? newBusinessName.trim() : undefined,
+          businessType: newExclusionMode === 'business_type' ? newBusinessType.trim() : undefined,
           reason: newReason.trim() || undefined,
         }),
       });
@@ -74,6 +88,7 @@ export default function ExclusionsPage() {
       }
 
       setNewBusinessName('');
+      setNewBusinessType('');
       setNewReason('');
       await fetchExcluded();
     } catch (err) {
@@ -126,7 +141,7 @@ export default function ExclusionsPage() {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Business Exclude List</h1>
         
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white text-gray-900 rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Add Business to Exclude List</h2>
           <p className="text-gray-600 mb-4">
             Excluded businesses will be automatically rejected during discovery and will not appear in the review queue.
@@ -134,18 +149,50 @@ export default function ExclusionsPage() {
           
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
-                Business Name *
+              <label htmlFor="exclusionMode" className="block text-sm font-medium text-gray-700 mb-1">
+                Exclusion Type
               </label>
-              <input
-                id="businessName"
-                type="text"
-                value={newBusinessName}
-                onChange={(e) => setNewBusinessName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Starbucks"
-                required
-              />
+              <select
+                id="exclusionMode"
+                value={newExclusionMode}
+                onChange={(e) => setNewExclusionMode(e.target.value as ExclusionMode)}
+                className="w-full bg-white text-gray-900 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="business_name">Business Name</option>
+                <option value="business_type">Business Type</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
+                {newExclusionMode === 'business_name' ? 'Business Name *' : 'Business Type *'}
+              </label>
+              {newExclusionMode === 'business_name' ? (
+                <input
+                  id="businessName"
+                  type="text"
+                  value={newBusinessName}
+                  onChange={(e) => setNewBusinessName(e.target.value)}
+                  className="w-full bg-white text-gray-900 placeholder:text-gray-500 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Starbucks"
+                  required
+                />
+              ) : (
+                <select
+                  id="businessType"
+                  value={newBusinessType}
+                  onChange={(e) => setNewBusinessType(e.target.value)}
+                  className="w-full bg-white text-gray-900 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select a business type</option>
+                  {GOOGLE_PLACES_BUSINESS_TYPES.map((businessType) => (
+                    <option key={businessType} value={businessType}>
+                      {businessType}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
@@ -157,14 +204,17 @@ export default function ExclusionsPage() {
                 type="text"
                 value={newReason}
                 onChange={(e) => setNewReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-white text-gray-900 placeholder:text-gray-500 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., Too large, Already a customer"
               />
             </div>
 
             <button
               type="submit"
-              disabled={adding || !newBusinessName.trim()}
+              disabled={
+                adding ||
+                (newExclusionMode === 'business_name' ? !newBusinessName.trim() : !newBusinessType.trim())
+              }
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {adding ? 'Adding...' : 'Add to Exclude List'}
@@ -178,7 +228,7 @@ export default function ExclusionsPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white text-gray-900 rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold">Excluded Businesses ({excluded.length})</h2>
           </div>
@@ -190,10 +240,13 @@ export default function ExclusionsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 text-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Business Name
+                      Exclusion
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Reason
@@ -209,11 +262,16 @@ export default function ExclusionsPage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white text-gray-900 divide-y divide-gray-200">
                   {excluded.map((item) => (
                     <tr key={item.id}>
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                        {item.businessName}
+                        {item.exclusionMode === 'business_type' && item.businessType
+                          ? item.businessType
+                          : item.businessName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                        {item.exclusionMode === 'business_type' ? 'Business Type' : 'Business Name'}
                       </td>
                       <td className="px-6 py-4 text-gray-600">
                         {item.reason || '—'}
