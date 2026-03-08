@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { assertCanConvertToClient } from '@/lib/lead-lifecycle';
@@ -21,10 +22,27 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email && !session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    const actingUser = session.user.email
+      ? await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { id: true },
+        })
+      : await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { id: true },
+        });
+
+    if (!actingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
       );
     }
 
@@ -62,7 +80,7 @@ export async function POST(request: NextRequest) {
       data: {
         isClient: true,
         convertedAt: new Date(),
-        convertedByUserId: session.user.id,
+        convertedByUserId: actingUser.id,
         clientStatus: validatedData.clientStatus ?? 'active',
         subscriptionStatus: validatedData.subscriptionStatus,
         initialPaymentStatus: validatedData.initialPaymentStatus,
@@ -120,6 +138,12 @@ export async function POST(request: NextRequest) {
       }
 
       console.error('Error converting lead to client:', error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        return NextResponse.json(
+          { error: 'Failed to convert lead due to data constraint violation' },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 }

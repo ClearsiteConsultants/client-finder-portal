@@ -311,10 +311,36 @@ export default function LeadDetailPage() {
         }),
       });
 
-      const data = await response.json();
+      let data: { error?: string; business?: Business } = {};
+      try {
+        data = await response.json();
+      } catch {
+        // Non-JSON responses should still surface a helpful client error.
+      }
 
       if (!response.ok) {
+        console.error('Convert to client API failed', {
+          status: response.status,
+          body: data,
+          businessId: leadId,
+        });
+
+        if (response.status === 404 && data.error === 'User not found') {
+          alert('Your session is linked to a user that no longer exists. Please sign out and sign back in. If this continues, ask an admin to recreate your account.');
+          return;
+        }
+
+        if (response.status === 401) {
+          alert('Your session has expired. Please sign in again and retry conversion.');
+          return;
+        }
+
         alert(data.error || 'Failed to convert lead to active client');
+        return;
+      }
+
+      if (!data.business) {
+        alert('Lead was converted, but no client details were returned. Please refresh and check Active Clients.');
         return;
       }
 

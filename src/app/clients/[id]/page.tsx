@@ -7,6 +7,7 @@ import TopNav from '@/components/TopNav';
 
 type Client = {
   id: string;
+  placeId: string | null;
   name: string;
   address: string;
   phone: string | null;
@@ -197,6 +198,25 @@ export default function ClientDetailPage() {
     );
   }
 
+  const primaryContact = client.contactInfo[0];
+  const contactEmail = primaryContact?.email || null;
+  const contactPhone = client.phone || primaryContact?.phone || null;
+  const hasSocialLinks = !!(
+    primaryContact?.facebookUrl ||
+    primaryContact?.instagramUrl ||
+    primaryContact?.linkedinUrl
+  );
+  const googlePlacesUrl = client.placeId
+    ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(client.placeId)}`
+    : null;
+  const hasContactDetails = !!(
+    contactEmail ||
+    contactPhone ||
+    client.website ||
+    hasSocialLinks ||
+    googlePlacesUrl
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <TopNav />
@@ -221,8 +241,8 @@ export default function ClientDetailPage() {
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Client Details Form */}
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Client Information</h2>
+            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Client Information</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -232,7 +252,7 @@ export default function ClientDetailPage() {
                   <select
                     value={clientStatus}
                     onChange={(e) => setClientStatus(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="active">Active</option>
@@ -249,7 +269,7 @@ export default function ClientDetailPage() {
                   <select
                     value={subscriptionStatus}
                     onChange={(e) => setSubscriptionStatus(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="active">Active</option>
@@ -268,7 +288,7 @@ export default function ClientDetailPage() {
                   <select
                     value={initialPaymentStatus}
                     onChange={(e) => setInitialPaymentStatus(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="confirmed">Confirmed</option>
@@ -285,7 +305,7 @@ export default function ClientDetailPage() {
                     type="date"
                     value={nextPaymentDueDate}
                     onChange={(e) => setNextPaymentDueDate(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -298,7 +318,7 @@ export default function ClientDetailPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={4}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   placeholder="Internal notes about this client..."
                 />
               </div>
@@ -315,28 +335,68 @@ export default function ClientDetailPage() {
             </div>
 
             {/* Contact Info */}
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
-              {client.contactInfo.length > 0 ? (
+            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+              {hasContactDetails ? (
                 <div className="space-y-2">
-                  {client.contactInfo[0].email && (
-                    <p><strong>Email:</strong> {client.contactInfo[0].email}</p>
+                  {contactEmail && (
+                    <p className="text-gray-900">
+                      <strong className="text-gray-900">Email:</strong>{' '}
+                      <a
+                        href={`mailto:${contactEmail}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {contactEmail}
+                      </a>
+                    </p>
                   )}
-                  {client.phone && (
-                    <p><strong>Phone:</strong> {client.phone}</p>
+                  {contactPhone && (
+                    <p className="text-gray-900">
+                      <strong className="text-gray-900">Phone:</strong>{' '}
+                      <a
+                        href={`tel:${contactPhone}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {contactPhone}
+                      </a>
+                    </p>
                   )}
                   {client.website && (
-                    <p>
-                      <strong>Website:</strong>{' '}
+                    <p className="text-gray-900">
+                      <strong className="text-gray-900">Website:</strong>{' '}
                       <a href={client.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         {client.website}
                       </a>
                     </p>
                   )}
-                  {client.contactInfo[0].facebookUrl && (
-                    <p>
-                      <strong>Facebook:</strong>{' '}
-                      <a href={client.contactInfo[0].facebookUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  {googlePlacesUrl && (
+                    <p className="text-gray-900">
+                      <strong className="text-gray-900">Google Place:</strong>{' '}
+                      <a href={googlePlacesUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        View Listing
+                      </a>
+                    </p>
+                  )}
+                  {primaryContact?.facebookUrl && (
+                    <p className="text-gray-900">
+                      <strong className="text-gray-900">Facebook:</strong>{' '}
+                      <a href={primaryContact.facebookUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        Profile
+                      </a>
+                    </p>
+                  )}
+                  {primaryContact?.instagramUrl && (
+                    <p className="text-gray-900">
+                      <strong className="text-gray-900">Instagram:</strong>{' '}
+                      <a href={primaryContact.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        Profile
+                      </a>
+                    </p>
+                  )}
+                  {primaryContact?.linkedinUrl && (
+                    <p className="text-gray-900">
+                      <strong className="text-gray-900">LinkedIn:</strong>{' '}
+                      <a href={primaryContact.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         Profile
                       </a>
                     </p>
@@ -351,9 +411,9 @@ export default function ClientDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Review Checklist */}
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Review Checklist</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Review Checklist</h2>
                 <button
                   onClick={() => setShowChecklistForm(!showChecklistForm)}
                   className="text-sm text-blue-600 hover:text-blue-800"
@@ -429,8 +489,8 @@ export default function ClientDetailPage() {
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
               {client.outreachTracking.length > 0 ? (
                 <ul className="space-y-2">
                   {client.outreachTracking.slice(0, 5).map((activity) => (

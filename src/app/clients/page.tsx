@@ -165,7 +165,7 @@ export default function ActiveClientsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <div className="bg-white text-gray-900 p-4 rounded-lg shadow mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -177,7 +177,7 @@ export default function ActiveClientsPage() {
                   setSubscriptionStatusFilter(e.target.value);
                   setPagination({ ...pagination, page: 1 });
                 }}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
@@ -199,7 +199,7 @@ export default function ActiveClientsPage() {
                   setClientStatusFilter(e.target.value);
                   setPagination({ ...pagination, page: 1 });
                 }}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
@@ -216,7 +216,7 @@ export default function ActiveClientsPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="updatedAt">Recently Updated</option>
                 <option value="convertedAt">Conversion Date</option>
@@ -243,14 +243,14 @@ export default function ActiveClientsPage() {
         </div>
 
         {/* Clients List */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white text-gray-900 shadow rounded-lg overflow-hidden">
           {clients.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500">No clients found</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-200 text-gray-900">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

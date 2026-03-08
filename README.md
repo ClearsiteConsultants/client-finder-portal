@@ -25,6 +25,9 @@ npm run db:setup
 # Create initial user (optional)
 node -r tsx/cjs scripts/create-user.ts admin@example.com password "Admin User"
 
+# Reset a user's password (optional)
+node -r tsx/cjs scripts/reset-user-password.ts admin@example.com newpassword
+
 # Start development server
 npm run dev
 ```
@@ -50,6 +53,7 @@ Visit [http://localhost:3000](http://localhost:3000) to see the application.
 - `npx prisma migrate deploy` - Apply migrations in production
 - `npx prisma studio` - Open Prisma Studio database GUI
 - `npx prisma generate` - Generate Prisma Client (runs automatically on postinstall)
+- `npm run user:reset-password -- <email> <newPassword>` - Reset a user's password hash
 
 ## Deployment
 
@@ -105,7 +109,8 @@ prisma/
 └── migrations/       # Database migrations
 
 scripts/
-└── create-user.ts    # User creation utility
+├── create-user.ts           # User creation utility
+└── reset-user-password.ts   # Password reset utility
 ```
 
 ## Environment Variables

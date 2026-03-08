@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 const mockAuth = jest.fn();
 const mockPrismaFindUnique = jest.fn();
 const mockPrismaUpdateMany = jest.fn();
+const mockPrismaUserFindUnique = jest.fn();
 
 jest.mock('@/lib/auth', () => ({
   auth: () => mockAuth(),
@@ -15,6 +16,9 @@ jest.mock('@/lib/auth', () => ({
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
+    user: {
+      findUnique: (...args: any[]) => mockPrismaUserFindUnique(...args),
+    },
     business: {
       findUnique: (...args: any[]) => mockPrismaFindUnique(...args),
       updateMany: (...args: any[]) => mockPrismaUpdateMany(...args),
@@ -33,6 +37,7 @@ describe('POST /api/leads/convert-to-client', () => {
     mockAuth.mockClear();
     mockPrismaFindUnique.mockClear();
     mockPrismaUpdateMany.mockClear();
+    mockPrismaUserFindUnique.mockClear();
   });
 
   it('should reject unauthorized requests', async () => {
@@ -56,6 +61,8 @@ describe('POST /api/leads/convert-to-client', () => {
       expires: '2024-12-31',
     });
 
+    mockPrismaUserFindUnique.mockResolvedValue({ id: mockUserId });
+
     mockPrismaFindUnique.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/leads/convert-to-client', {
@@ -75,6 +82,8 @@ describe('POST /api/leads/convert-to-client', () => {
       user: { id: mockUserId, email: 'test@example.com' },
       expires: '2024-12-31',
     });
+
+    mockPrismaUserFindUnique.mockResolvedValue({ id: mockUserId });
 
     mockPrismaFindUnique.mockResolvedValue({
       id: mockBusinessId,
@@ -101,6 +110,8 @@ describe('POST /api/leads/convert-to-client', () => {
       expires: '2024-12-31',
     });
 
+    mockPrismaUserFindUnique.mockResolvedValue({ id: mockUserId });
+
     mockPrismaFindUnique.mockResolvedValue({
       id: mockBusinessId,
       leadStatus: 'pending',
@@ -125,6 +136,8 @@ describe('POST /api/leads/convert-to-client', () => {
       user: { id: mockUserId, email: 'test@example.com' },
       expires: '2024-12-31',
     });
+
+    mockPrismaUserFindUnique.mockResolvedValue({ id: mockUserId });
 
     mockPrismaFindUnique.mockResolvedValue({
       id: mockBusinessId,
@@ -152,6 +165,8 @@ describe('POST /api/leads/convert-to-client', () => {
       user: { id: mockUserId, email: 'test@example.com' },
       expires: '2024-12-31',
     });
+
+    mockPrismaUserFindUnique.mockResolvedValue({ id: mockUserId });
 
     mockPrismaFindUnique.mockResolvedValue({
       id: mockBusinessId,
@@ -216,6 +231,8 @@ describe('POST /api/leads/convert-to-client', () => {
       expires: '2024-12-31',
     });
 
+    mockPrismaUserFindUnique.mockResolvedValue({ id: mockUserId });
+
     mockPrismaFindUnique.mockResolvedValue({
       id: mockBusinessId,
       leadStatus: 'approved',
@@ -275,6 +292,8 @@ describe('POST /api/leads/convert-to-client', () => {
       expires: '2024-12-31',
     });
 
+    mockPrismaUserFindUnique.mockResolvedValue({ id: mockUserId });
+
     mockPrismaFindUnique.mockResolvedValueOnce({
       id: mockBusinessId,
       leadStatus: 'approved',
@@ -294,5 +313,25 @@ describe('POST /api/leads/convert-to-client', () => {
 
     expect(response.status).toBe(400);
     expect(data.error).toContain('Only approved leads');
+  });
+
+  it('should return 404 when session user no longer exists', async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: mockUserId, email: 'test@example.com' },
+      expires: '2024-12-31',
+    });
+
+    mockPrismaUserFindUnique.mockResolvedValue(null);
+
+    const request = new NextRequest('http://localhost:3000/api/leads/convert-to-client', {
+      method: 'POST',
+      body: JSON.stringify({ businessId: mockBusinessId }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data.error).toBe('User not found');
   });
 });
