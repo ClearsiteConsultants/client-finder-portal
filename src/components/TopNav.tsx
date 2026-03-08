@@ -30,7 +30,7 @@ export default function TopNav() {
   const isAuthenticated = status === "authenticated";
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/75 backdrop-blur dark:border-slate-800 dark:bg-slate-950/60">
+    <header className="theme-surface theme-border sticky top-0 z-10 border-b backdrop-blur">
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -39,10 +39,10 @@ export default function TopNav() {
               aria-hidden="true"
             />
             <div className="leading-tight">
-              <div className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              <div className="text-base font-semibold tracking-tight">
                 Client Finder Portal
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
+              <div className="theme-text-muted text-xs">
                 Lead discovery and outreach management
               </div>
             </div>
@@ -60,7 +60,7 @@ export default function TopNav() {
                     className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       active
                         ? "bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-50"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-50"
+                        : "theme-text-muted hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-900 dark:hover:text-slate-50"
                     }`}
                   >
                     {item.label}
@@ -71,7 +71,7 @@ export default function TopNav() {
 
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
-                <span className="hidden text-sm text-slate-600 dark:text-slate-300 md:inline">
+                <span className="theme-text-muted hidden text-sm md:inline">
                   {session?.user?.email}
                 </span>
                 <SignOutButton />
@@ -79,7 +79,7 @@ export default function TopNav() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-900"
+                className="theme-text-muted inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-900"
               >
                 Sign In
               </Link>
@@ -98,7 +98,7 @@ export default function TopNav() {
                 className={`flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold transition-colors ${
                   active
                     ? "bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-50"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-50"
+                    : "theme-text-muted hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-900 dark:hover:text-slate-50"
                 }`}
               >
                 {item.label}

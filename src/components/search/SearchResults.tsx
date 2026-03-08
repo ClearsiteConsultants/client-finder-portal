@@ -11,9 +11,9 @@ interface SearchResultsProps {
 export function SearchResults({ results, isLoading }: SearchResultsProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="theme-surface theme-border rounded-xl border p-8 shadow-sm">
         <div className="flex items-center justify-center">
-          <div className="text-slate-600 dark:text-slate-400">Loading results...</div>
+          <div className="theme-text-muted">Loading results...</div>
         </div>
       </div>
     );
@@ -21,9 +21,9 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
 
   if (results.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="theme-surface theme-border rounded-xl border p-8 shadow-sm">
         <div className="text-center">
-          <p className="text-slate-600 dark:text-slate-400">
+          <p className="theme-text-muted">
             No businesses found. Try adjusting your search criteria.
           </p>
         </div>
@@ -34,7 +34,7 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+        <h2 className="text-lg font-semibold">
           Search Results ({results.length})
         </h2>
       </div>
@@ -43,20 +43,20 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
         {results.map((business) => (
           <div
             key={business.placeId}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-950"
+            className="theme-surface theme-border rounded-xl border p-5 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                <h3 className="text-base font-semibold">
                   {business.name}
                 </h3>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                <p className="theme-text-muted mt-1 text-sm">
                   {business.address}
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-4 text-sm">
                   {business.phone && (
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                    <div className="theme-text-muted flex items-center gap-1.5">
                       <span className="font-medium">Phone:</span>
                       <span>{business.phone}</span>
                     </div>

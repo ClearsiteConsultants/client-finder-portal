@@ -55,16 +55,16 @@ export default function LoginPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
             Sign in
           </h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          <p className="theme-text-muted mt-2 text-sm">
             Use your portal credentials to continue.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/40 sm:p-8">
+        <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm backdrop-blur sm:p-8">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                <label htmlFor="email" className="block text-sm font-medium theme-text-muted">
                   Email address
                 </label>
                 <input
@@ -73,12 +73,12 @@ export default function LoginPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                  className="theme-input mt-1 block w-full rounded-xl border px-3.5 py-2.5 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15"
                   placeholder="you@company.com"
                 />
               </div>
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                <label htmlFor="password" className="block text-sm font-medium theme-text-muted">
                   Password
                 </label>
                 <input
@@ -87,7 +87,7 @@ export default function LoginPage() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                  className="theme-input mt-1 block w-full rounded-xl border px-3.5 py-2.5 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15"
                   placeholder="••••••••"
                 />
               </div>
@@ -110,7 +110,7 @@ export default function LoginPage() {
             <div className="text-center">
               <Link
                 href="/"
-                className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+                className="theme-text-muted text-sm font-medium hover:text-slate-900 dark:hover:text-slate-50"
               >
                 Back to home
               </Link>

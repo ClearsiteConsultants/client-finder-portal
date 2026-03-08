@@ -385,7 +385,7 @@ export default function LeadDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+      <div className="flex h-screen items-center justify-center">
         Loading...
       </div>
     );
@@ -393,7 +393,7 @@ export default function LeadDetailPage() {
 
   if (!leadId) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+      <div className="flex h-screen items-center justify-center">
         Missing lead id.
       </div>
     );
@@ -407,7 +407,7 @@ export default function LeadDetailPage() {
   const canConvertToClient = !isClient && business.leadStatus === 'approved';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+    <div className="min-h-screen">
       <TopNav />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -419,7 +419,7 @@ export default function LeadDetailPage() {
             ← Back to Review Queue
           </button>
           <h1 className="text-2xl font-semibold">{business.name}</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className="theme-text-muted mt-1 text-sm">
             Lead Details
           </p>
         </div>
@@ -428,7 +428,7 @@ export default function LeadDetailPage() {
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Business Info Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Business Information</h2>
                 <button
@@ -446,14 +446,14 @@ export default function LeadDetailPage() {
               {editingBusinessInfo ? (
                 <form className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Address *
                     </label>
                     <input
                       type="text"
                       value={editedAddress}
                       onChange={(e) => setEditedAddress(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                     {businessInfoErrors.address && (
                       <p className="mt-1 text-xs text-red-600 dark:text-red-400">{businessInfoErrors.address}</p>
@@ -461,26 +461,26 @@ export default function LeadDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Phone
                     </label>
                     <input
                       type="text"
                       value={editedPhone}
                       onChange={(e) => setEditedPhone(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Website
                     </label>
                     <input
                       type="text"
                       value={editedWebsite}
                       onChange={(e) => setEditedWebsite(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                     {businessInfoErrors.website && (
                       <p className="mt-1 text-xs text-red-600 dark:text-red-400">{businessInfoErrors.website}</p>
@@ -488,7 +488,7 @@ export default function LeadDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Website Status
                     </label>
                     <select
@@ -497,7 +497,7 @@ export default function LeadDetailPage() {
                         setEditedWebsiteStatus(e.target.value);
                         setWebsiteStatusManuallyEdited(true);
                       }}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     >
                       <option value="no_website">No Website</option>
                       <option value="social_only">Social Only</option>
@@ -509,7 +509,7 @@ export default function LeadDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Google Place ID
                     </label>
                     <input
@@ -517,18 +517,18 @@ export default function LeadDetailPage() {
                       value={editedPlaceId}
                       onChange={(e) => setEditedPlaceId(e.target.value)}
                       placeholder="Enter place_id"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Source
                     </label>
                     <select
                       value={editedSource}
                       onChange={(e) => setEditedSource(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     >
                       <option value="google_maps">Google Maps</option>
                       <option value="manual">Manual Entry</option>
@@ -536,13 +536,13 @@ export default function LeadDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Lead Status
                     </label>
                     <select
                       value={editedLeadStatus}
                       onChange={(e) => setEditedLeadStatus(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     >
                       <option value="pending">Pending</option>
                       <option value="approved">Approved</option>
@@ -554,7 +554,7 @@ export default function LeadDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Business Types
                     </label>
                     <input
@@ -562,12 +562,12 @@ export default function LeadDetailPage() {
                       value={editedBusinessTypes.join(', ')}
                       onChange={(e) => setEditedBusinessTypes(e.target.value.split(',').map(t => t.trim()).filter(t => t))}
                       placeholder="e.g. retail, e-commerce, services"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <label className="block theme-text-muted text-sm font-medium mb-1">
                       Rating
                     </label>
                     <input
@@ -577,16 +577,16 @@ export default function LeadDetailPage() {
                       max="5"
                       value={editedRating !== null ? editedRating : ''}
                       onChange={(e) => setEditedRating(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                   </div>
 
                   <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Social Media</h3>
+                    <h3 className="theme-text-muted text-sm font-semibold mb-3">Social Media</h3>
                     
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                        <label className="block theme-text-muted text-sm font-medium mb-1">
                           Facebook URL
                         </label>
                         <input
@@ -594,12 +594,12 @@ export default function LeadDetailPage() {
                           value={editedFacebookUrl}
                           onChange={(e) => setEditedFacebookUrl(e.target.value)}
                           placeholder="https://facebook.com/..."
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                          className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                        <label className="block theme-text-muted text-sm font-medium mb-1">
                           Instagram URL
                         </label>
                         <input
@@ -607,12 +607,12 @@ export default function LeadDetailPage() {
                           value={editedInstagramUrl}
                           onChange={(e) => setEditedInstagramUrl(e.target.value)}
                           placeholder="https://instagram.com/..."
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                          className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                        <label className="block theme-text-muted text-sm font-medium mb-1">
                           LinkedIn URL
                         </label>
                         <input
@@ -620,7 +620,7 @@ export default function LeadDetailPage() {
                           value={editedLinkedinUrl}
                           onChange={(e) => setEditedLinkedinUrl(e.target.value)}
                           placeholder="https://linkedin.com/..."
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                          className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                         />
                       </div>
                     </div>
@@ -648,12 +648,12 @@ export default function LeadDetailPage() {
               ) : (
                 <dl className="space-y-3">
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Address</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Address</dt>
                     <dd className="mt-1 text-sm">{business.address}</dd>
                   </div>
                   {business.phone && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Phone</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Phone</dt>
                       <dd className="mt-1 text-sm">
                         <a href={`tel:${business.phone}`} className="text-blue-600 hover:underline dark:text-blue-400">
                           {business.phone}
@@ -663,7 +663,7 @@ export default function LeadDetailPage() {
                   )}
                   {business.website && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Website</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Website</dt>
                       <dd className="mt-1 text-sm">
                         <a
                           href={business.website}
@@ -678,7 +678,7 @@ export default function LeadDetailPage() {
                   )}
                   {(business.contactInfo?.[0]?.facebookUrl || business.contactInfo?.[0]?.instagramUrl || business.contactInfo?.[0]?.linkedinUrl) && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Social Media</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Social Media</dt>
                       <dd className="mt-1 flex flex-wrap gap-2">
                         {business.contactInfo[0].facebookUrl && (
                           <a
@@ -723,22 +723,22 @@ export default function LeadDetailPage() {
                     </div>
                   )}
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Website Status</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Website Status</dt>
                     <dd className="mt-1">{getWebsiteStatusBadge(business.websiteStatus)}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Lead Status</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Lead Status</dt>
                     <dd className="mt-1">{getLeadStatusBadge(business.leadStatus)}</dd>
                   </div>
                   {business.businessTypes.length > 0 && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Business Types</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Business Types</dt>
                       <dd className="mt-1 text-sm">{business.businessTypes.join(', ')}</dd>
                     </div>
                   )}
                   {business.rating && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Rating</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Rating</dt>
                       <dd className="mt-1 text-sm">
                         ⭐ {business.rating.toFixed(1)} ({business.reviewCount} reviews)
                       </dd>
@@ -746,13 +746,13 @@ export default function LeadDetailPage() {
                   )}
                   {business.smallBusinessScore && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Small Business Score</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Small Business Score</dt>
                       <dd className="mt-1 text-sm">{business.smallBusinessScore}</dd>
                     </div>
                   )}
                   {business.placeId && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Google Maps</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Google Maps</dt>
                       <dd className="mt-1 text-sm">
                         <a
                           href={googleMapsPlaceUrl(business.placeId)}
@@ -767,7 +767,7 @@ export default function LeadDetailPage() {
                   )}
                   {!business.placeId && business.source === 'manual' && (
                     <div>
-                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Google Place ID</dt>
+                      <dt className="theme-text-muted text-sm font-medium">Google Place ID</dt>
                       <dd className="mt-1 text-sm">
                         {!showLinkPlaceId ? (
                           <button
@@ -783,7 +783,7 @@ export default function LeadDetailPage() {
                               value={placeIdInput}
                               onChange={(e) => setPlaceIdInput(e.target.value)}
                               placeholder="Enter place_id"
-                              className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                              className="theme-input rounded-lg border px-3 py-1 text-sm focus:border-blue-500 focus:outline-none"
                             />
                             <button
                               onClick={handleLinkPlaceId}
@@ -807,7 +807,7 @@ export default function LeadDetailPage() {
                     </div>
                   )}
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Source</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Source</dt>
                     <dd className="mt-1 text-sm">
                       <span className={`px-2 py-1 text-xs rounded ${business.source === 'manual' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
                         {business.source === 'manual' ? 'Manual Entry' : 'Google Maps'}
@@ -819,21 +819,21 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Notes Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Notes</h2>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 rows={6}
                 placeholder="Add notes about this lead..."
               />
             </div>
 
             {/* Outreach Timeline Placeholder */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Outreach Timeline</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="theme-text-muted text-sm">
                 Timeline will be available once Phase 6 is implemented.
               </p>
             </div>
@@ -842,23 +842,23 @@ export default function LeadDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Follow-up Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Follow-up</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                  <label className="block theme-text-muted text-sm font-medium mb-1">
                     Next Follow-up Date
                   </label>
                   <input
                     type="date"
                     value={nextFollowupAt}
                     onChange={(e) => setNextFollowupAt(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                    className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   />
                 </div>
                 {business.lastContactAt && (
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Last Contact</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Last Contact</dt>
                     <dd className="mt-1 text-sm">
                       {new Date(business.lastContactAt).toLocaleDateString()}
                     </dd>
@@ -875,22 +875,22 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Source Info Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Source & Discovery</h2>
               <dl className="space-y-3">
                 <div>
-                  <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Source</dt>
+                  <dt className="theme-text-muted text-sm font-medium">Source</dt>
                   <dd className="mt-1 text-sm">{business.source.replace('_', ' ')}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Discovered</dt>
+                  <dt className="theme-text-muted text-sm font-medium">Discovered</dt>
                   <dd className="mt-1 text-sm">
                     {new Date(business.discoveredAt).toLocaleDateString()}
                   </dd>
                 </div>
                 {business.approvedAt && business.approvedByUser && (
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Approved</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Approved</dt>
                     <dd className="mt-1 text-sm">
                       {new Date(business.approvedAt).toLocaleDateString()} by{' '}
                       {business.approvedByUser.name || business.approvedByUser.email}
@@ -899,13 +899,13 @@ export default function LeadDetailPage() {
                 )}
                 {business.rejectedAt && business.rejectedByUser && (
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Rejected</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Rejected</dt>
                     <dd className="mt-1 text-sm">
                       {new Date(business.rejectedAt).toLocaleDateString()} by{' '}
                       {business.rejectedByUser.name || business.rejectedByUser.email}
                     </dd>
                     {business.rejectedReason && (
-                      <dd className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                      <dd className="theme-text-muted mt-1 text-xs">
                         Reason: {business.rejectedReason}
                       </dd>
                     )}
@@ -913,7 +913,7 @@ export default function LeadDetailPage() {
                 )}
                 {isClient && business.convertedAt && (
                   <div>
-                    <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Converted To Client</dt>
+                    <dt className="theme-text-muted text-sm font-medium">Converted To Client</dt>
                     <dd className="mt-1 text-sm">
                       {new Date(business.convertedAt).toLocaleDateString()}
                       {business.convertedByUser && (
@@ -927,7 +927,7 @@ export default function LeadDetailPage() {
               </dl>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Actions</h2>
               {isClient ? (
                 <button
@@ -946,7 +946,7 @@ export default function LeadDetailPage() {
                     {convertingToClient ? 'Converting...' : 'Convert To Active Client'}
                   </button>
                   {!canConvertToClient && (
-                    <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                    <p className="theme-text-muted mb-3 text-xs">
                       Lead must have status <span className="font-semibold">approved</span> before conversion.
                     </p>
                   )}
@@ -966,9 +966,9 @@ export default function LeadDetailPage() {
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-950">
+          <div className="theme-surface theme-border w-full max-w-md rounded-2xl border p-6 shadow-xl">
             <h3 className="text-lg font-semibold">Delete Lead</h3>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <p className="theme-text-muted mt-2 text-sm">
               Are you sure you want to delete <strong>{business.name}</strong>? This action cannot be undone.
             </p>
             <div className="mt-6 flex gap-3">
@@ -993,3 +993,4 @@ export default function LeadDetailPage() {
     </div>
   );
 }
+

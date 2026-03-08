@@ -45,16 +45,16 @@ export default function HealthStatus({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+      <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+          <h3 className="text-base font-semibold">
             System health
           </h3>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="theme-text-muted text-xs">
             Auto-refreshes
           </span>
         </div>
-        <div className="mt-4 flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+        <div className="theme-text-muted mt-4 flex items-center gap-3 text-sm">
           <span className="h-2 w-2 animate-pulse rounded-full bg-slate-400" aria-hidden="true" />
           Checking status...
         </div>
@@ -65,17 +65,17 @@ export default function HealthStatus({
   const databaseIsHealthy = health?.database.status === "healthy";
 
   return (
-    <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+    <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+        <h3 className="text-base font-semibold">
           System health
         </h3>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
+        <span className="theme-text-muted text-xs">
           Refreshes every 30s
         </span>
       </div>
 
-      <div className="mt-5 divide-y divide-slate-200/70 text-sm dark:divide-slate-800">
+      <div className="theme-border mt-5 divide-y text-sm">
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <span
@@ -84,7 +84,7 @@ export default function HealthStatus({
               }`}
               aria-hidden="true"
             />
-            <span className="font-medium text-slate-700 dark:text-slate-200">
+            <span className="theme-text-muted font-medium">
               Database
             </span>
           </div>
@@ -107,7 +107,7 @@ export default function HealthStatus({
               }`}
               aria-hidden="true"
             />
-            <span className="font-medium text-slate-700 dark:text-slate-200">
+            <span className="theme-text-muted font-medium">
               Authentication
             </span>
           </div>
@@ -124,7 +124,7 @@ export default function HealthStatus({
       </div>
 
       {health?.timestamp && (
-        <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+        <div className="theme-text-muted mt-4 text-xs">
           Last checked: {new Date(health.timestamp).toLocaleTimeString()}
         </div>
       )}

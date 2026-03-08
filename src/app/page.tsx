@@ -9,15 +9,15 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col">
-      <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/75 backdrop-blur dark:border-slate-800 dark:bg-slate-950/60">
+      <header className="theme-surface theme-border sticky top-0 z-10 border-b backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-sm" aria-hidden="true" />
             <div className="leading-tight">
-              <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              <h1 className="text-base font-semibold tracking-tight">
                 Client Finder Portal
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="theme-text-muted text-xs">
                 Lead discovery and outreach management
               </p>
             </div>
@@ -25,7 +25,7 @@ export default async function Home() {
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
               <>
-                <span className="hidden text-sm text-slate-600 dark:text-slate-300 sm:inline">
+                <span className="theme-text-muted hidden text-sm sm:inline">
                   {session.user?.email}
                 </span>
                 <SignOutButton />
@@ -33,7 +33,7 @@ export default async function Home() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-900"
+                className="theme-text-muted inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-900"
               >
                 Sign In
               </Link>
@@ -43,13 +43,13 @@ export default async function Home() {
       </header>
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <section className="relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950/40 sm:p-10">
+          <section className="theme-surface theme-border relative overflow-hidden rounded-2xl border p-8 shadow-sm sm:p-10">
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/60 via-white to-white dark:from-blue-500/10 dark:via-slate-950 dark:to-slate-950" />
             <div className="max-w-3xl">
-              <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
                 Find prospects faster. Track outreach smarter.
               </h2>
-                  <p className="mt-3 text-base text-slate-600 dark:text-slate-300 sm:text-lg">
+                  <p className="theme-text-muted mt-3 text-base sm:text-lg">
                     Discover local businesses, manage leads, and keep outreach organized — all in one place.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -70,7 +70,7 @@ export default async function Home() {
                     </Link>
                     <Link
                       href="/review"
-                      className="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
+                      className="theme-text-muted inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900"
                     >
                       Review Queue
                     </Link>
@@ -78,7 +78,7 @@ export default async function Home() {
                 )}
                 <a
                   href="#health"
-                  className="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
+                  className="theme-text-muted inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900"
                 >
                   Check system status
                 </a>
@@ -88,27 +88,27 @@ export default async function Home() {
 
           <section className="mt-10">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+              <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
+                <div className="text-sm font-semibold">
                   Lead discovery
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <p className="theme-text-muted mt-2 text-sm leading-6">
                   Search for businesses and build a focused lead list quickly.
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+              <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
+                <div className="text-sm font-semibold">
                   Contact management
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <p className="theme-text-muted mt-2 text-sm leading-6">
                   Keep contact info organized and easy to reference.
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+              <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
+                <div className="text-sm font-semibold">
                   Outreach tracking
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <p className="theme-text-muted mt-2 text-sm leading-6">
                   Track follow-ups and outcomes with a simple workflow.
                 </p>
               </div>

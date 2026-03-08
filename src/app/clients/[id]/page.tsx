@@ -178,10 +178,10 @@ export default function ClientDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <TopNav />
         <div className="flex justify-center items-center h-64">
-          <p className="text-gray-500">Loading client...</p>
+          <p className="theme-text-muted">Loading client...</p>
         </div>
       </div>
     );
@@ -189,7 +189,7 @@ export default function ClientDetailPage() {
 
   if (!client) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <TopNav />
         <div className="max-w-7xl mx-auto px-4 py-8">
           <p className="text-red-600">Client not found</p>
@@ -218,7 +218,7 @@ export default function ClientDetailPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <TopNav />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -229,9 +229,9 @@ export default function ClientDetailPage() {
           >
             ← Back to Active Clients
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
-          <p className="text-gray-600">{client.address}</p>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-3xl font-bold">{client.name}</h1>
+          <p className="theme-text-muted">{client.address}</p>
+          <p className="theme-text-muted text-sm mt-1">
             Converted on {formatDate(client.convertedAt)}
             {client.convertedByUser && ` by ${client.convertedByUser.name || client.convertedByUser.email}`}
           </p>
@@ -241,18 +241,18 @@ export default function ClientDetailPage() {
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Client Details Form */}
-            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Client Information</h2>
+            <div className="theme-surface theme-border border shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">Client Information</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="theme-text-muted block text-sm font-medium mb-1">
                     Client Status
                   </label>
                   <select
                     value={clientStatus}
                     onChange={(e) => setClientStatus(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="active">Active</option>
@@ -263,13 +263,13 @@ export default function ClientDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="theme-text-muted block text-sm font-medium mb-1">
                     Subscription Status
                   </label>
                   <select
                     value={subscriptionStatus}
                     onChange={(e) => setSubscriptionStatus(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="active">Active</option>
@@ -282,13 +282,13 @@ export default function ClientDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="theme-text-muted block text-sm font-medium mb-1">
                     Initial Payment Status
                   </label>
                   <select
                     value={initialPaymentStatus}
                     onChange={(e) => setInitialPaymentStatus(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="confirmed">Confirmed</option>
@@ -298,27 +298,27 @@ export default function ClientDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="theme-text-muted block text-sm font-medium mb-1">
                     Next Payment Due Date
                   </label>
                   <input
                     type="date"
                     value={nextPaymentDueDate}
                     onChange={(e) => setNextPaymentDueDate(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="theme-text-muted block text-sm font-medium mb-1">
                   Notes
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={4}
-                  className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   placeholder="Internal notes about this client..."
                 />
               </div>
@@ -335,13 +335,13 @@ export default function ClientDetailPage() {
             </div>
 
             {/* Contact Info */}
-            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+            <div className="theme-surface theme-border border shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
               {hasContactDetails ? (
                 <div className="space-y-2">
                   {contactEmail && (
-                    <p className="text-gray-900">
-                      <strong className="text-gray-900">Email:</strong>{' '}
+                    <p>
+                      <strong>Email:</strong>{' '}
                       <a
                         href={`mailto:${contactEmail}`}
                         className="text-blue-600 hover:underline"
@@ -351,8 +351,8 @@ export default function ClientDetailPage() {
                     </p>
                   )}
                   {contactPhone && (
-                    <p className="text-gray-900">
-                      <strong className="text-gray-900">Phone:</strong>{' '}
+                    <p>
+                      <strong>Phone:</strong>{' '}
                       <a
                         href={`tel:${contactPhone}`}
                         className="text-blue-600 hover:underline"
@@ -362,40 +362,40 @@ export default function ClientDetailPage() {
                     </p>
                   )}
                   {client.website && (
-                    <p className="text-gray-900">
-                      <strong className="text-gray-900">Website:</strong>{' '}
+                    <p>
+                      <strong>Website:</strong>{' '}
                       <a href={client.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         {client.website}
                       </a>
                     </p>
                   )}
                   {googlePlacesUrl && (
-                    <p className="text-gray-900">
-                      <strong className="text-gray-900">Google Place:</strong>{' '}
+                    <p>
+                      <strong>Google Place:</strong>{' '}
                       <a href={googlePlacesUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         View Listing
                       </a>
                     </p>
                   )}
                   {primaryContact?.facebookUrl && (
-                    <p className="text-gray-900">
-                      <strong className="text-gray-900">Facebook:</strong>{' '}
+                    <p>
+                      <strong>Facebook:</strong>{' '}
                       <a href={primaryContact.facebookUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         Profile
                       </a>
                     </p>
                   )}
                   {primaryContact?.instagramUrl && (
-                    <p className="text-gray-900">
-                      <strong className="text-gray-900">Instagram:</strong>{' '}
+                    <p>
+                      <strong>Instagram:</strong>{' '}
                       <a href={primaryContact.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         Profile
                       </a>
                     </p>
                   )}
                   {primaryContact?.linkedinUrl && (
-                    <p className="text-gray-900">
-                      <strong className="text-gray-900">LinkedIn:</strong>{' '}
+                    <p>
+                      <strong>LinkedIn:</strong>{' '}
                       <a href={primaryContact.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         Profile
                       </a>
@@ -403,7 +403,7 @@ export default function ClientDetailPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-gray-500">No contact information available</p>
+                <p className="theme-text-muted">No contact information available</p>
               )}
             </div>
           </div>
@@ -411,9 +411,9 @@ export default function ClientDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Review Checklist */}
-            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
+            <div className="theme-surface theme-border border shadow rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Review Checklist</h2>
+                <h2 className="text-xl font-semibold">Review Checklist</h2>
                 <button
                   onClick={() => setShowChecklistForm(!showChecklistForm)}
                   className="text-sm text-blue-600 hover:text-blue-800"
@@ -423,11 +423,11 @@ export default function ClientDetailPage() {
               </div>
 
               {showChecklistForm && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-md">
+                <div className="theme-surface-muted mb-4 p-4 rounded-md">
                   <select
                     value={checklistAction}
                     onChange={(e) => setChecklistAction(e.target.value)}
-                    className="w-full mb-2 rounded-md border-gray-300"
+                    className="theme-input w-full mb-2 rounded-md border"
                   >
                     <option value="">Select action</option>
                     <option value="subscription_verified">Subscription Verified</option>
@@ -442,7 +442,7 @@ export default function ClientDetailPage() {
                     onChange={(e) => setChecklistNotes(e.target.value)}
                     rows={2}
                     placeholder="Optional notes..."
-                    className="w-full mb-2 rounded-md border-gray-300"
+                    className="theme-input w-full mb-2 rounded-md border"
                   />
                   <div className="flex space-x-2">
                     <button
@@ -458,7 +458,7 @@ export default function ClientDetailPage() {
                         setChecklistAction('');
                         setChecklistNotes('');
                       }}
-                      className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300"
+                      className="theme-text-muted px-3 py-1 bg-gray-200 text-sm rounded-md hover:bg-gray-300"
                     >
                       Cancel
                     </button>
@@ -470,13 +470,13 @@ export default function ClientDetailPage() {
                 <ul className="space-y-2">
                   {checklist.map((item) => (
                     <li key={item.id} className="text-sm border-l-4 border-green-500 pl-3 py-2">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium">
                         {item.outcome?.replace(/_/g, ' ')}
                       </div>
                       {item.notes && (
-                        <div className="text-gray-600 text-xs">{item.notes}</div>
+                        <div className="theme-text-muted text-xs">{item.notes}</div>
                       )}
-                      <div className="text-gray-400 text-xs mt-1">
+                      <div className="theme-text-muted text-xs mt-1">
                         {formatDate(item.occurredAt)}
                         {item.createdByUser && ` by ${item.createdByUser.name}`}
                       </div>
@@ -484,28 +484,28 @@ export default function ClientDetailPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500">No checklist items yet</p>
+                <p className="theme-text-muted text-sm">No checklist items yet</p>
               )}
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white text-gray-900 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
+            <div className="theme-surface theme-border border shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
               {client.outreachTracking.length > 0 ? (
                 <ul className="space-y-2">
                   {client.outreachTracking.slice(0, 5).map((activity) => (
                     <li key={activity.id} className="text-sm border-l-2 border-gray-300 pl-3 py-1">
-                      <div className="text-gray-900">
+                      <div>
                         {activity.channel} - {activity.outcome || 'Contact'}
                       </div>
-                      <div className="text-gray-400 text-xs">
+                      <div className="theme-text-muted text-xs">
                         {formatDate(activity.occurredAt)}
                       </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500">No activity recorded</p>
+                <p className="theme-text-muted text-sm">No activity recorded</p>
               )}
             </div>
           </div>

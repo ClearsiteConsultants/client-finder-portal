@@ -167,14 +167,14 @@ export default function ReviewQueuePage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+      <div className="flex h-screen items-center justify-center">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+    <div className="min-h-screen">
       <TopNav />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -182,7 +182,7 @@ export default function ReviewQueuePage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold">Review Queue</h1>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              <p className="theme-text-muted mt-1 text-sm">
                 Approve or reject leads and manage the pipeline
               </p>
             </div>
@@ -198,14 +198,14 @@ export default function ReviewQueuePage() {
       {/* Filters and Controls */}
       <div className="mb-6 flex flex-wrap items-end gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Status</label>
+          <label className="theme-text-muted block text-sm font-medium mb-1">Status</label>
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+            className="theme-input rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
             <option value="">All</option>
             <option value="pending">Pending</option>
@@ -218,14 +218,14 @@ export default function ReviewQueuePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Website Status</label>
+          <label className="theme-text-muted block text-sm font-medium mb-1">Website Status</label>
           <select
             value={websiteStatusFilter}
             onChange={(e) => {
               setWebsiteStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+            className="theme-input rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
             <option value="">All</option>
             <option value="no_website">No Website</option>
@@ -238,14 +238,14 @@ export default function ReviewQueuePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Sort By</label>
+          <label className="theme-text-muted block text-sm font-medium mb-1">Sort By</label>
           <select
             value={sortBy}
             onChange={(e) => {
               setSortBy(e.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+            className="theme-input rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
             <option value="priority">Priority (VIP first)</option>
             <option value="name">Name</option>
@@ -255,14 +255,14 @@ export default function ReviewQueuePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Sort Order</label>
+          <label className="theme-text-muted block text-sm font-medium mb-1">Sort Order</label>
           <select
             value={sortOrder}
             onChange={(e) => {
               setSortOrder(e.target.value as 'asc' | 'desc');
               setPage(1);
             }}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+            className="theme-input rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
             <option value="asc">Ascending</option>
             <option value="desc">Descending</option>
@@ -273,7 +273,7 @@ export default function ReviewQueuePage() {
           <button
             onClick={() => setSelectedIds(new Set())}
             disabled={selectedIds.size === 0}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+            className="theme-border theme-text-muted rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
           >
             Deselect All
           </button>
@@ -297,7 +297,7 @@ export default function ReviewQueuePage() {
       {/* Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 text-slate-900 shadow-xl dark:bg-slate-950 dark:text-slate-50">
+          <div className="theme-surface theme-border w-full max-w-md rounded-lg border p-6 shadow-xl">
             <h2 className="text-xl font-bold mb-4">
               Confirm {showConfirm === 'approve' ? 'Approval' : 'Rejection'}
             </h2>
@@ -306,11 +306,11 @@ export default function ReviewQueuePage() {
             </p>
             {showConfirm === 'reject' && (
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Reason (optional)</label>
+                <label className="theme-text-muted block text-sm font-medium mb-1">Reason (optional)</label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+                  className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   rows={3}
                   placeholder="Enter reason for rejection..."
                 />
@@ -322,7 +322,7 @@ export default function ReviewQueuePage() {
                   setShowConfirm(null);
                   setRejectReason('');
                 }}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+                className="theme-border theme-text-muted rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900"
               >
                 Cancel
               </button>
@@ -353,9 +353,9 @@ export default function ReviewQueuePage() {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="theme-surface theme-border overflow-x-auto rounded-2xl border shadow-sm">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+          <thead className="theme-surface-muted theme-text-muted">
             <tr>
               <th className="px-4 py-3 text-left">
                 <input
@@ -373,7 +373,7 @@ export default function ReviewQueuePage() {
               <th className="px-4 py-3 text-left font-medium">Rating</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200 text-slate-900 dark:divide-slate-800 dark:text-slate-50">
+          <tbody className="theme-border divide-y">
             {leads.map((lead) => (
               <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
                 <td className="px-4 py-3">
@@ -391,7 +391,7 @@ export default function ReviewQueuePage() {
                     {lead.name}
                   </a>
                 </td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{lead.address}</td>
+                <td className="theme-text-muted px-4 py-3">{lead.address}</td>
                 <td className="px-4 py-3">
                   {lead.placeId ? (
                     <a
@@ -403,7 +403,7 @@ export default function ReviewQueuePage() {
                       View
                     </a>
                   ) : (
-                    <span className="text-slate-500 dark:text-slate-400">—</span>
+                    <span className="theme-text-muted">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3">{getWebsiteStatusBadge(lead.websiteStatus)}</td>
@@ -426,21 +426,21 @@ export default function ReviewQueuePage() {
 
       {/* Pagination */}
       <div className="mt-6 flex justify-between items-center">
-        <div className="text-sm text-slate-600 dark:text-slate-300">
+        <div className="theme-text-muted text-sm">
           Showing page {page} of {totalPages}
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+            className="theme-border theme-text-muted rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
           >
             Previous
           </button>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+            className="theme-border theme-text-muted rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
           >
             Next
           </button>

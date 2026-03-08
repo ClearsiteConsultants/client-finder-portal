@@ -19,7 +19,7 @@ export default function RootLayout({
           <div className="min-h-screen flex flex-col">
             <div className="flex-1">{children}</div>
             <footer className="border-t border-slate-200/70 dark:border-slate-800">
-              <div className="mx-auto max-w-7xl px-4 py-6 text-xs text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
+              <div className="theme-text-muted mx-auto max-w-7xl px-4 py-6 text-xs sm:px-6 lg:px-8">
                 Client Finder Portal
               </div>
             </footer>

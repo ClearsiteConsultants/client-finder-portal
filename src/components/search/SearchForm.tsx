@@ -56,12 +56,12 @@ export default function SearchForm() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="theme-surface theme-border rounded-xl border p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
               htmlFor="location"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="theme-text-muted block text-sm font-medium"
             >
               Location
             </label>
@@ -72,14 +72,14 @@ export default function SearchForm() {
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City, ZIP code, or address"
               required
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
+              className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           <div>
             <label
               htmlFor="radius"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="theme-text-muted block text-sm font-medium"
             >
               Search Radius
             </label>
@@ -88,7 +88,7 @@ export default function SearchForm() {
               value={radius}
               onChange={(e) => setRadius(e.target.value)}
               required
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="1000">1 km</option>
               <option value="5000">5 km</option>
@@ -101,7 +101,7 @@ export default function SearchForm() {
           <div>
             <label
               htmlFor="businessType"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="theme-text-muted block text-sm font-medium"
             >
               Business Type
             </label>
@@ -109,7 +109,7 @@ export default function SearchForm() {
               id="businessType"
               value={businessType}
               onChange={(e) => setBusinessType(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">All Business Types</option>
               {GOOGLE_PLACES_BUSINESS_TYPES.map((type) => (

@@ -125,7 +125,7 @@ export default function ExclusionsPage() {
       <>
         <TopNav />
         <div className="container mx-auto px-4 py-8">
-          <p className="text-gray-600">Loading...</p>
+          <p className="theme-text-muted">Loading...</p>
         </div>
       </>
     );
@@ -141,22 +141,22 @@ export default function ExclusionsPage() {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Business Exclude List</h1>
         
-        <div className="bg-white text-gray-900 rounded-lg shadow p-6 mb-6">
+        <div className="theme-surface rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Add Business to Exclude List</h2>
-          <p className="text-gray-600 mb-4">
+          <p className="theme-text-muted mb-4">
             Excluded businesses will be automatically rejected during discovery and will not appear in the review queue.
           </p>
           
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label htmlFor="exclusionMode" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="exclusionMode" className="theme-text-muted block text-sm font-medium mb-1">
                 Exclusion Type
               </label>
               <select
                 id="exclusionMode"
                 value={newExclusionMode}
                 onChange={(e) => setNewExclusionMode(e.target.value as ExclusionMode)}
-                className="w-full bg-white text-gray-900 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="theme-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="business_name">Business Name</option>
                 <option value="business_type">Business Type</option>
@@ -164,7 +164,7 @@ export default function ExclusionsPage() {
             </div>
 
             <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="businessName" className="theme-text-muted block text-sm font-medium mb-1">
                 {newExclusionMode === 'business_name' ? 'Business Name *' : 'Business Type *'}
               </label>
               {newExclusionMode === 'business_name' ? (
@@ -173,7 +173,7 @@ export default function ExclusionsPage() {
                   type="text"
                   value={newBusinessName}
                   onChange={(e) => setNewBusinessName(e.target.value)}
-                  className="w-full bg-white text-gray-900 placeholder:text-gray-500 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="theme-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Starbucks"
                   required
                 />
@@ -182,7 +182,7 @@ export default function ExclusionsPage() {
                   id="businessType"
                   value={newBusinessType}
                   onChange={(e) => setNewBusinessType(e.target.value)}
-                  className="w-full bg-white text-gray-900 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="theme-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">Select a business type</option>
@@ -196,7 +196,7 @@ export default function ExclusionsPage() {
             </div>
 
             <div>
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="reason" className="theme-text-muted block text-sm font-medium mb-1">
                 Reason (optional)
               </label>
               <input
@@ -204,7 +204,7 @@ export default function ExclusionsPage() {
                 type="text"
                 value={newReason}
                 onChange={(e) => setNewReason(e.target.value)}
-                className="w-full bg-white text-gray-900 placeholder:text-gray-500 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="theme-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., Too large, Already a customer"
               />
             </div>
@@ -228,58 +228,58 @@ export default function ExclusionsPage() {
           )}
         </div>
 
-        <div className="bg-white text-gray-900 rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
+        <div className="theme-surface rounded-lg shadow">
+          <div className="p-6 border-b theme-border">
             <h2 className="text-xl font-semibold">Excluded Businesses ({excluded.length})</h2>
           </div>
           
           {excluded.length === 0 ? (
-            <div className="p-6 text-gray-500 text-center">
+            <div className="p-6 theme-text-muted text-center">
               No businesses excluded yet.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 text-gray-700">
+                <thead className="theme-surface-muted theme-text-muted">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Exclusion
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Reason
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Added By
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Added At
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white text-gray-900 divide-y divide-gray-200">
+                <tbody className="theme-surface divide-y theme-border">
                   {excluded.map((item) => (
                     <tr key={item.id}>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium">
                         {item.exclusionMode === 'business_type' && item.businessType
                           ? item.businessType
                           : item.businessName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-muted">
                         {item.exclusionMode === 'business_type' ? 'Business Type' : 'Business Name'}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
+                      <td className="px-6 py-4 theme-text-muted">
                         {item.reason || '—'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-muted">
                         {item.addedBy}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-muted">
                         {new Date(item.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

@@ -10,12 +10,32 @@
 :root {
   --background: var(--color-background-light);
   --foreground: var(--color-foreground-light);
+
+  /* Semantic light theme tokens */
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --surface-foreground: #0f172a;
+  --muted-foreground: #475569;
+  --border-subtle: #e2e8f0;
+  --input-background: #ffffff;
+  --input-foreground: #0f172a;
+  --input-placeholder: #64748b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: var(--color-background-dark);
     --foreground: var(--color-foreground-dark);
+
+    /* Semantic dark theme tokens */
+    --surface: #0f172a;
+    --surface-muted: #1e293b;
+    --surface-foreground: #f8fafc;
+    --muted-foreground: #cbd5e1;
+    --border-subtle: #334155;
+    --input-background: #0b1220;
+    --input-foreground: #f8fafc;
+    --input-placeholder: #94a3b8;
   }
 }
 
@@ -33,4 +53,33 @@ body {
 
 a {
   text-underline-offset: 4px;
+}
+
+/* Reusable theme utilities for consistent contrast across pages/components */
+.theme-surface {
+  background-color: var(--surface);
+  color: var(--surface-foreground);
+}
+
+.theme-surface-muted {
+  background-color: var(--surface-muted);
+  color: var(--surface-foreground);
+}
+
+.theme-text-muted {
+  color: var(--muted-foreground);
+}
+
+.theme-border {
+  border-color: var(--border-subtle);
+}
+
+.theme-input {
+  background-color: var(--input-background);
+  color: var(--input-foreground);
+  border-color: var(--border-subtle);
+}
+
+.theme-input::placeholder {
+  color: var(--input-placeholder);
 }

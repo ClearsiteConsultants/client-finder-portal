@@ -143,32 +143,32 @@ export default function ActiveClientsPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <TopNav />
         <div className="flex justify-center items-center h-64">
-          <p className="text-gray-500">Loading clients...</p>
+          <p className="theme-text-muted">Loading clients...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <TopNav />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Active Clients</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-3xl font-bold">Active Clients</h1>
+          <p className="theme-text-muted mt-2 text-sm">
             Manage your active clients and track subscription status
           </p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white text-gray-900 p-4 rounded-lg shadow mb-6">
+        <div className="theme-surface theme-border border p-4 rounded-lg shadow mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="theme-text-muted block text-sm font-medium mb-1">
                 Subscription Status
               </label>
               <select
@@ -177,7 +177,7 @@ export default function ActiveClientsPage() {
                   setSubscriptionStatusFilter(e.target.value);
                   setPagination({ ...pagination, page: 1 });
                 }}
-                className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
@@ -190,7 +190,7 @@ export default function ActiveClientsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="theme-text-muted block text-sm font-medium mb-1">
                 Client Status
               </label>
               <select
@@ -199,7 +199,7 @@ export default function ActiveClientsPage() {
                   setClientStatusFilter(e.target.value);
                   setPagination({ ...pagination, page: 1 });
                 }}
-                className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
@@ -210,13 +210,13 @@ export default function ActiveClientsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="theme-text-muted block text-sm font-medium mb-1">
                 Sort By
               </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="updatedAt">Recently Updated</option>
                 <option value="convertedAt">Conversion Date</option>
@@ -234,52 +234,52 @@ export default function ActiveClientsPage() {
                     setNeedsAttentionFilter(e.target.checked);
                     setPagination({ ...pagination, page: 1 });
                   }}
-                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  className="theme-border rounded border text-red-600 focus:ring-red-500"
                 />
-                <span className="text-sm font-medium text-gray-700">Needs Attention</span>
+                <span className="theme-text-muted text-sm font-medium">Needs Attention</span>
               </label>
             </div>
           </div>
         </div>
 
         {/* Clients List */}
-        <div className="bg-white text-gray-900 shadow rounded-lg overflow-hidden">
+        <div className="theme-surface theme-border border shadow rounded-lg overflow-hidden">
           {clients.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">No clients found</p>
+              <p className="theme-text-muted">No clients found</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-gray-900">
-                <thead className="bg-gray-50">
+              <table className="min-w-full theme-border divide-y">
+                <thead className="theme-surface-muted theme-text-muted">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Client
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Contact
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Subscription
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Client Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Payment Due
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="theme-surface theme-border divide-y">
                   {clients.map((client) => (
                     <tr key={client.id} className={client.needsAttention ? 'bg-red-50' : ''}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="flex items-center">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium">
                               {client.name}
                             </div>
                             {client.needsAttention && (
@@ -288,13 +288,13 @@ export default function ActiveClientsPage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-500">{client.address}</div>
+                          <div className="theme-text-muted text-sm">{client.address}</div>
                           {client.notesCount > 0 && (
-                            <div className="text-xs text-gray-400">📝 Has notes</div>
+                            <div className="theme-text-muted text-xs">📝 Has notes</div>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="theme-text-muted px-6 py-4 whitespace-nowrap text-sm">
                         <div>
                           {client.contactInfo[0]?.email && (
                             <div>✉️ {client.contactInfo[0].email}</div>
@@ -320,7 +320,7 @@ export default function ActiveClientsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(client.clientStatus, 'client')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="theme-text-muted px-6 py-4 whitespace-nowrap text-sm">
                         {formatDate(client.nextPaymentDueDate)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
