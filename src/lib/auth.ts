@@ -3,13 +3,42 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import { compare } from "bcryptjs";
+import { type JWT } from "next-auth/jwt";
 
 declare module "next-auth" {
   interface Session {
-    user: {
+    user?: {
       id: string;
     } & DefaultSession["user"];
+    error?: "SessionInvalid";
   }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: string;
+    sessionInvalid?: boolean;
+  }
+}
+
+async function validateTokenUser(token: JWT): Promise<JWT> {
+  if (!token.id) {
+    return token;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: token.id },
+    select: { id: true },
+  });
+
+  if (!user) {
+    delete token.id;
+    token.sessionInvalid = true;
+    return token;
+  }
+
+  token.sessionInvalid = false;
+  return token;
 }
 
 export const {
@@ -74,12 +103,22 @@ export const {
       if (user) {
         token.id = user.id;
       }
-      return token;
+
+      return validateTokenUser(token);
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
+      if (token.sessionInvalid || !token.id) {
+        return {
+          ...session,
+          user: undefined,
+          error: "SessionInvalid",
+        };
       }
+
+      if (session.user) {
+        session.user.id = token.id;
+      }
+
       return session;
     },
   },

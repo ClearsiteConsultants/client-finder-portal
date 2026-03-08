@@ -2,13 +2,21 @@
 
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const sessionExpired = searchParams.get("error") === "session_invalid";
+  const displayError =
+    error ||
+    (sessionExpired
+      ? "Your session is no longer valid. Please sign in again."
+      : "");
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -85,9 +93,9 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {error && (
+            {displayError && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-                {error}
+                {displayError}
               </div>
             )}
 

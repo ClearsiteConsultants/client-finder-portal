@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PlacesService } from '@/lib/places/service';
 import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import type { SearchRequest } from '@/lib/places/types';
 
 export async function POST(request: NextRequest) {
@@ -15,6 +16,19 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Guard against stale JWTs that reference a deleted user record.
+    const authUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true },
+    });
+
+    if (!authUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized: session is no longer valid. Please sign in again.' },
         { status: 401 }
       );
     }
@@ -51,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Create service and execute search
     const service = new PlacesService();
-    const response = await service.search(body, session.user.id!, { forceRefresh });
+    const response = await service.search(body, authUser.id, { forceRefresh });
 
     if (response.status === 'error') {
       // Return appropriate status code based on error type
