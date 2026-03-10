@@ -51,10 +51,10 @@ describe('ManualLeadForm', () => {
     const submitButton = screen.getByText(/create lead/i);
     fireEvent.click(submitButton);
 
-    // Errors should appear immediately without checking duplicates
     await waitFor(() => {
-      expect(screen.getByText(/invalid email format/i)).toBeInTheDocument();
+      expect(emailInput).toBeInvalid();
     });
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('should validate website URL format', async () => {
@@ -76,10 +76,10 @@ describe('ManualLeadForm', () => {
     const submitButton = screen.getByText(/create lead/i);
     fireEvent.click(submitButton);
 
-    // Errors should appear immediately without checking duplicates
     await waitFor(() => {
-      expect(screen.getByText(/website must start with/i)).toBeInTheDocument();
+      expect(websiteInput).toBeInvalid();
     });
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('should check for duplicates before creating', async () => {

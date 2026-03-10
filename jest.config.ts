@@ -15,7 +15,6 @@ const config: Config = {
   testEnvironmentOptions: {
     customExportConditions: ['node', 'node-addons'],
   },
-  testTimeout: 35000,
 };
 
 export default createJestConfig(config);

@@ -21,13 +21,12 @@ if (typeof global.fetch === 'undefined') {
 
 if (typeof (global as any).Response !== 'undefined' && typeof (global as any).Response.json !== 'function') {
   (global as any).Response.json = (data: unknown, init?: ResponseInit) => {
-    const existingHeaders = (init?.headers || {}) as Record<string, string>;
+    const headers = new (global as any).Headers(init?.headers);
+    headers.set('content-type', 'application/json');
+    const { headers: _ignored, ...restInit } = init ?? {};
     return new (global as any).Response(JSON.stringify(data), {
-      ...init,
-      headers: {
-        'content-type': 'application/json',
-        ...existingHeaders,
-      },
+      ...restInit,
+      headers,
     });
   };
 }
