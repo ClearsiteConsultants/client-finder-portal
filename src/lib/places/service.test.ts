@@ -124,6 +124,7 @@ describe('PlacesService', () => {
           placeId: 'TEST_EXISTING',
           name: 'Old Name',
           address: '456 Old St',
+          websiteStatus: 'no_website',
           source: 'google_maps',
         },
       });
@@ -238,6 +239,7 @@ describe('PlacesService', () => {
           placeId: 'TEST_UPDATE_DETAILS',
           name: 'Old Details',
           address: '100 Old Detail St',
+          websiteStatus: 'no_website',
           source: 'google_maps',
         },
       });

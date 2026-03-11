@@ -326,11 +326,15 @@ describe('LeadDetailPage', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled();
-      const call = (global.fetch as jest.Mock).mock.calls[0];
-      expect(call[0]).toBe('/api/leads/business-123');
-      expect(call[1].method).toBe('PATCH');
-      const payload = JSON.parse(call[1].body as string);
+      const fetchMock = global.fetch as jest.Mock;
+      expect(fetchMock).toHaveBeenCalled();
+      const patchCall = [...fetchMock.mock.calls].reverse().find(
+        ([url, options]) =>
+          url === '/api/leads/business-123' && options && options.method === 'PATCH',
+      );
+      expect(patchCall).toBeDefined();
+      const [, options] = patchCall as [RequestInfo | URL, RequestInit];
+      const payload = JSON.parse(options.body as string);
       expect(payload.address).toBe('789 Elm St');
       expect(payload.phone).toBe('555-1234');
       expect(payload.website).toBe('https://testbusiness.com');
@@ -510,11 +514,15 @@ describe('LeadDetailPage', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled();
-      const call = (global.fetch as jest.Mock).mock.calls[0];
-      expect(call[0]).toBe('/api/leads/business-123');
-      expect(call[1].method).toBe('PATCH');
-      const payload = JSON.parse(call[1].body as string);
+      const fetchMock = global.fetch as jest.Mock;
+      expect(fetchMock).toHaveBeenCalled();
+      const patchCall = [...fetchMock.mock.calls].reverse().find(
+        ([url, options]) =>
+          url === '/api/leads/business-123' && options && options.method === 'PATCH',
+      );
+      expect(patchCall).toBeDefined();
+      const [, options] = patchCall as [RequestInfo | URL, RequestInit];
+      const payload = JSON.parse(options.body as string);
       expect(payload.businessTypes).toEqual(['retail', 'services', 'tech']);
     });
   });

@@ -147,6 +147,31 @@ describe('exclusions', () => {
       expect(result.isExcluded).toBe(true);
     });
 
+    it('should match spacing variants introduced by normalization candidates', async () => {
+      await addBusinessToExcludeList('MainStreetPizza', TEST_USER_ID, 'Spacing variant');
+
+      const result = await checkBusinessExclusion('Main Street Pizza');
+
+      expect(result.isExcluded).toBe(true);
+      expect(result.reason).toBe('Spacing variant');
+    });
+
+    it('should match mc spacing variants introduced by normalization candidates', async () => {
+      const result = await checkBusinessExclusion('Mc Donalds');
+
+      expect(result.isExcluded).toBe(true);
+      expect(result.reason).toBe('Fast food chain');
+    });
+
+    it('should match names after removing standalone numbers from candidates', async () => {
+      await addBusinessToExcludeList('Studio Cafe', TEST_USER_ID, 'Number variant');
+
+      const result = await checkBusinessExclusion('Studio 54 Cafe');
+
+      expect(result.isExcluded).toBe(true);
+      expect(result.reason).toBe('Number variant');
+    });
+
     it('should not exclude non-excluded businesses', async () => {
       const result = await checkBusinessExclusion('Joe\'s Coffee Shop');
       
@@ -194,6 +219,20 @@ describe('exclusions', () => {
       expect(results.get('STARBUCKS')?.isExcluded).toBe(true);
       expect(results.get('starbucks')?.isExcluded).toBe(true);
       expect(results.get('StArBuCkS')?.isExcluded).toBe(true);
+    });
+
+    it('should apply normalization candidates consistently in batch checks', async () => {
+      await addBusinessToExcludeList('SuiteDental', TEST_USER_ID, 'Batch candidate');
+
+      const results = await checkBusinessExclusionBatch([
+        'Suite Dental',
+        'Suite 200 Dental',
+        'Unrelated Business',
+      ]);
+
+      expect(results.get('Suite Dental')?.isExcluded).toBe(true);
+      expect(results.get('Suite 200 Dental')?.isExcluded).toBe(true);
+      expect(results.get('Unrelated Business')?.isExcluded).toBe(false);
     });
   });
 

@@ -184,38 +184,48 @@ describe('Exclusions API', () => {
 
   describe('GET /api/exclusions', () => {
     it('should return all excluded businesses', async () => {
-      // Add some excluded businesses with error handling
-      try {
-        await prisma.excludedBusiness.createMany({
-          data: [
-            {
-              businessName: 'Walmart GET Test',
-              businessNameNormalized: 'walmart get test',
-              addedByUserId: mockUserId,
-              reason: 'Too big',
-            },
-            {
-              businessName: 'Target GET Test',
-              businessNameNormalized: 'target get test',
-              addedByUserId: mockUserId,
-            },
-          ],
-        });
-      } catch (e) {
-        // Ignore createMany errors in case user is deleted; test will still verify GET shape
-      }
+      await prisma.excludedBusiness.createMany({
+        data: [
+          {
+            businessName: 'Walmart GET Test',
+            businessNameNormalized: 'walmart get test',
+            addedByUserId: mockUserId,
+            reason: 'Too big',
+          },
+          {
+            businessName: 'Target GET Test',
+            businessNameNormalized: 'target get test',
+            addedByUserId: mockUserId,
+          },
+        ],
+      });
 
       const response = await GET();
       const data = await response.json();
+      const seededEntries = data.excluded.filter((entry: { businessName: string }) =>
+        ['Walmart GET Test', 'Target GET Test'].includes(entry.businessName)
+      );
 
       expect(response.status).toBe(200);
       expect(Array.isArray(data.excluded)).toBe(true);
-      // Just verify the structure; full content depends on other tests
-      if (data.excluded.length > 0) {
-        expect(data.excluded[0].businessName).toBeDefined();
-        expect(data.excluded[0].addedBy).toBeDefined();
-        expect(data.excluded[0].createdAt).toBeDefined();
-      }
+      expect(seededEntries).toHaveLength(2);
+      expect(seededEntries.map((entry: { businessName: string }) => entry.businessName)).toEqual(
+        expect.arrayContaining(['Walmart GET Test', 'Target GET Test'])
+      );
+      expect(
+        seededEntries.find((entry: { businessName: string }) => entry.businessName === 'Walmart GET Test')
+      ).toMatchObject({
+        businessName: 'Walmart GET Test',
+        addedBy: 'Test User',
+        reason: 'Too big',
+      });
+      expect(
+        seededEntries.find((entry: { businessName: string }) => entry.businessName === 'Target GET Test')
+      ).toMatchObject({
+        businessName: 'Target GET Test',
+        addedBy: 'Test User',
+      });
+      expect(seededEntries[0].createdAt).toBeDefined();
     });
 
     it('should return excluded array shape', async () => {
