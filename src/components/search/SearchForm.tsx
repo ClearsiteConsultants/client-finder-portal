@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SearchResults } from "./SearchResults";
-import type { BusinessResult } from "@/lib/places/types";
+import type { BusinessResult, SearchMetrics, SearchResponse } from "@/lib/places/types";
 import {
   GOOGLE_PLACES_BUSINESS_TYPES,
 } from "@/lib/places/business-types";
@@ -10,6 +10,17 @@ import {
 type InfoTooltipProps = {
   label: string;
   text: string;
+};
+
+type DebugRun = {
+  timestamp: string;
+  fromCache: boolean;
+  enrichmentSettings: {
+    enabled: boolean;
+    onlyWhenMissing: boolean;
+    maxPlaces: number;
+  };
+  metrics: SearchMetrics;
 };
 
 function InfoTooltip({ label, text }: InfoTooltipProps) {
@@ -40,6 +51,8 @@ export default function SearchForm() {
   const [results, setResults] = useState<BusinessResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [latestMetrics, setLatestMetrics] = useState<SearchMetrics | null>(null);
+  const [debugHistory, setDebugHistory] = useState<DebugRun[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +83,7 @@ export default function SearchForm() {
         }),
       });
 
-      const data = await response.json();
+      const data: SearchResponse = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to search businesses");
@@ -81,6 +94,31 @@ export default function SearchForm() {
       }
 
       setResults(data.results || []);
+
+      const metrics = data.metrics || {
+        geocodeCalls: 0,
+        nearbySearchCalls: 0,
+        placeDetailsCalls: 0,
+        placeDetailsFailures: 0,
+        detailsCandidates: 0,
+        detailsSelected: 0,
+        totalGooglePlacesCalls: 0,
+      };
+
+      setLatestMetrics(metrics);
+      setDebugHistory((prev) => [
+        {
+          timestamp: new Date().toLocaleTimeString(),
+          fromCache: !!data.fromCache,
+          enrichmentSettings: {
+            enabled: enrichDetails,
+            onlyWhenMissing: enrichOnlyWhenMissing,
+            maxPlaces: safeDetailsLimit,
+          },
+          metrics,
+        },
+        ...prev,
+      ].slice(0, 10));
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setResults([]);
@@ -230,6 +268,77 @@ export default function SearchForm() {
             {error}
           </div>
         )}
+
+        <div className="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">Google Places API Debug</h3>
+            <span className="theme-text-muted text-xs">Last 10 searches</span>
+          </div>
+
+          {!latestMetrics ? (
+            <p className="theme-text-muted mt-2 text-xs">
+              Run a search to see exact Google Places API call counts.
+            </p>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
+              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+                <div className="theme-text-muted">Total Calls</div>
+                <div className="font-semibold">{latestMetrics.totalGooglePlacesCalls}</div>
+              </div>
+              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+                <div className="theme-text-muted">Geocode</div>
+                <div className="font-semibold">{latestMetrics.geocodeCalls}</div>
+              </div>
+              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+                <div className="theme-text-muted">Nearby Search</div>
+                <div className="font-semibold">{latestMetrics.nearbySearchCalls}</div>
+              </div>
+              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+                <div className="theme-text-muted">Place Details</div>
+                <div className="font-semibold">{latestMetrics.placeDetailsCalls}</div>
+              </div>
+            </div>
+          )}
+
+          {debugHistory.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead>
+                  <tr className="theme-text-muted border-b border-slate-200 text-left dark:border-slate-700">
+                    <th className="px-2 py-1">Time</th>
+                    <th className="px-2 py-1">Settings</th>
+                    <th className="px-2 py-1">Cache</th>
+                    <th className="px-2 py-1">Total</th>
+                    <th className="px-2 py-1">Geo</th>
+                    <th className="px-2 py-1">Near</th>
+                    <th className="px-2 py-1">Det</th>
+                    <th className="px-2 py-1">Det Fail</th>
+                    <th className="px-2 py-1">Cand</th>
+                    <th className="px-2 py-1">Sel</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugHistory.map((run, idx) => (
+                    <tr key={`${run.timestamp}-${idx}`} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="px-2 py-1">{run.timestamp}</td>
+                      <td className="px-2 py-1">
+                        {`E:${run.enrichmentSettings.enabled ? 1 : 0} M:${run.enrichmentSettings.onlyWhenMissing ? 1 : 0} L:${run.enrichmentSettings.maxPlaces}`}
+                      </td>
+                      <td className="px-2 py-1">{run.fromCache ? "yes" : "no"}</td>
+                      <td className="px-2 py-1 font-medium">{run.metrics.totalGooglePlacesCalls}</td>
+                      <td className="px-2 py-1">{run.metrics.geocodeCalls}</td>
+                      <td className="px-2 py-1">{run.metrics.nearbySearchCalls}</td>
+                      <td className="px-2 py-1">{run.metrics.placeDetailsCalls}</td>
+                      <td className="px-2 py-1">{run.metrics.placeDetailsFailures}</td>
+                      <td className="px-2 py-1">{run.metrics.detailsCandidates}</td>
+                      <td className="px-2 py-1">{run.metrics.detailsSelected}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {hasSearched && (

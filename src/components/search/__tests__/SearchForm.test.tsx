@@ -169,4 +169,37 @@ describe("SearchForm", () => {
       expect(screen.getByText(/network error/i)).toBeInTheDocument();
     });
   });
+
+  it("shows Google Places API debug metrics after a successful search", async () => {
+    const mockResponse = {
+      status: "success",
+      results: [],
+      fromCache: false,
+      metrics: {
+        geocodeCalls: 1,
+        nearbySearchCalls: 1,
+        placeDetailsCalls: 3,
+        placeDetailsFailures: 0,
+        detailsCandidates: 5,
+        detailsSelected: 3,
+        totalGooglePlacesCalls: 5,
+      },
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    });
+
+    render(<SearchForm />);
+
+    fireEvent.change(screen.getByLabelText(/location/i), { target: { value: "Seattle" } });
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Google Places API Debug/i)).toBeInTheDocument();
+      expect(screen.getAllByText("5").length).toBeGreaterThan(0);
+      expect(screen.getByText(/E:1 M:1 L:20/i)).toBeInTheDocument();
+    });
+  });
 });

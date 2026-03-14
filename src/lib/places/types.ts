@@ -13,6 +13,16 @@ export interface SearchRequest {
   };
 }
 
+export interface SearchMetrics {
+  geocodeCalls: number;
+  nearbySearchCalls: number;
+  placeDetailsCalls: number;
+  placeDetailsFailures: number;
+  detailsCandidates: number;
+  detailsSelected: number;
+  totalGooglePlacesCalls: number;
+}
+
 export interface SearchResponse {
   results: BusinessResult[];
   nextPageToken?: string;
@@ -20,6 +30,7 @@ export interface SearchResponse {
   error?: string;
   fromCache?: boolean; // Whether results came from cache
   cacheAge?: number; // Age of cache in milliseconds
+  metrics?: SearchMetrics; // Google Places API call metrics for this request
 }
 
 export interface BusinessResult {

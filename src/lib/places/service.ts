@@ -4,7 +4,7 @@
 
 import { PlacesClient } from './client';
 import { normalizeGooglePlace, toPrismaCreateInput } from './normalizer';
-import type { SearchRequest, SearchResponse, BusinessResult, GooglePlaceResult } from './types';
+import type { SearchRequest, SearchResponse, BusinessResult, GooglePlaceResult, SearchMetrics } from './types';
 import { prisma } from '../prisma';
 import type { Business } from '@prisma/client';
 import {
@@ -35,6 +35,22 @@ export class PlacesService {
     userId: string,
     options: { forceRefresh?: boolean } = {}
   ): Promise<SearchResponse> {
+    const metrics: SearchMetrics = {
+      geocodeCalls: 0,
+      nearbySearchCalls: 0,
+      placeDetailsCalls: 0,
+      placeDetailsFailures: 0,
+      detailsCandidates: 0,
+      detailsSelected: 0,
+      totalGooglePlacesCalls: 0,
+    };
+
+    const finalizeMetrics = (): SearchMetrics => ({
+      ...metrics,
+      totalGooglePlacesCalls:
+        metrics.geocodeCalls + metrics.nearbySearchCalls + metrics.placeDetailsCalls,
+    });
+
     try {
       // Parse location - check if it's lat,lng or needs geocoding
       let location: { lat: number; lng: number };
@@ -49,6 +65,7 @@ export class PlacesService {
         // Geocode the location string (with rate limiting)
         await this.rateLimiter.throttle();
         location = await retryWithBackoff(() => this.client.geocode(request.location));
+        metrics.geocodeCalls += 1;
       }
 
       // Generate cache key
@@ -88,6 +105,7 @@ export class PlacesService {
             status: 'success',
             fromCache: true,
             cacheAge,
+            metrics: finalizeMetrics(),
           };
         }
       }
@@ -114,6 +132,7 @@ export class PlacesService {
         const places = await retryWithBackoff(() =>
           this.client.nearbySearch(location, request.radius, request.businessType)
         );
+        metrics.nearbySearchCalls += 1;
 
         const enrichmentEnabled = request.detailsEnrichment?.enabled ?? true;
         const onlyWhenMissing = request.detailsEnrichment?.onlyWhenMissing ?? true;
@@ -134,10 +153,12 @@ export class PlacesService {
 
           return missingWebsite || missingAddress || missingPhone;
         });
+        metrics.detailsCandidates = placesNeedingDetails.length;
 
         const placesToEnrich = enrichmentEnabled
           ? placesNeedingDetails.slice(0, maxPlaces)
           : [];
+        metrics.detailsSelected = placesToEnrich.length;
         const placesToEnrichSet = new Set(placesToEnrich.map((place) => place.place_id));
 
         const enrichedPlaces: GooglePlaceResult[] = [];
@@ -147,6 +168,7 @@ export class PlacesService {
           if (place.place_id && placesToEnrichSet.has(place.place_id)) {
             try {
               await this.rateLimiter.throttle();
+              metrics.placeDetailsCalls += 1;
               const details = await retryWithBackoff(() => this.client.getPlaceDetails(place.place_id));
 
               if (details) {
@@ -158,6 +180,7 @@ export class PlacesService {
                 };
               }
             } catch (error) {
+              metrics.placeDetailsFailures += 1;
               // Continue with nearby-search data if details lookup fails.
               console.warn(`Could not fetch place details for ${place.place_id}:`, error);
             }
@@ -307,6 +330,7 @@ export class PlacesService {
           results,
           status: 'success',
           fromCache: false,
+          metrics: finalizeMetrics(),
         };
       } catch (error) {
         // Update search run status to failed
@@ -325,6 +349,7 @@ export class PlacesService {
         results: [],
         status: 'error',
         error: errorObj.message || 'An unknown error occurred',
+        metrics: finalizeMetrics(),
       };
     }
   }

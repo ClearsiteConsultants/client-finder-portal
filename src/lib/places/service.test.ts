@@ -88,6 +88,15 @@ describe('PlacesService', () => {
         hasWebsite: true,
         isNew: true,
       });
+      expect(result.metrics).toMatchObject({
+        geocodeCalls: 1,
+        nearbySearchCalls: 1,
+        placeDetailsCalls: 0,
+        placeDetailsFailures: 0,
+        detailsCandidates: 0,
+        detailsSelected: 0,
+        totalGooglePlacesCalls: 2,
+      });
 
       // Verify database persistence
       const business = await prisma.business.findUnique({
@@ -191,6 +200,15 @@ describe('PlacesService', () => {
       expect(result.results).toHaveLength(1);
       expect(result.results[0].address).toBe('12 Nearby Rd, Los Angeles, CA');
       expect(result.results[0].website).toBe('https://nearby-only-business.test');
+      expect(result.metrics).toMatchObject({
+        geocodeCalls: 1,
+        nearbySearchCalls: 1,
+        placeDetailsCalls: 1,
+        placeDetailsFailures: 0,
+        detailsCandidates: 1,
+        detailsSelected: 1,
+        totalGooglePlacesCalls: 3,
+      });
 
       const business = await prisma.business.findUnique({
         where: { placeId: 'TEST_ENRICHED' },
