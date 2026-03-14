@@ -4,7 +4,7 @@
 
 import { PlacesClient } from './client';
 import { normalizeGooglePlace, toPrismaCreateInput } from './normalizer';
-import type { SearchRequest, SearchResponse, BusinessResult } from './types';
+import type { SearchRequest, SearchResponse, BusinessResult, GooglePlaceResult } from './types';
 import { prisma } from '../prisma';
 import type { Business } from '@prisma/client';
 import {
@@ -115,8 +115,59 @@ export class PlacesService {
           this.client.nearbySearch(location, request.radius, request.businessType)
         );
 
+        const enrichmentEnabled = request.detailsEnrichment?.enabled ?? true;
+        const onlyWhenMissing = request.detailsEnrichment?.onlyWhenMissing ?? true;
+        const configuredMaxPlaces = request.detailsEnrichment?.maxPlaces;
+        const maxPlaces = Number.isInteger(configuredMaxPlaces)
+          ? Math.max(0, configuredMaxPlaces as number)
+          : 20;
+
+        // Nearby Search responses commonly omit website and may only provide `vicinity`.
+        // Enrich selected results with Place Details so persisted lead records include fuller data.
+        const placesNeedingDetails = places.filter((place) => {
+          if (!place.place_id) return false;
+          if (!onlyWhenMissing) return true;
+
+          const missingWebsite = !place.website;
+          const missingAddress = !place.formatted_address && !place.vicinity;
+          const missingPhone = !place.formatted_phone_number && !place.international_phone_number;
+
+          return missingWebsite || missingAddress || missingPhone;
+        });
+
+        const placesToEnrich = enrichmentEnabled
+          ? placesNeedingDetails.slice(0, maxPlaces)
+          : [];
+        const placesToEnrichSet = new Set(placesToEnrich.map((place) => place.place_id));
+
+        const enrichedPlaces: GooglePlaceResult[] = [];
+        for (const place of places) {
+          let enrichedPlace = place;
+
+          if (place.place_id && placesToEnrichSet.has(place.place_id)) {
+            try {
+              await this.rateLimiter.throttle();
+              const details = await retryWithBackoff(() => this.client.getPlaceDetails(place.place_id));
+
+              if (details) {
+                enrichedPlace = {
+                  ...place,
+                  ...details,
+                  // Keep nearby types if details omits them.
+                  types: details.types && details.types.length > 0 ? details.types : place.types,
+                };
+              }
+            } catch (error) {
+              // Continue with nearby-search data if details lookup fails.
+              console.warn(`Could not fetch place details for ${place.place_id}:`, error);
+            }
+          }
+
+          enrichedPlaces.push(enrichedPlace);
+        }
+
         // Normalize results
-        const normalized = places.map((place) => normalizeGooglePlace(place));
+        const normalized = enrichedPlaces.map((place) => normalizeGooglePlace(place));
 
         // Check exclusions in batch (name + business type)
         const exclusionResults = await checkBusinessExclusionBatchWithTypes(

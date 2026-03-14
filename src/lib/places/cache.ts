@@ -18,9 +18,14 @@ export function generateCacheKey(request: SearchRequest, location: { lat: number
   const lng = location.lng.toFixed(6);
   const radius = request.radius;
   const type = (request.businessType || '').toLowerCase().trim();
+  const enrichmentEnabled = request.detailsEnrichment?.enabled ?? true;
+  const enrichmentOnlyWhenMissing = request.detailsEnrichment?.onlyWhenMissing ?? true;
+  const enrichmentMaxPlaces = Number.isInteger(request.detailsEnrichment?.maxPlaces)
+    ? request.detailsEnrichment?.maxPlaces
+    : 20;
   
   // Create deterministic hash
-  const key = `${lat}:${lng}:${radius}:${type}`;
+  const key = `${lat}:${lng}:${radius}:${type}:${enrichmentEnabled}:${enrichmentOnlyWhenMissing}:${enrichmentMaxPlaces}`;
   return crypto.createHash('sha256').update(key).digest('hex');
 }
 

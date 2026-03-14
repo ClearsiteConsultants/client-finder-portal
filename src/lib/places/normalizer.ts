@@ -30,7 +30,8 @@ export function normalizeGooglePlace(place: GooglePlaceResult): NormalizedBusine
   return {
     placeId: place.place_id,
     name: place.name || 'Unknown Business',
-    address: place.formatted_address || '',
+    // Nearby Search often returns `vicinity` while Details returns `formatted_address`.
+    address: place.formatted_address || place.vicinity || '',
     lat: place.geometry?.location?.lat ?? null,
     lng: place.geometry?.location?.lng ?? null,
     phone: place.formatted_phone_number || place.international_phone_number || null,

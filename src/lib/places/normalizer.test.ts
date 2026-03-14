@@ -114,6 +114,17 @@ describe('normalizeGooglePlace', () => {
     const normalized = normalizeGooglePlace(googlePlace);
     expect(normalized.phone).toBe('+1 555-987-6543');
   });
+
+  it('falls back to vicinity when formatted_address is missing', () => {
+    const googlePlace: GooglePlaceResult = {
+      place_id: 'ChIJ555555555',
+      name: 'Vicinity Business',
+      vicinity: '333 Vicinity Ave',
+    };
+
+    const normalized = normalizeGooglePlace(googlePlace);
+    expect(normalized.address).toBe('333 Vicinity Ave');
+  });
 });
 
 describe('normalizeGooglePlaces', () => {

@@ -93,6 +93,11 @@ describe("SearchForm", () => {
             location: "New York, NY",
             radius: 10000,
             businessType: undefined,
+            detailsEnrichment: {
+              enabled: true,
+              onlyWhenMissing: true,
+              maxPlaces: 20,
+            },
           }),
         })
       );

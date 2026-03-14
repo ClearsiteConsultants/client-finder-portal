@@ -102,6 +102,25 @@ describe('Cache utilities', () => {
       expect(key1).toBe(key2);
     });
 
+    it('generates different keys for different enrichment settings', () => {
+      const location = { lat: 47.6062, lng: -122.3321 };
+      const baseRequest: SearchRequest = {
+        location: 'Seattle',
+        radius: 5000,
+      };
+
+      const keyDefault = generateCacheKey(baseRequest, location);
+      const keyNoEnrichment = generateCacheKey(
+        {
+          ...baseRequest,
+          detailsEnrichment: { enabled: false },
+        },
+        location
+      );
+
+      expect(keyDefault).not.toBe(keyNoEnrichment);
+    });
+
     it('rounds coordinates to 6 decimal places for consistency', () => {
       const request: SearchRequest = {
         location: 'Seattle',

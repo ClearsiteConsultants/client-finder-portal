@@ -156,6 +156,108 @@ describe('PlacesService', () => {
       expect(business?.name).toBe('Updated Name');
     });
 
+    it('enriches nearby results with place details before persisting', async () => {
+      const nearbyResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_ENRICHED',
+          name: 'Nearby Only Business',
+          vicinity: '12 Nearby Rd',
+          geometry: {
+            location: { lat: 34.0522, lng: -118.2437 },
+          },
+        },
+      ];
+
+      const detailsResult: GooglePlaceResult = {
+        place_id: 'TEST_ENRICHED',
+        name: 'Nearby Only Business',
+        formatted_address: '12 Nearby Rd, Los Angeles, CA',
+        website: 'https://nearby-only-business.test',
+      };
+
+      mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
+      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.getPlaceDetails.mockResolvedValue(detailsResult);
+
+      const result = await service.search(
+        {
+          location: 'TEST_Enrichment',
+          radius: 3000,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].address).toBe('12 Nearby Rd, Los Angeles, CA');
+      expect(result.results[0].website).toBe('https://nearby-only-business.test');
+
+      const business = await prisma.business.findUnique({
+        where: { placeId: 'TEST_ENRICHED' },
+      });
+
+      expect(business?.address).toBe('12 Nearby Rd, Los Angeles, CA');
+      expect(business?.website).toBe('https://nearby-only-business.test');
+    });
+
+    it('respects maxPlaces limit for detail enrichment', async () => {
+      const nearbyResults: GooglePlaceResult[] = [
+        { place_id: 'TEST_LIMIT_1', name: 'Limit 1', vicinity: 'A' },
+        { place_id: 'TEST_LIMIT_2', name: 'Limit 2', vicinity: 'B' },
+        { place_id: 'TEST_LIMIT_3', name: 'Limit 3', vicinity: 'C' },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
+      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.getPlaceDetails.mockResolvedValue({
+        place_id: 'TEST_LIMIT_1',
+        name: 'Limit Enriched',
+        formatted_address: 'Limit Enriched Address',
+        website: 'https://limit.test',
+      });
+
+      await service.search(
+        {
+          location: 'TEST_Limit_Enrichment',
+          radius: 3000,
+          detailsEnrichment: {
+            maxPlaces: 1,
+          },
+        },
+        testUserId
+      );
+
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips detail enrichment when disabled', async () => {
+      const nearbyResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_NO_ENRICH',
+          name: 'No Enrich Business',
+          vicinity: '99 No Enrich Rd',
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
+      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+
+      const result = await service.search(
+        {
+          location: 'TEST_No_Enrichment',
+          radius: 3000,
+          detailsEnrichment: {
+            enabled: false,
+          },
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(mockClient.getPlaceDetails).not.toHaveBeenCalled();
+      expect(result.results[0].address).toBe('99 No Enrich Rd');
+    });
+
     it('creates search run record with correct status', async () => {
       mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
       mockClient.nearbySearch.mockResolvedValue([]);

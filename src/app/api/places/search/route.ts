@@ -63,6 +63,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (body.detailsEnrichment?.maxPlaces !== undefined) {
+      const maxPlaces = body.detailsEnrichment.maxPlaces;
+      if (!Number.isInteger(maxPlaces) || maxPlaces < 0 || maxPlaces > 60) {
+        return NextResponse.json(
+          { error: 'detailsEnrichment.maxPlaces must be an integer between 0 and 60' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create service and execute search
     const service = new PlacesService();
     const response = await service.search(body, authUser.id, { forceRefresh });
