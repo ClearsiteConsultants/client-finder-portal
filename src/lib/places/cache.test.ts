@@ -102,7 +102,7 @@ describe('Cache utilities', () => {
       expect(key1).toBe(key2);
     });
 
-    it('generates different keys for different enrichment settings', () => {
+    it('generates different keys for different maxBusinesses settings', () => {
       const location = { lat: 47.6062, lng: -122.3321 };
       const baseRequest: SearchRequest = {
         location: 'Seattle',
@@ -110,15 +110,15 @@ describe('Cache utilities', () => {
       };
 
       const keyDefault = generateCacheKey(baseRequest, location);
-      const keyNoEnrichment = generateCacheKey(
+      const keyCustomMaxBusinesses = generateCacheKey(
         {
           ...baseRequest,
-          detailsEnrichment: { enabled: false },
+          maxBusinesses: 5,
         },
         location
       );
 
-      expect(keyDefault).not.toBe(keyNoEnrichment);
+      expect(keyDefault).not.toBe(keyCustomMaxBusinesses);
     });
 
     it('rounds coordinates to 6 decimal places for consistency', () => {

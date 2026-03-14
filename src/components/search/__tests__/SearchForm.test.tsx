@@ -15,6 +15,7 @@ describe("SearchForm", () => {
     expect(screen.getByLabelText(/location/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/search radius/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/business type/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/max businesses per search/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /search businesses/i })).toBeInTheDocument();
   });
 
@@ -93,11 +94,8 @@ describe("SearchForm", () => {
             location: "New York, NY",
             radius: 10000,
             businessType: undefined,
-            detailsEnrichment: {
-              enabled: true,
-              onlyWhenMissing: true,
-              maxPlaces: 20,
-            },
+            maxBusinesses: 20,
+
           }),
         })
       );
@@ -199,7 +197,7 @@ describe("SearchForm", () => {
     await waitFor(() => {
       expect(screen.getByText(/Google Places API Debug/i)).toBeInTheDocument();
       expect(screen.getAllByText("5").length).toBeGreaterThan(0);
-      expect(screen.getByText(/E:1 M:1 L:20/i)).toBeInTheDocument();
+      expect(screen.getByText(/Total Calls/i)).toBeInTheDocument();
     });
   });
 });

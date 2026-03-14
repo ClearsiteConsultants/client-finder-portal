@@ -55,6 +55,27 @@ Visit [http://localhost:3000](http://localhost:3000) to see the application.
 - `npx prisma generate` - Generate Prisma Client (runs automatically on postinstall)
 - `npm run user:reset-password -- <email> <newPassword>` - Reset a user's password hash
 
+## Development Tools
+
+### Google Places API Debug Panel
+
+The Business Discovery Search (`/search`) includes a built-in debug panel that shows the exact number of Google Places API calls made per search, broken down by call type:
+
+| Column | Description |
+|--------|-------------|
+| **Total** | Sum of all Google API calls for the search |
+| **Geo** | Geocode calls (text location → lat/lng) |
+| **Near** | Nearby Search calls |
+| **Det** | Place Details calls (for website/address enrichment) |
+| **Det Fail** | Place Details calls that returned an error |
+| **Cand** | Candidates selected for details lookup (capped by Max Businesses Per Search) |
+
+The panel also keeps a comparison table of the last 10 searches so you can tune `Max Businesses Per Search` and immediately see the API cost impact side by side.
+
+**Availability:**
+- `npm run dev` — debug panel is visible in the search form
+- `npm run build` — panel is fully removed at build time; no runtime overhead in production
+
 ## Deployment
 
 This application is optimized for deployment on [Vercel](https://vercel.com).

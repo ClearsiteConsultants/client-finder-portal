@@ -63,11 +63,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (body.detailsEnrichment?.maxPlaces !== undefined) {
-      const maxPlaces = body.detailsEnrichment.maxPlaces;
-      if (!Number.isInteger(maxPlaces) || maxPlaces < 0 || maxPlaces > 60) {
+    if (body.maxBusinesses !== undefined) {
+      if (!Number.isInteger(body.maxBusinesses) || body.maxBusinesses < 1 || body.maxBusinesses > 20) {
         return NextResponse.json(
-          { error: 'detailsEnrichment.maxPlaces must be an integer between 0 and 60' },
+          { error: 'maxBusinesses must be an integer between 1 and 20' },
           { status: 400 }
         );
       }

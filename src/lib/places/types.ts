@@ -6,11 +6,7 @@ export interface SearchRequest {
   location: string; // City/ZIP or "lat,lng"
   radius: number; // In meters
   businessType?: string; // Optional business type filter
-  detailsEnrichment?: {
-    enabled?: boolean; // Fetch place details for nearby results
-    onlyWhenMissing?: boolean; // Only fetch when nearby data is incomplete
-    maxPlaces?: number; // Max number of detail fetches per search
-  };
+  maxBusinesses?: number; // Max number of businesses to process per search
 }
 
 export interface SearchMetrics {

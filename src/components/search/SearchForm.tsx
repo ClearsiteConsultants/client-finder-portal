@@ -15,11 +15,6 @@ type InfoTooltipProps = {
 type DebugRun = {
   timestamp: string;
   fromCache: boolean;
-  enrichmentSettings: {
-    enabled: boolean;
-    onlyWhenMissing: boolean;
-    maxPlaces: number;
-  };
   metrics: SearchMetrics;
 };
 
@@ -44,9 +39,7 @@ export default function SearchForm() {
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState("5000");
   const [businessType, setBusinessType] = useState("");
-  const [enrichDetails, setEnrichDetails] = useState(true);
-  const [enrichOnlyWhenMissing, setEnrichOnlyWhenMissing] = useState(true);
-  const [detailsLimit, setDetailsLimit] = useState("20");
+  const [maxBusinesses, setMaxBusinesses] = useState("20");
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<BusinessResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +54,9 @@ export default function SearchForm() {
     setHasSearched(true);
 
     try {
-      const parsedDetailsLimit = Number.parseInt(detailsLimit, 10);
-      const safeDetailsLimit = Number.isFinite(parsedDetailsLimit)
-        ? Math.min(60, Math.max(0, parsedDetailsLimit))
+      const parsedMaxBusinesses = Number.parseInt(maxBusinesses, 10);
+      const safeMaxBusinesses = Number.isFinite(parsedMaxBusinesses)
+        ? Math.min(20, Math.max(1, parsedMaxBusinesses))
         : 20;
 
       const response = await fetch("/api/places/search", {
@@ -75,11 +68,7 @@ export default function SearchForm() {
           location,
           radius: parseInt(radius, 10),
           businessType: businessType || undefined,
-          detailsEnrichment: {
-            enabled: enrichDetails,
-            onlyWhenMissing: enrichOnlyWhenMissing,
-            maxPlaces: safeDetailsLimit,
-          },
+          maxBusinesses: safeMaxBusinesses,
         }),
       });
 
@@ -105,20 +94,17 @@ export default function SearchForm() {
         totalGooglePlacesCalls: 0,
       };
 
-      setLatestMetrics(metrics);
-      setDebugHistory((prev) => [
-        {
-          timestamp: new Date().toLocaleTimeString(),
-          fromCache: !!data.fromCache,
-          enrichmentSettings: {
-            enabled: enrichDetails,
-            onlyWhenMissing: enrichOnlyWhenMissing,
-            maxPlaces: safeDetailsLimit,
+      if (process.env.NODE_ENV !== 'production') {
+        setLatestMetrics(metrics);
+        setDebugHistory((prev) => [
+          {
+            timestamp: new Date().toLocaleTimeString(),
+            fromCache: !!data.fromCache,
+            metrics,
           },
-          metrics,
-        },
-        ...prev,
-      ].slice(0, 10));
+          ...prev,
+        ].slice(0, 10));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setResults([]);
@@ -193,65 +179,23 @@ export default function SearchForm() {
             </select>
           </div>
 
-          <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-            <p className="theme-text-muted flex items-center gap-2 text-sm font-medium">
-              <span>Details Enrichment</span>
+          <div>
+            <div className="theme-text-muted flex items-center gap-2 text-sm font-medium">
+              <label htmlFor="maxBusinesses">Max Businesses Per Search</label>
               <InfoTooltip
-                label="Details enrichment info"
-                text="Fetches Google Place Details for more complete lead data, but may increase search time and API usage."
-              />
-            </p>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={enrichDetails}
-                onChange={(e) => setEnrichDetails(e.target.checked)}
-              />
-              <span className="flex items-center gap-2">
-                <span>Fetch Place Details (website/full address)</span>
-                <InfoTooltip
-                  label="Fetch place details info"
-                  text="When enabled, this queries the Place Details endpoint so website, phone, and full address can be saved."
-                />
-              </span>
-            </label>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={enrichOnlyWhenMissing}
-                onChange={(e) => setEnrichOnlyWhenMissing(e.target.checked)}
-                disabled={!enrichDetails}
-              />
-              <span className="flex items-center gap-2">
-                <span>Only enrich results with missing fields</span>
-                <InfoTooltip
-                  label="Only missing fields info"
-                  text="Reduces API calls by enriching only businesses missing website, address, or phone in nearby search results."
-                />
-              </span>
-            </label>
-
-            <div>
-              <div className="theme-text-muted flex items-center gap-2 text-sm font-medium">
-                <label htmlFor="detailsLimit">Max Details Fetches Per Search</label>
-                <InfoTooltip
-                  label="Max details fetches info"
-                  text="Lower values are faster and use less quota. Setting this to 0 disables details fetching for the current search."
-                />
-              </div>
-              <input
-                id="detailsLimit"
-                type="number"
-                min={0}
-                max={60}
-                value={detailsLimit}
-                onChange={(e) => setDetailsLimit(e.target.value)}
-                disabled={!enrichDetails}
-                className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                label="Max businesses info"
+                text="Limits how many businesses are processed from the nearby search response for this run."
               />
             </div>
+            <input
+              id="maxBusinesses"
+              type="number"
+              min={1}
+              max={20}
+              value={maxBusinesses}
+              onChange={(e) => setMaxBusinesses(e.target.value)}
+              className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
           </div>
 
           <button
@@ -269,7 +213,7 @@ export default function SearchForm() {
           </div>
         )}
 
-        <div className="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+        {process.env.NODE_ENV !== 'production' && <div className="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">Google Places API Debug</h3>
             <span className="theme-text-muted text-xs">Last 10 searches</span>
@@ -306,7 +250,6 @@ export default function SearchForm() {
                 <thead>
                   <tr className="theme-text-muted border-b border-slate-200 text-left dark:border-slate-700">
                     <th className="px-2 py-1">Time</th>
-                    <th className="px-2 py-1">Settings</th>
                     <th className="px-2 py-1">Cache</th>
                     <th className="px-2 py-1">Total</th>
                     <th className="px-2 py-1">Geo</th>
@@ -314,16 +257,12 @@ export default function SearchForm() {
                     <th className="px-2 py-1">Det</th>
                     <th className="px-2 py-1">Det Fail</th>
                     <th className="px-2 py-1">Cand</th>
-                    <th className="px-2 py-1">Sel</th>
                   </tr>
                 </thead>
                 <tbody>
                   {debugHistory.map((run, idx) => (
                     <tr key={`${run.timestamp}-${idx}`} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-2 py-1">{run.timestamp}</td>
-                      <td className="px-2 py-1">
-                        {`E:${run.enrichmentSettings.enabled ? 1 : 0} M:${run.enrichmentSettings.onlyWhenMissing ? 1 : 0} L:${run.enrichmentSettings.maxPlaces}`}
-                      </td>
                       <td className="px-2 py-1">{run.fromCache ? "yes" : "no"}</td>
                       <td className="px-2 py-1 font-medium">{run.metrics.totalGooglePlacesCalls}</td>
                       <td className="px-2 py-1">{run.metrics.geocodeCalls}</td>
@@ -331,14 +270,13 @@ export default function SearchForm() {
                       <td className="px-2 py-1">{run.metrics.placeDetailsCalls}</td>
                       <td className="px-2 py-1">{run.metrics.placeDetailsFailures}</td>
                       <td className="px-2 py-1">{run.metrics.detailsCandidates}</td>
-                      <td className="px-2 py-1">{run.metrics.detailsSelected}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       {hasSearched && (

@@ -91,11 +91,11 @@ describe('PlacesService', () => {
       expect(result.metrics).toMatchObject({
         geocodeCalls: 1,
         nearbySearchCalls: 1,
-        placeDetailsCalls: 0,
+        placeDetailsCalls: 1,
         placeDetailsFailures: 0,
-        detailsCandidates: 0,
-        detailsSelected: 0,
-        totalGooglePlacesCalls: 2,
+        detailsCandidates: 1,
+        detailsSelected: 1,
+        totalGooglePlacesCalls: 3,
       });
 
       // Verify database persistence
@@ -218,7 +218,7 @@ describe('PlacesService', () => {
       expect(business?.website).toBe('https://nearby-only-business.test');
     });
 
-    it('respects maxPlaces limit for detail enrichment', async () => {
+    it('always enriches all selected businesses', async () => {
       const nearbyResults: GooglePlaceResult[] = [
         { place_id: 'TEST_LIMIT_1', name: 'Limit 1', vicinity: 'A' },
         { place_id: 'TEST_LIMIT_2', name: 'Limit 2', vicinity: 'B' },
@@ -238,42 +238,47 @@ describe('PlacesService', () => {
         {
           location: 'TEST_Limit_Enrichment',
           radius: 3000,
-          detailsEnrichment: {
-            maxPlaces: 1,
-          },
         },
         testUserId
       );
 
-      expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(1);
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(3);
     });
 
-    it('skips detail enrichment when disabled', async () => {
+    it('respects maxBusinesses limit for processed results', async () => {
       const nearbyResults: GooglePlaceResult[] = [
         {
           place_id: 'TEST_NO_ENRICH',
           name: 'No Enrich Business',
           vicinity: '99 No Enrich Rd',
         },
+        {
+          place_id: 'TEST_NO_ENRICH_2',
+          name: 'No Enrich Business 2',
+          vicinity: '100 No Enrich Rd',
+        },
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
       mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.getPlaceDetails.mockResolvedValue({
+        place_id: 'TEST_NO_ENRICH',
+        name: 'No Enrich Business',
+        formatted_address: '99 No Enrich Rd',
+      });
 
       const result = await service.search(
         {
           location: 'TEST_No_Enrichment',
           radius: 3000,
-          detailsEnrichment: {
-            enabled: false,
-          },
+          maxBusinesses: 1,
         },
         testUserId
       );
 
       expect(result.status).toBe('success');
-      expect(mockClient.getPlaceDetails).not.toHaveBeenCalled();
-      expect(result.results[0].address).toBe('99 No Enrich Rd');
+      expect(result.results).toHaveLength(1);
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(1);
     });
 
     it('creates search run record with correct status', async () => {

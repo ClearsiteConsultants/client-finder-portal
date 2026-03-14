@@ -134,35 +134,23 @@ export class PlacesService {
         );
         metrics.nearbySearchCalls += 1;
 
-        const enrichmentEnabled = request.detailsEnrichment?.enabled ?? true;
-        const onlyWhenMissing = request.detailsEnrichment?.onlyWhenMissing ?? true;
-        const configuredMaxPlaces = request.detailsEnrichment?.maxPlaces;
-        const maxPlaces = Number.isInteger(configuredMaxPlaces)
-          ? Math.max(0, configuredMaxPlaces as number)
+        const configuredMaxBusinesses = request.maxBusinesses;
+        const maxBusinesses = Number.isInteger(configuredMaxBusinesses)
+          ? Math.max(1, Math.min(20, configuredMaxBusinesses as number))
           : 20;
+        const selectedPlaces = places.slice(0, maxBusinesses);
 
         // Nearby Search responses commonly omit website and may only provide `vicinity`.
-        // Enrich selected results with Place Details so persisted lead records include fuller data.
-        const placesNeedingDetails = places.filter((place) => {
-          if (!place.place_id) return false;
-          if (!onlyWhenMissing) return true;
-
-          const missingWebsite = !place.website;
-          const missingAddress = !place.formatted_address && !place.vicinity;
-          const missingPhone = !place.formatted_phone_number && !place.international_phone_number;
-
-          return missingWebsite || missingAddress || missingPhone;
-        });
+        // Enrich all results with Place Details so persisted lead records include website, phone, and full address.
+        const placesNeedingDetails = selectedPlaces.filter((place) => !!place.place_id);
         metrics.detailsCandidates = placesNeedingDetails.length;
 
-        const placesToEnrich = enrichmentEnabled
-          ? placesNeedingDetails.slice(0, maxPlaces)
-          : [];
+        const placesToEnrich = placesNeedingDetails;
         metrics.detailsSelected = placesToEnrich.length;
         const placesToEnrichSet = new Set(placesToEnrich.map((place) => place.place_id));
 
         const enrichedPlaces: GooglePlaceResult[] = [];
-        for (const place of places) {
+        for (const place of selectedPlaces) {
           let enrichedPlace = place;
 
           if (place.place_id && placesToEnrichSet.has(place.place_id)) {
