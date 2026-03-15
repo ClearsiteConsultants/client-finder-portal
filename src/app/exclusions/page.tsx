@@ -7,6 +7,7 @@ import TopNav from '@/components/TopNav';
 import {
   GOOGLE_PLACES_BUSINESS_TYPES,
   formatGooglePlaceTypeLabel,
+  mergeBusinessTypes,
 } from '@/lib/places/business-types';
 
 type ExcludedBusiness = {
@@ -25,6 +26,7 @@ export default function ExclusionsPage() {
   const { status } = useSession();
   const router = useRouter();
   const [excluded, setExcluded] = useState<ExcludedBusiness[]>([]);
+  const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>(GOOGLE_PLACES_BUSINESS_TYPES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newBusinessName, setNewBusinessName] = useState('');
@@ -60,6 +62,36 @@ export default function ExclusionsPage() {
     if (status === 'authenticated') {
       fetchExcluded();
     }
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadBusinessTypes = async () => {
+      try {
+        const response = await fetch('/api/places/business-types');
+        if (!response.ok) {
+          return;
+        }
+
+        const data: { businessTypes?: string[] } = await response.json();
+        if (isMounted && Array.isArray(data.businessTypes)) {
+          setBusinessTypeOptions(mergeBusinessTypes(data.businessTypes));
+        }
+      } catch {
+        // Keep static defaults when dynamic loading fails.
+      }
+    };
+
+    loadBusinessTypes();
+
+    return () => {
+      isMounted = false;
+    };
   }, [status]);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -187,7 +219,7 @@ export default function ExclusionsPage() {
                   required
                 >
                   <option value="">Select a business type</option>
-                  {GOOGLE_PLACES_BUSINESS_TYPES.map((businessType) => (
+                  {businessTypeOptions.map((businessType) => (
                     <option key={businessType} value={businessType}>
                       {formatGooglePlaceTypeLabel(businessType)}
                     </option>

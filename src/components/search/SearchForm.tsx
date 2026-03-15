@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SearchResults } from "./SearchResults";
 import type { BusinessResult, SearchMetrics, SearchResponse } from "@/lib/places/types";
 import {
   GOOGLE_PLACES_BUSINESS_TYPES,
   formatGooglePlaceTypeLabel,
+  mergeBusinessTypes,
 } from "@/lib/places/business-types";
 
 type InfoTooltipProps = {
@@ -40,6 +41,7 @@ export default function SearchForm() {
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState("5000");
   const [businessType, setBusinessType] = useState("");
+  const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>(GOOGLE_PLACES_BUSINESS_TYPES);
   const [maxBusinesses, setMaxBusinesses] = useState("20");
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<BusinessResult[]>([]);
@@ -47,6 +49,32 @@ export default function SearchForm() {
   const [hasSearched, setHasSearched] = useState(false);
   const [latestMetrics, setLatestMetrics] = useState<SearchMetrics | null>(null);
   const [debugHistory, setDebugHistory] = useState<DebugRun[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBusinessTypes = async () => {
+      try {
+        const response = await fetch('/api/places/business-types');
+        if (!response.ok) {
+          return;
+        }
+
+        const data: { businessTypes?: string[] } = await response.json();
+        if (isMounted && Array.isArray(data.businessTypes)) {
+          setBusinessTypeOptions(mergeBusinessTypes(data.businessTypes));
+        }
+      } catch {
+        // Keep static defaults when dynamic loading fails.
+      }
+    };
+
+    loadBusinessTypes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,7 +200,7 @@ export default function SearchForm() {
               className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">All Business Types</option>
-              {GOOGLE_PLACES_BUSINESS_TYPES.map((type) => (
+              {businessTypeOptions.map((type) => (
                 <option key={type} value={type}>
                   {formatGooglePlaceTypeLabel(type)}
                 </option>

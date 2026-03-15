@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
-import { GOOGLE_PLACES_BUSINESS_TYPES, formatGooglePlaceTypeLabel } from '@/lib/places/business-types';
+import {
+  GOOGLE_PLACES_BUSINESS_TYPES,
+  formatGooglePlaceTypeLabel,
+  mergeBusinessTypes,
+} from '@/lib/places/business-types';
 import { googleMapsPlaceUrl } from '@/lib/places/maps';
 
 type Business = {
@@ -80,6 +84,7 @@ export default function LeadDetailPage() {
   const [editedFacebookUrl, setEditedFacebookUrl] = useState('');
   const [editedInstagramUrl, setEditedInstagramUrl] = useState('');
   const [editedLinkedinUrl, setEditedLinkedinUrl] = useState('');
+  const [availableBusinessTypes, setAvailableBusinessTypes] = useState<string[]>(GOOGLE_PLACES_BUSINESS_TYPES);
   const [showBusinessTypeOptions, setShowBusinessTypeOptions] = useState(false);
   const [businessInfoErrors, setBusinessInfoErrors] = useState<Record<string, string>>({});
 
@@ -99,6 +104,36 @@ export default function LeadDetailPage() {
       fetchBusiness(leadId);
     }
   }, [status, leadId]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadBusinessTypes = async () => {
+      try {
+        const response = await fetch('/api/places/business-types');
+        if (!response.ok) {
+          return;
+        }
+
+        const data: { businessTypes?: string[] } = await response.json();
+        if (isMounted && Array.isArray(data.businessTypes)) {
+          setAvailableBusinessTypes(mergeBusinessTypes(data.businessTypes));
+        }
+      } catch {
+        // Keep static defaults when dynamic loading fails.
+      }
+    };
+
+    loadBusinessTypes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [status]);
 
   const fetchBusiness = async (id: string) => {
     setLoading(true);
@@ -410,7 +445,7 @@ export default function LeadDetailPage() {
 
   const isClient = Boolean(business.isClient);
   const canConvertToClient = !isClient && business.leadStatus === 'approved';
-  const businessTypeOptions = Array.from(new Set([...GOOGLE_PLACES_BUSINESS_TYPES, ...editedBusinessTypes]));
+  const businessTypeOptions = mergeBusinessTypes([...availableBusinessTypes, ...editedBusinessTypes]);
   const selectedBusinessTypeLabel = editedBusinessTypes.length > 0
     ? editedBusinessTypes.map(formatGooglePlaceTypeLabel).join(', ')
     : 'Select business types';

@@ -114,3 +114,13 @@ export function formatGooglePlaceTypeLabel(type: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+export function mergeBusinessTypes(additionalTypes: string[] = []): string[] {
+  const uniqueTypes = new Set(
+    [...GOOGLE_PLACES_BUSINESS_TYPES, ...additionalTypes]
+      .map((type) => type.trim())
+      .filter((type) => type.length > 0)
+  );
+
+  return Array.from(uniqueTypes).sort();
+}

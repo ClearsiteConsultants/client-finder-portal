@@ -7,6 +7,10 @@ global.fetch = jest.fn();
 describe("SearchForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ businessTypes: [] }),
+    });
   });
 
   it("renders search form with all required inputs", () => {
@@ -26,7 +30,9 @@ describe("SearchForm", () => {
     fireEvent.click(submitButton);
 
     // The form should prevent submission if location is empty
-    expect(global.fetch).not.toHaveBeenCalled();
+    const fetchCalls = (global.fetch as jest.Mock).mock.calls;
+    const searchCall = fetchCalls.find(([url]) => url === "/api/places/search");
+    expect(searchCall).toBeUndefined();
   });
 
   it("validates that radius is required and valid", () => {
@@ -47,7 +53,9 @@ describe("SearchForm", () => {
     fireEvent.change(locationInput, { target: { value: "" } });
     fireEvent.click(submitButton);
 
-    expect(global.fetch).not.toHaveBeenCalled();
+    const fetchCalls = (global.fetch as jest.Mock).mock.calls;
+    const searchCall = fetchCalls.find(([url]) => url === "/api/places/search");
+    expect(searchCall).toBeUndefined();
   });
 
   it("submits form with valid data", async () => {
@@ -67,9 +75,18 @@ describe("SearchForm", () => {
       ],
     };
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockResponse,
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url) === "/api/places/business-types") {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => mockResponse,
+      };
     });
 
     render(<SearchForm />);
@@ -104,9 +121,18 @@ describe("SearchForm", () => {
 
   it("displays error message when API returns error", async () => {
     const errorMessage = "Invalid location provided";
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: errorMessage }),
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url) === "/api/places/business-types") {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: errorMessage }),
+      };
     });
 
     render(<SearchForm />);
@@ -123,19 +149,25 @@ describe("SearchForm", () => {
   });
 
   it("displays loading state during search", async () => {
-    (global.fetch as jest.Mock).mockImplementationOnce(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({ status: "success", results: [] }),
-              }),
-            100
-          )
+    (global.fetch as jest.Mock).mockImplementation((url: RequestInfo | URL) => {
+      if (String(url) === "/api/places/business-types") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        });
+      }
+
+      return new Promise((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              ok: true,
+              json: async () => ({ status: "success", results: [] }),
+            }),
+          100
         )
-    );
+      );
+    });
 
     render(<SearchForm />);
 
@@ -153,7 +185,16 @@ describe("SearchForm", () => {
   });
 
   it("handles network errors gracefully", async () => {
-    (global.fetch as jest.Mock).mockRejectedValueOnce(new Error("Network error"));
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url) === "/api/places/business-types") {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      throw new Error("Network error");
+    });
 
     render(<SearchForm />);
 
@@ -184,9 +225,18 @@ describe("SearchForm", () => {
       },
     };
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockResponse,
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url) === "/api/places/business-types") {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => mockResponse,
+      };
     });
 
     render(<SearchForm />);
