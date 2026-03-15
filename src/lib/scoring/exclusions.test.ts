@@ -8,6 +8,7 @@ import {
   checkBusinessTypeExclusion,
   checkBusinessExclusionBatch,
   checkBusinessExclusionBatchWithTypes,
+  getExcludedBusinessTypes,
   addBusinessToExcludeList,
   addBusinessTypeToExcludeList,
   removeBusinessFromExcludeList,
@@ -271,6 +272,15 @@ describe('exclusions', () => {
       expect(results.get('Local Grill')?.isExcluded).toBe(true);
       expect(results.get('Local Grill')?.exclusionMode).toBe('business_type');
       expect(results.get('Healthy Clinic')?.isExcluded).toBe(false);
+    });
+
+    it('should return distinct excluded business types', async () => {
+      await addBusinessTypeToExcludeList('Restaurant', TEST_USER_ID);
+
+      const excludedTypes = await getExcludedBusinessTypes();
+
+      expect(excludedTypes).toEqual(expect.arrayContaining(['restaurant', 'gym']));
+      expect(excludedTypes.filter((type) => type === 'restaurant')).toHaveLength(1);
     });
   });
 

@@ -5,6 +5,7 @@
 const mockAuth = jest.fn();
 const mockFindUnique = jest.fn();
 const mockSearch = jest.fn();
+const mockCheckBusinessTypeExclusion = jest.fn();
 
 jest.mock("@/lib/auth", () => ({
   auth: (...args: any[]) => mockAuth(...args),
@@ -24,11 +25,16 @@ jest.mock("@/lib/places/service", () => ({
   })),
 }));
 
+jest.mock("@/lib/scoring/exclusions", () => ({
+  checkBusinessTypeExclusion: (...args: any[]) => mockCheckBusinessTypeExclusion(...args),
+}));
+
 import { POST } from "./route";
 
 describe("POST /api/places/search", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCheckBusinessTypeExclusion.mockResolvedValue({ isExcluded: false });
   });
 
   it("returns 401 and relogin message when session user is stale", async () => {
@@ -55,6 +61,33 @@ describe("POST /api/places/search", () => {
     expect(data.error).toBe(
       "Unauthorized: session is no longer valid. Please sign in again."
     );
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when requested business type is excluded", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "user-id" },
+    });
+    mockFindUnique.mockResolvedValueOnce({ id: "user-id" });
+    mockCheckBusinessTypeExclusion.mockResolvedValueOnce({ isExcluded: true });
+
+    const request = new Request("http://localhost/api/places/search", {
+      method: "POST",
+      body: JSON.stringify({
+        location: "84660",
+        radius: 1000,
+        businessType: "restaurant",
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('Business type "restaurant" is excluded and cannot be searched.');
     expect(mockSearch).not.toHaveBeenCalled();
   });
 });

@@ -407,6 +407,42 @@ An automated lead discovery and outreach management system to help identify smal
 5. Implement API call optimization (field masking, caching)
 6. Store discovered businesses in database
 
+#### Phase 2 Optimization Plan (March 2026): Excluded Type Cost Controls
+
+**Clarified rule**:
+- "Business Type list" refers to the Google Places Business Type categories used by Search, Exclusions, and Lead Details.
+- Business types currently excluded via Exclusions (`business_type` mode) must not appear in the Business Discovery Search dropdown.
+
+**Implementation Goals**:
+1. Hide excluded business types from Business Discovery Search dropdown.
+2. Block excluded business type searches server-side (defense in depth).
+3. Reduce Google Places Place Details enrichment calls by skipping enrichment for nearby results already identified as excluded by business type.
+
+**Implementation Steps**:
+1. Extend business-types API to support a search-aware response that excludes business types currently on the exclusion list.
+2. Update SearchForm to request the search-aware business type list.
+3. Keep Exclusions and Lead Details business type sources unchanged (full merged type list).
+4. Add a search route guard to reject excluded `businessType` values with `400` before running Places service calls.
+5. In Places service, after Nearby Search and before Place Details calls, skip enrichment for candidates where nearby `types` already match excluded business types.
+6. Preserve existing final exclusion checks before persistence to avoid regressions.
+7. Validate debug metrics remain meaningful (`detailsCandidates` vs `detailsSelected` should show skipped enrichment impact).
+
+**Files in Scope**:
+- [src/app/api/places/business-types/route.ts](src/app/api/places/business-types/route.ts)
+- [src/components/search/SearchForm.tsx](src/components/search/SearchForm.tsx)
+- [src/app/api/places/search/route.ts](src/app/api/places/search/route.ts)
+- [src/lib/places/service.ts](src/lib/places/service.ts)
+- [src/lib/scoring/exclusions.ts](src/lib/scoring/exclusions.ts)
+- [src/app/api/places/search/route.test.ts](src/app/api/places/search/route.test.ts)
+- [src/lib/places/service.test.ts](src/lib/places/service.test.ts)
+- [src/components/search/__tests__/SearchForm.test.tsx](src/components/search/__tests__/SearchForm.test.tsx)
+
+**Verification Checklist**:
+1. Search dropdown does not render business types that are in `business_type` exclusions.
+2. `POST /api/places/search` with excluded `businessType` returns `400` and does not invoke Places service.
+3. Place Details call count decreases when Nearby Search returns results with excluded business types.
+4. Exclusions and Lead Details still retain full business type availability.
+
 ### Phase 3: Website Validation (Week 3-4)
 1. Build website validator (HTTP checks, SSL, load time)
 2. Implement mobile-responsive detection

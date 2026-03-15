@@ -8,6 +8,7 @@ import { PlacesService } from '@/lib/places/service';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import type { SearchRequest } from '@/lib/places/types';
+import { checkBusinessTypeExclusion } from '@/lib/scoring/exclusions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     const body: SearchRequest = await request.json();
 
     // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
+    const searchParams = request.nextUrl?.searchParams ?? new URL(request.url).searchParams;
     const forceRefresh = searchParams.get('force_refresh') === 'true';
 
     // Validate required fields
@@ -67,6 +68,19 @@ export async function POST(request: NextRequest) {
       if (!Number.isInteger(body.maxBusinesses) || body.maxBusinesses < 1 || body.maxBusinesses > 20) {
         return NextResponse.json(
           { error: 'maxBusinesses must be an integer between 1 and 20' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (body.businessType) {
+      const exclusion = await checkBusinessTypeExclusion([body.businessType]);
+      if (exclusion.isExcluded) {
+        return NextResponse.json(
+          {
+            error: `Business type "${body.businessType}" is excluded and cannot be searched.`,
+            status: 'error',
+          },
           { status: 400 }
         );
       }

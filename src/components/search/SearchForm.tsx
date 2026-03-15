@@ -55,7 +55,7 @@ export default function SearchForm() {
 
     const loadBusinessTypes = async () => {
       try {
-        const response = await fetch('/api/places/business-types');
+        const response = await fetch('/api/places/business-types?forSearch=true');
         if (!response.ok) {
           return;
         }

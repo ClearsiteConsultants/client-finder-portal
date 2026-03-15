@@ -13,6 +13,7 @@ import {
 } from './cache';
 import { RateLimiter, retryWithBackoff } from './rate-limiter';
 import { calculateScore, checkBusinessExclusionBatchWithTypes } from '../scoring';
+import { getExcludedBusinessTypes } from '../scoring/exclusions';
 import { JobQueueService } from '../jobs/queue-service';
 
 export class PlacesService {
@@ -75,6 +76,21 @@ export class PlacesService {
       if (!options.forceRefresh) {
         const cached = await getCachedResults(cacheKey);
         if (cached) {
+          const excludedBusinessTypes = await getExcludedBusinessTypes();
+          const excludedBusinessTypeSet = new Set(
+            excludedBusinessTypes.map((type) => type.trim().toLowerCase())
+          );
+
+          const filteredCachedBusinesses = cached.businesses.filter((business) => {
+            if (!business.businessTypes.length) {
+              return true;
+            }
+
+            return !business.businessTypes.some((type) =>
+              excludedBusinessTypeSet.has(type.trim().toLowerCase())
+            );
+          });
+
           // Create a new search run record that references the cached search
           await prisma.searchRun.create({
             data: {
@@ -87,9 +103,9 @@ export class PlacesService {
               types: request.businessType ? [request.businessType] : [],
               status: 'completed',
               completedAt: new Date(),
-              resultsFound: cached.businesses.length,
+              resultsFound: filteredCachedBusinesses.length,
               resultsSavedNew: 0,
-              resultsDedupedExisting: cached.businesses.length,
+              resultsDedupedExisting: filteredCachedBusinesses.length,
               cacheKey,
               usedCachedResults: true,
               cachedFromSearchRunId: cached.searchRun.id,
@@ -101,7 +117,7 @@ export class PlacesService {
             : 0;
 
           return {
-            results: cached.businesses,
+            results: filteredCachedBusinesses,
             status: 'success',
             fromCache: true,
             cacheAge,
@@ -138,54 +154,10 @@ export class PlacesService {
         const maxBusinesses = Number.isInteger(configuredMaxBusinesses)
           ? Math.max(1, Math.min(20, configuredMaxBusinesses as number))
           : 20;
-        const selectedPlaces = places.slice(0, maxBusinesses);
 
-        // Nearby Search responses commonly omit website and may only provide `vicinity`.
-        // Enrich all results with Place Details so persisted lead records include website, phone, and full address.
-        const placesNeedingDetails = selectedPlaces.filter((place) => !!place.place_id);
-        metrics.detailsCandidates = placesNeedingDetails.length;
-
-        const placesToEnrich = placesNeedingDetails;
-        metrics.detailsSelected = placesToEnrich.length;
-        const placesToEnrichSet = new Set(placesToEnrich.map((place) => place.place_id));
-
-        const enrichedPlaces: GooglePlaceResult[] = [];
-        for (const place of selectedPlaces) {
-          let enrichedPlace = place;
-
-          if (place.place_id && placesToEnrichSet.has(place.place_id)) {
-            try {
-              await this.rateLimiter.throttle();
-              metrics.placeDetailsCalls += 1;
-              const details = await retryWithBackoff(() => this.client.getPlaceDetails(place.place_id));
-
-              if (details) {
-                enrichedPlace = {
-                  ...place,
-                  ...details,
-                  // Keep nearby types if details omits them.
-                  types: details.types && details.types.length > 0 ? details.types : place.types,
-                };
-              }
-            } catch (error) {
-              metrics.placeDetailsFailures += 1;
-              // Continue with nearby-search data if details lookup fails.
-              console.warn(`Could not fetch place details for ${place.place_id}:`, error);
-            }
-          }
-
-          enrichedPlaces.push(enrichedPlace);
-        }
-
-        // Normalize results
-        const normalized = enrichedPlaces.map((place) => normalizeGooglePlace(place));
-
-        // Check exclusions in batch (name + business type)
-        const exclusionResults = await checkBusinessExclusionBatchWithTypes(
-          normalized.map((n) => ({
-            name: n.name,
-            businessTypes: n.businessTypes,
-          }))
+        const excludedBusinessTypes = await getExcludedBusinessTypes();
+        const excludedBusinessTypeSet = new Set(
+          excludedBusinessTypes.map((type) => type.trim().toLowerCase())
         );
 
         // Persist to database with deduplication
@@ -194,110 +166,177 @@ export class PlacesService {
         let newCount = 0;
         let existingCount = 0;
 
-        for (const norm of normalized) {
+        const persistBusiness = async (
+          norm: ReturnType<typeof normalizeGooglePlace>,
+          exclusionCheck?: {
+            isExcluded: boolean;
+            reason?: string;
+            exclusionMode?: 'business_name' | 'business_type';
+          }
+        ): Promise<BusinessResult | null> => {
+          // Calculate score
+          const scoringResult = calculateScore({
+            name: norm.name,
+            reviewCount: norm.reviewCount,
+            businessTypes: norm.businessTypes,
+            website: norm.website,
+          });
+
+          // Try to find existing business by place_id
+          const existing = await prisma.business.findUnique({
+            where: { placeId: norm.placeId },
+          });
+
+          let business: Business;
+          if (existing) {
+            business = await prisma.business.update({
+              where: { id: existing.id },
+              data: {
+                name: norm.name,
+                address: norm.address,
+                lat: norm.lat,
+                lng: norm.lng,
+                phone: norm.phone,
+                website: norm.website,
+                businessTypes: norm.businessTypes,
+                rating: norm.rating,
+                reviewCount: norm.reviewCount,
+                smallBusinessScore: scoringResult.score,
+                websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
+                cachedAt: new Date(),
+              },
+            });
+            existingCount++;
+          } else {
+            const leadStatus = exclusionCheck?.isExcluded ? 'rejected' : 'pending';
+            const rejectedReason = exclusionCheck?.isExcluded
+              ? `Auto-rejected: matched ${exclusionCheck.exclusionMode === 'business_type' ? 'excluded business type' : 'exclude list'} (${exclusionCheck.reason || 'no reason provided'})`
+              : undefined;
+
+            business = await prisma.business.create({
+              data: {
+                ...toPrismaCreateInput(norm, searchRun.id),
+                smallBusinessScore: scoringResult.score,
+                websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
+                leadStatus,
+                rejectedAt: exclusionCheck?.isExcluded ? new Date() : undefined,
+                rejectedReason,
+                cachedAt: new Date(),
+              },
+            });
+            newCount++;
+          }
+
+          if (business.placeId) {
+            placeIdsToCache.push(business.placeId);
+          }
+
+          if (!exclusionCheck?.isExcluded) {
+            if (business.website) {
+              await this.jobQueue.enqueueJob({
+                businessId: business.id,
+                jobType: 'website_validation',
+              });
+              await this.jobQueue.enqueueJob({
+                businessId: business.id,
+                jobType: 'email_scraping',
+              });
+              await this.jobQueue.enqueueJob({
+                businessId: business.id,
+                jobType: 'social_scraping',
+              });
+            }
+          }
+
+          if (exclusionCheck?.exclusionMode === 'business_type') {
+            return null;
+          }
+
+          return {
+            placeId: business.placeId || '',
+            name: business.name,
+            address: business.address,
+            lat: business.lat ? Number(business.lat) : 0,
+            lng: business.lng ? Number(business.lng) : 0,
+            phone: business.phone || undefined,
+            website: business.website || undefined,
+            businessTypes: business.businessTypes,
+            rating: business.rating || undefined,
+            reviewCount: business.reviewCount || undefined,
+            hasWebsite: !!business.website,
+            isNew: !existing,
+            isCached: false,
+          };
+        };
+
+        for (const place of places) {
+          if (results.length >= maxBusinesses) {
+            break;
+          }
+
           try {
-            // Check if business is excluded
-            const exclusionCheck = exclusionResults.get(norm.name);
-            
-            // Calculate score
-            const scoringResult = calculateScore({
-              name: norm.name,
-              reviewCount: norm.reviewCount,
-              businessTypes: norm.businessTypes,
-              website: norm.website,
-            });
+            const nearbyTypes = place.types || [];
+            const matchedExcludedType = nearbyTypes.find((type) =>
+              excludedBusinessTypeSet.has(type.trim().toLowerCase())
+            );
 
-            // Try to find existing business by place_id
-            const existing = await prisma.business.findUnique({
-              where: { placeId: norm.placeId },
-            });
+            let candidatePlace = place;
+            let exclusionCheck:
+              | {
+                  isExcluded: boolean;
+                  reason?: string;
+                  exclusionMode?: 'business_name' | 'business_type';
+                }
+              | undefined;
 
-            let business: Business;
-            if (existing) {
-              // Update existing business with latest data and scoring
-              business = await prisma.business.update({
-                where: { id: existing.id },
-                data: {
+            if (place.place_id) {
+              metrics.detailsCandidates += 1;
+            }
+
+            if (matchedExcludedType) {
+              exclusionCheck = {
+                isExcluded: true,
+                exclusionMode: 'business_type',
+                reason: 'Matched excluded business type',
+              };
+            } else if (place.place_id) {
+              try {
+                metrics.detailsSelected += 1;
+                await this.rateLimiter.throttle();
+                metrics.placeDetailsCalls += 1;
+                const details = await retryWithBackoff(() => this.client.getPlaceDetails(place.place_id));
+
+                if (details) {
+                  candidatePlace = {
+                    ...place,
+                    ...details,
+                    types: details.types && details.types.length > 0 ? details.types : place.types,
+                  };
+                }
+              } catch (error) {
+                metrics.placeDetailsFailures += 1;
+                console.warn(`Could not fetch place details for ${place.place_id}:`, error);
+              }
+            }
+
+            const norm = normalizeGooglePlace(candidatePlace);
+
+            if (!exclusionCheck) {
+              const exclusionResults = await checkBusinessExclusionBatchWithTypes([
+                {
                   name: norm.name,
-                  address: norm.address,
-                  lat: norm.lat,
-                  lng: norm.lng,
-                  phone: norm.phone,
-                  website: norm.website,
                   businessTypes: norm.businessTypes,
-                  rating: norm.rating,
-                  reviewCount: norm.reviewCount,
-                  smallBusinessScore: scoringResult.score,
-                  websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
-                  cachedAt: new Date(), // Update cache timestamp
                 },
-              });
-              existingCount++;
-            } else {
-              // Create new business with scoring
-              // If excluded, auto-reject
-              const leadStatus = exclusionCheck?.isExcluded ? 'rejected' : 'pending';
-              const rejectedReason = exclusionCheck?.isExcluded 
-                ? `Auto-rejected: matched ${exclusionCheck.exclusionMode === 'business_type' ? 'excluded business type' : 'exclude list'} (${exclusionCheck.reason || 'no reason provided'})`
-                : undefined;
-              
-              business = await prisma.business.create({
-                data: {
-                  ...toPrismaCreateInput(norm, searchRun.id),
-                  smallBusinessScore: scoringResult.score,
-                  websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
-                  leadStatus,
-                  rejectedAt: exclusionCheck?.isExcluded ? new Date() : undefined,
-                  rejectedReason,
-                  cachedAt: new Date(), // Set initial cache timestamp
-                },
-              });
-              newCount++;
+              ]);
+              exclusionCheck = exclusionResults.get(norm.name);
             }
 
-            if (business.placeId) {
-              placeIdsToCache.push(business.placeId);
+            const result = await persistBusiness(norm, exclusionCheck);
+            if (result) {
+              results.push(result);
             }
-
-            // Enqueue background validation jobs for this business
-            // Only enqueue for non-excluded businesses with potential data to validate
-            if (!exclusionCheck?.isExcluded) {
-              if (business.website) {
-                await this.jobQueue.enqueueJob({
-                  businessId: business.id,
-                  jobType: 'website_validation',
-                });
-              }
-              // Enqueue email and social scraping for businesses with websites
-              if (business.website) {
-                await this.jobQueue.enqueueJob({
-                  businessId: business.id,
-                  jobType: 'email_scraping',
-                });
-                await this.jobQueue.enqueueJob({
-                  businessId: business.id,
-                  jobType: 'social_scraping',
-                });
-              }
-            }
-
-            results.push({
-              placeId: business.placeId || '',
-              name: business.name,
-              address: business.address,
-              lat: business.lat ? Number(business.lat) : 0,
-              lng: business.lng ? Number(business.lng) : 0,
-              phone: business.phone || undefined,
-              website: business.website || undefined,
-              businessTypes: business.businessTypes,
-              rating: business.rating || undefined,
-              reviewCount: business.reviewCount || undefined,
-              hasWebsite: !!business.website,
-              isNew: !existing,
-              isCached: false,
-            });
           } catch (error) {
-            console.error(`Error persisting business ${norm.placeId}:`, error);
+            console.error(`Error persisting business ${place.place_id}:`, error);
             // Continue with other businesses
           }
         }

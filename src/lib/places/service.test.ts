@@ -6,6 +6,7 @@ import { PlacesService } from './service';
 import { PlacesClient } from './client';
 import { prisma } from '../prisma';
 import type { GooglePlaceResult } from './types';
+import { addBusinessTypeToExcludeList } from '../scoring/exclusions';
 
 // Mock the PlacesClient
 jest.mock('./client');
@@ -47,6 +48,9 @@ describe('PlacesService', () => {
     });
     await prisma.searchRun.deleteMany({
       where: { locationText: { startsWith: 'TEST_' } },
+    });
+    await prisma.excludedBusiness.deleteMany({
+      where: { addedByUserId: testUserId },
     });
     await prisma.user.deleteMany({
       where: { email: 'test-places@example.com' },
@@ -279,6 +283,109 @@ describe('PlacesService', () => {
       expect(result.status).toBe('success');
       expect(result.results).toHaveLength(1);
       expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips Place Details enrichment for nearby results with excluded business types', async () => {
+      await addBusinessTypeToExcludeList('restaurant', testUserId, 'Skip details for excluded type');
+
+      const nearbyResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_SKIP_DETAILS_1',
+          name: 'Excluded Restaurant',
+          vicinity: 'Skip 1',
+          types: ['restaurant', 'food'],
+        },
+        {
+          place_id: 'TEST_SKIP_DETAILS_2',
+          name: 'Allowed Clinic',
+          vicinity: 'Skip 2',
+          types: ['doctor'],
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
+      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.getPlaceDetails.mockResolvedValue({
+        place_id: 'TEST_SKIP_DETAILS_2',
+        name: 'Allowed Clinic',
+        formatted_address: 'Skip 2 Address',
+      });
+
+      const result = await service.search(
+        {
+          location: 'TEST_Skip_Excluded_Enrichment',
+          radius: 1000,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.metrics).toMatchObject({
+        detailsCandidates: 2,
+        detailsSelected: 1,
+        placeDetailsCalls: 1,
+      });
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(1);
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledWith('TEST_SKIP_DETAILS_2');
+    });
+
+    it('replaces excluded business-type results with later nearby results to satisfy maxBusinesses', async () => {
+      await addBusinessTypeToExcludeList('restaurant', testUserId, 'Excluded from visible results');
+
+      const nearbyResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_REPLACE_1',
+          name: 'Excluded Restaurant',
+          vicinity: 'Replace 1',
+          types: ['restaurant'],
+        },
+        {
+          place_id: 'TEST_REPLACE_2',
+          name: 'Allowed Clinic',
+          vicinity: 'Replace 2',
+          types: ['doctor'],
+        },
+        {
+          place_id: 'TEST_REPLACE_3',
+          name: 'Allowed Store',
+          vicinity: 'Replace 3',
+          types: ['store'],
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
+      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.getPlaceDetails
+        .mockResolvedValueOnce({
+          place_id: 'TEST_REPLACE_2',
+          name: 'Allowed Clinic',
+          formatted_address: 'Replace 2 Address',
+          types: ['doctor'],
+        })
+        .mockResolvedValueOnce({
+          place_id: 'TEST_REPLACE_3',
+          name: 'Allowed Store',
+          formatted_address: 'Replace 3 Address',
+          types: ['store'],
+        });
+
+      const result = await service.search(
+        {
+          location: 'TEST_Replace_Excluded_Results',
+          radius: 1000,
+          maxBusinesses: 2,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.results).toHaveLength(2);
+      expect(result.results.map((business) => business.placeId)).toEqual([
+        'TEST_REPLACE_2',
+        'TEST_REPLACE_3',
+      ]);
+      expect(result.results.some((business) => business.placeId === 'TEST_REPLACE_1')).toBe(false);
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(2);
     });
 
     it('creates search run record with correct status', async () => {
@@ -538,6 +645,65 @@ describe('PlacesService', () => {
 
       expect(business?.cachedAt).toBeTruthy();
       expect(business?.cachedAt).toBeInstanceOf(Date);
+    });
+
+    it('filters excluded business-type entries from cached replay payloads', async () => {
+      const mockResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_CACHE_FILTER_1',
+          name: 'Cached Restaurant',
+          formatted_address: '123 Cache St',
+          types: ['restaurant'],
+        },
+        {
+          place_id: 'TEST_CACHE_FILTER_2',
+          name: 'Cached Clinic',
+          formatted_address: '456 Cache St',
+          types: ['doctor'],
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
+      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.getPlaceDetails
+        .mockResolvedValueOnce({
+          place_id: 'TEST_CACHE_FILTER_1',
+          name: 'Cached Restaurant',
+          formatted_address: '123 Cache St',
+          types: ['restaurant'],
+        })
+        .mockResolvedValueOnce({
+          place_id: 'TEST_CACHE_FILTER_2',
+          name: 'Cached Clinic',
+          formatted_address: '456 Cache St',
+          types: ['doctor'],
+        });
+
+      const firstResult = await service.search(
+        {
+          location: 'TEST_Cache_Filter_Location',
+          radius: 5000,
+        },
+        testUserId
+      );
+
+      expect(firstResult.fromCache).toBe(false);
+      expect(firstResult.results).toHaveLength(2);
+
+      await addBusinessTypeToExcludeList('restaurant', testUserId, 'Hide from cached replay');
+
+      const cachedReplayResult = await service.search(
+        {
+          location: 'TEST_Cache_Filter_Location',
+          radius: 5000,
+        },
+        testUserId
+      );
+
+      expect(cachedReplayResult.fromCache).toBe(true);
+      expect(cachedReplayResult.results).toHaveLength(1);
+      expect(cachedReplayResult.results[0].placeId).toBe('TEST_CACHE_FILTER_2');
+      expect(cachedReplayResult.results.some((business) => business.placeId === 'TEST_CACHE_FILTER_1')).toBe(false);
     });
   });
 });

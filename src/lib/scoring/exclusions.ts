@@ -34,6 +34,23 @@ function tokenToBusinessType(value: string): string {
   return value.slice(BUSINESS_TYPE_PREFIX.length);
 }
 
+export async function getExcludedBusinessTypes(): Promise<string[]> {
+  const excludedTypes = await prisma.excludedBusiness.findMany({
+    where: {
+      businessNameNormalized: {
+        startsWith: BUSINESS_TYPE_PREFIX,
+      },
+    },
+    select: {
+      businessNameNormalized: true,
+    },
+  });
+
+  return Array.from(
+    new Set(excludedTypes.map((row) => tokenToBusinessType(row.businessNameNormalized)))
+  );
+}
+
 function buildNormalizationCandidates(normalizedName: string): string[] {
   const compact = normalizedName.replace(/\s+/g, '');
   const noStandaloneNumbers = normalizedName
