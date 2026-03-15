@@ -153,8 +153,18 @@ describe('LeadDetailPage', () => {
     fireEvent.click(screen.getByTitle('Edit Business Information'));
 
     await waitFor(() => {
-      const businessTypesInput = screen.getByDisplayValue('retail, e-commerce') as HTMLInputElement;
-      expect(businessTypesInput).toBeInTheDocument();
+      const businessTypesButton = screen.getByRole('button', { name: 'Business Types dropdown' });
+      expect(businessTypesButton).toBeInTheDocument();
+      expect(businessTypesButton).toHaveTextContent('Retail, E-commerce');
+      expect(screen.queryByLabelText('Retail')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Business Types dropdown' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Retail')).toBeChecked();
+      expect(screen.getByLabelText('E-commerce')).toBeChecked();
+      expect(screen.getByLabelText('Store')).not.toBeChecked();
     });
   });
 
@@ -260,13 +270,19 @@ describe('LeadDetailPage', () => {
     fireEvent.click(screen.getByTitle('Edit Business Information'));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('retail, e-commerce')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Business Types dropdown' })).toBeInTheDocument();
     });
 
-    const typesInput = screen.getByDisplayValue('retail, e-commerce') as HTMLInputElement;
-    fireEvent.change(typesInput, { target: { value: 'retail, services' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Business Types dropdown' }));
 
-    expect(typesInput.value).toBe('retail, services');
+    const ecommerceCheckbox = screen.getByLabelText('E-commerce') as HTMLInputElement;
+    const storeCheckbox = screen.getByLabelText('Store') as HTMLInputElement;
+
+    fireEvent.click(ecommerceCheckbox);
+    fireEvent.click(storeCheckbox);
+
+    const businessTypesButton = screen.getByRole('button', { name: 'Business Types dropdown' });
+    expect(businessTypesButton).toHaveTextContent('Retail, Store');
   });
 
   it('should allow editing rating', async () => {
@@ -484,7 +500,7 @@ describe('LeadDetailPage', () => {
     });
   });
 
-  it('should handle business types as comma-separated string', async () => {
+  it('should handle business types as multi-select values', async () => {
     render(<LeadDetailPage />);
 
     await waitFor(() => {
@@ -494,19 +510,26 @@ describe('LeadDetailPage', () => {
     fireEvent.click(screen.getByTitle('Edit Business Information'));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('retail, e-commerce')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Business Types dropdown' })).toBeInTheDocument();
     });
 
-    const typesInput = screen.getByDisplayValue('retail, e-commerce') as HTMLInputElement;
-    fireEvent.change(typesInput, { target: { value: 'retail,  services  , tech' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Business Types dropdown' }));
 
-    // Reset mock to verify correct parsing
+    const ecommerceCheckbox = screen.getByLabelText('E-commerce') as HTMLInputElement;
+    const storeCheckbox = screen.getByLabelText('Store') as HTMLInputElement;
+    const healthCheckbox = screen.getByLabelText('Health') as HTMLInputElement;
+
+    fireEvent.click(ecommerceCheckbox);
+    fireEvent.click(storeCheckbox);
+    fireEvent.click(healthCheckbox);
+
+    // Reset mock to verify correct selected values are sent
     (global.fetch as jest.Mock).mockClear();
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         ...mockBusiness,
-        businessTypes: ['retail', 'services', 'tech'],
+        businessTypes: ['retail', 'store', 'health'],
       }),
     });
 
@@ -523,7 +546,8 @@ describe('LeadDetailPage', () => {
       expect(patchCall).toBeDefined();
       const [, options] = patchCall as [RequestInfo | URL, RequestInit];
       const payload = JSON.parse(options.body as string);
-      expect(payload.businessTypes).toEqual(['retail', 'services', 'tech']);
+      expect(payload.businessTypes).toHaveLength(3);
+      expect(payload.businessTypes).toEqual(expect.arrayContaining(['retail', 'store', 'health']));
     });
   });
 

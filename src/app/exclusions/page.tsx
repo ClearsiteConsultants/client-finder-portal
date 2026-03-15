@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import {
   GOOGLE_PLACES_BUSINESS_TYPES,
+  formatGooglePlaceTypeLabel,
 } from '@/lib/places/business-types';
 
 type ExcludedBusiness = {
@@ -188,7 +189,7 @@ export default function ExclusionsPage() {
                   <option value="">Select a business type</option>
                   {GOOGLE_PLACES_BUSINESS_TYPES.map((businessType) => (
                     <option key={businessType} value={businessType}>
-                      {businessType}
+                      {formatGooglePlaceTypeLabel(businessType)}
                     </option>
                   ))}
                 </select>
@@ -267,7 +268,7 @@ export default function ExclusionsPage() {
                     <tr key={item.id}>
                       <td className="px-6 py-4 whitespace-nowrap font-medium">
                         {item.exclusionMode === 'business_type' && item.businessType
-                          ? item.businessType
+                          ? formatGooglePlaceTypeLabel(item.businessType)
                           : item.businessName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-muted">

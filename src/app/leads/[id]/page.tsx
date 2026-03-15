@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
+import { GOOGLE_PLACES_BUSINESS_TYPES, formatGooglePlaceTypeLabel } from '@/lib/places/business-types';
 import { googleMapsPlaceUrl } from '@/lib/places/maps';
 
 type Business = {
@@ -79,6 +80,7 @@ export default function LeadDetailPage() {
   const [editedFacebookUrl, setEditedFacebookUrl] = useState('');
   const [editedInstagramUrl, setEditedInstagramUrl] = useState('');
   const [editedLinkedinUrl, setEditedLinkedinUrl] = useState('');
+  const [showBusinessTypeOptions, setShowBusinessTypeOptions] = useState(false);
   const [businessInfoErrors, setBusinessInfoErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -192,12 +194,14 @@ export default function LeadDetailPage() {
     setEditedFacebookUrl(business.contactInfo?.[0]?.facebookUrl || '');
     setEditedInstagramUrl(business.contactInfo?.[0]?.instagramUrl || '');
     setEditedLinkedinUrl(business.contactInfo?.[0]?.linkedinUrl || '');
+    setShowBusinessTypeOptions(false);
     setBusinessInfoErrors({});
     setEditingBusinessInfo(true);
   };
 
   const cancelBusinessInfoEdit = () => {
     setEditingBusinessInfo(false);
+    setShowBusinessTypeOptions(false);
     setBusinessInfoErrors({});
   };
 
@@ -249,6 +253,7 @@ export default function LeadDetailPage() {
         const data: Business = await response.json();
         setBusiness(data);
         setEditingBusinessInfo(false);
+        setShowBusinessTypeOptions(false);
         setBusinessInfoErrors({});
       } else {
         const error = await response.json();
@@ -405,6 +410,10 @@ export default function LeadDetailPage() {
 
   const isClient = Boolean(business.isClient);
   const canConvertToClient = !isClient && business.leadStatus === 'approved';
+  const businessTypeOptions = Array.from(new Set([...GOOGLE_PLACES_BUSINESS_TYPES, ...editedBusinessTypes]));
+  const selectedBusinessTypeLabel = editedBusinessTypes.length > 0
+    ? editedBusinessTypes.map(formatGooglePlaceTypeLabel).join(', ')
+    : 'Select business types';
 
   return (
     <div className="min-h-screen">
@@ -557,13 +566,41 @@ export default function LeadDetailPage() {
                     <label className="block theme-text-muted text-sm font-medium mb-1">
                       Business Types
                     </label>
-                    <input
-                      type="text"
-                      value={editedBusinessTypes.join(', ')}
-                      onChange={(e) => setEditedBusinessTypes(e.target.value.split(',').map(t => t.trim()).filter(t => t))}
-                      placeholder="e.g. retail, e-commerce, services"
-                      className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowBusinessTypeOptions((prev) => !prev)}
+                      className="theme-input flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      aria-expanded={showBusinessTypeOptions}
+                      aria-label="Business Types dropdown"
+                    >
+                      <span className="truncate text-left">{selectedBusinessTypeLabel}</span>
+                      <span className="theme-text-muted ml-2">{showBusinessTypeOptions ? '▲' : '▼'}</span>
+                    </button>
+                    {showBusinessTypeOptions && (
+                      <div className="theme-input mt-2 max-h-48 overflow-y-auto rounded-lg border p-2">
+                        {businessTypeOptions.map((businessType) => {
+                          const isChecked = editedBusinessTypes.includes(businessType);
+                          return (
+                            <label key={businessType} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  setEditedBusinessTypes((prev) => {
+                                    if (e.target.checked) {
+                                      return [...prev, businessType];
+                                    }
+                                    return prev.filter((type) => type !== businessType);
+                                  });
+                                }}
+                                className="h-4 w-4"
+                              />
+                              <span>{formatGooglePlaceTypeLabel(businessType)}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -733,7 +770,7 @@ export default function LeadDetailPage() {
                   {business.businessTypes.length > 0 && (
                     <div>
                       <dt className="theme-text-muted text-sm font-medium">Business Types</dt>
-                      <dd className="mt-1 text-sm">{business.businessTypes.join(', ')}</dd>
+                      <dd className="mt-1 text-sm">{business.businessTypes.map(formatGooglePlaceTypeLabel).join(', ')}</dd>
                     </div>
                   )}
                   {business.rating && (

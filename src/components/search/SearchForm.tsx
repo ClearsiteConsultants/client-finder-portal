@@ -5,6 +5,7 @@ import { SearchResults } from "./SearchResults";
 import type { BusinessResult, SearchMetrics, SearchResponse } from "@/lib/places/types";
 import {
   GOOGLE_PLACES_BUSINESS_TYPES,
+  formatGooglePlaceTypeLabel,
 } from "@/lib/places/business-types";
 
 type InfoTooltipProps = {
@@ -173,7 +174,7 @@ export default function SearchForm() {
               <option value="">All Business Types</option>
               {GOOGLE_PLACES_BUSINESS_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {formatGooglePlaceTypeLabel(type)}
                 </option>
               ))}
             </select>
