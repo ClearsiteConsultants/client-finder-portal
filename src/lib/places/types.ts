@@ -64,6 +64,11 @@ export interface GooglePlaceResult {
   user_ratings_total?: number;
 }
 
+export interface NearbySearchResponse {
+  results: GooglePlaceResult[];
+  nextPageToken?: string;
+}
+
 export interface PlacesApiError {
   code: 'QUOTA_EXCEEDED' | 'INVALID_KEY' | 'NETWORK_ERROR' | 'INVALID_REQUEST' | 'UNKNOWN';
   message: string;

@@ -9,7 +9,6 @@ import { prisma } from '../prisma';
 import type { Business } from '@prisma/client';
 import {
   generateCacheKey,
-  getCachedResults,
 } from './cache';
 import { RateLimiter, retryWithBackoff } from './rate-limiter';
 import { calculateScore, checkBusinessExclusionBatchWithTypes } from '../scoring';
@@ -72,61 +71,7 @@ export class PlacesService {
       // Generate cache key
       const cacheKey = generateCacheKey(request, location);
 
-      // Check cache unless force refresh
-      if (!options.forceRefresh) {
-        const cached = await getCachedResults(cacheKey);
-        if (cached) {
-          const excludedBusinessTypes = await getExcludedBusinessTypes();
-          const excludedBusinessTypeSet = new Set(
-            excludedBusinessTypes.map((type) => type.trim().toLowerCase())
-          );
-
-          const filteredCachedBusinesses = cached.businesses.filter((business) => {
-            if (!business.businessTypes.length) {
-              return true;
-            }
-
-            return !business.businessTypes.some((type) =>
-              excludedBusinessTypeSet.has(type.trim().toLowerCase())
-            );
-          });
-
-          // Create a new search run record that references the cached search
-          await prisma.searchRun.create({
-            data: {
-              createdByUserId: userId,
-              queryText: request.businessType || null,
-              locationText: request.location,
-              lat: location.lat,
-              lng: location.lng,
-              radiusMeters: request.radius,
-              types: request.businessType ? [request.businessType] : [],
-              status: 'completed',
-              completedAt: new Date(),
-              resultsFound: filteredCachedBusinesses.length,
-              resultsSavedNew: 0,
-              resultsDedupedExisting: filteredCachedBusinesses.length,
-              cacheKey,
-              usedCachedResults: true,
-              cachedFromSearchRunId: cached.searchRun.id,
-            },
-          });
-
-          const cacheAge = cached.searchRun.completedAt
-            ? Date.now() - cached.searchRun.completedAt.getTime()
-            : 0;
-
-          return {
-            results: filteredCachedBusinesses,
-            status: 'success',
-            fromCache: true,
-            cacheAge,
-            metrics: finalizeMetrics(),
-          };
-        }
-      }
-
-      // No valid cache found - create search run and fetch from API
+      // Create search run and fetch from API.
       const searchRun = await prisma.searchRun.create({
         data: {
           createdByUserId: userId,
@@ -143,12 +88,42 @@ export class PlacesService {
       });
 
       try {
-        // Search for places (with rate limiting and retry)
-        await this.rateLimiter.throttle();
-        const places = await retryWithBackoff(() =>
-          this.client.nearbySearch(location, request.radius, request.businessType)
-        );
-        metrics.nearbySearchCalls += 1;
+        // Search for places with pagination so repeated searches can still find uncached leads.
+        const places: GooglePlaceResult[] = [];
+        const seenPlaceIds = new Set<string>();
+        let nextPageToken: string | undefined;
+        let hasNextPage = true;
+
+        while (hasNextPage) {
+          if (nextPageToken) {
+            // Google next_page_token can require a short delay before becoming valid.
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
+
+          await this.rateLimiter.throttle();
+          const nearbyResponse = await retryWithBackoff(() =>
+            this.client.nearbySearch(
+              location,
+              request.radius,
+              request.businessType,
+              nextPageToken
+            )
+          );
+          metrics.nearbySearchCalls += 1;
+
+          for (const place of nearbyResponse.results) {
+            if (place.place_id) {
+              if (seenPlaceIds.has(place.place_id)) {
+                continue;
+              }
+              seenPlaceIds.add(place.place_id);
+            }
+            places.push(place);
+          }
+
+          nextPageToken = nearbyResponse.nextPageToken;
+          hasNextPage = !!nextPageToken;
+        }
 
         const configuredMaxBusinesses = request.maxBusinesses;
         const maxBusinesses = Number.isInteger(configuredMaxBusinesses)
@@ -159,6 +134,23 @@ export class PlacesService {
         const excludedBusinessTypeSet = new Set(
           excludedBusinessTypes.map((type) => type.trim().toLowerCase())
         );
+
+        const placeIds = places
+          .map((place) => place.place_id)
+          .filter((placeId): placeId is string => !!placeId);
+
+        const existingPlaceIds = placeIds.length
+          ? new Set(
+              (
+                await prisma.business.findMany({
+                  where: { placeId: { in: placeIds } },
+                  select: { placeId: true },
+                })
+              )
+                .map((business) => business.placeId)
+                .filter((placeId): placeId is string => !!placeId)
+            )
+          : new Set<string>();
 
         // Persist to database with deduplication
         const results: BusinessResult[] = [];
@@ -182,50 +174,23 @@ export class PlacesService {
             website: norm.website,
           });
 
-          // Try to find existing business by place_id
-          const existing = await prisma.business.findUnique({
-            where: { placeId: norm.placeId },
+          const leadStatus = exclusionCheck?.isExcluded ? 'rejected' : 'pending';
+          const rejectedReason = exclusionCheck?.isExcluded
+            ? `Auto-rejected: matched ${exclusionCheck.exclusionMode === 'business_type' ? 'excluded business type' : 'exclude list'} (${exclusionCheck.reason || 'no reason provided'})`
+            : undefined;
+
+          const business = await prisma.business.create({
+            data: {
+              ...toPrismaCreateInput(norm, searchRun.id),
+              smallBusinessScore: scoringResult.score,
+              websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
+              leadStatus,
+              rejectedAt: exclusionCheck?.isExcluded ? new Date() : undefined,
+              rejectedReason,
+              cachedAt: new Date(),
+            },
           });
-
-          let business: Business;
-          if (existing) {
-            business = await prisma.business.update({
-              where: { id: existing.id },
-              data: {
-                name: norm.name,
-                address: norm.address,
-                lat: norm.lat,
-                lng: norm.lng,
-                phone: norm.phone,
-                website: norm.website,
-                businessTypes: norm.businessTypes,
-                rating: norm.rating,
-                reviewCount: norm.reviewCount,
-                smallBusinessScore: scoringResult.score,
-                websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
-                cachedAt: new Date(),
-              },
-            });
-            existingCount++;
-          } else {
-            const leadStatus = exclusionCheck?.isExcluded ? 'rejected' : 'pending';
-            const rejectedReason = exclusionCheck?.isExcluded
-              ? `Auto-rejected: matched ${exclusionCheck.exclusionMode === 'business_type' ? 'excluded business type' : 'exclude list'} (${exclusionCheck.reason || 'no reason provided'})`
-              : undefined;
-
-            business = await prisma.business.create({
-              data: {
-                ...toPrismaCreateInput(norm, searchRun.id),
-                smallBusinessScore: scoringResult.score,
-                websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
-                leadStatus,
-                rejectedAt: exclusionCheck?.isExcluded ? new Date() : undefined,
-                rejectedReason,
-                cachedAt: new Date(),
-              },
-            });
-            newCount++;
-          }
+          newCount++;
 
           if (business.placeId) {
             placeIdsToCache.push(business.placeId);
@@ -264,7 +229,7 @@ export class PlacesService {
             rating: business.rating || undefined,
             reviewCount: business.reviewCount || undefined,
             hasWebsite: !!business.website,
-            isNew: !existing,
+            isNew: true,
             isCached: false,
           };
         };
@@ -272,6 +237,11 @@ export class PlacesService {
         for (const place of places) {
           if (results.length >= maxBusinesses) {
             break;
+          }
+
+          if (place.place_id && existingPlaceIds.has(place.place_id)) {
+            existingCount += 1;
+            continue;
           }
 
           try {

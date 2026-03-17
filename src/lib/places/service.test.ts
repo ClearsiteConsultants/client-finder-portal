@@ -76,7 +76,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 40.7128, lng: -74.0060 });
-      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
 
       const result = await service.search({
         location: 'TEST_New York, NY',
@@ -115,7 +115,7 @@ describe('PlacesService', () => {
 
     it('handles lat,lng format directly without geocoding', async () => {
       const mockResults: GooglePlaceResult[] = [];
-      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
 
       await service.search({
         location: '40.7128,-74.0060',
@@ -126,11 +126,12 @@ describe('PlacesService', () => {
       expect(mockClient.nearbySearch).toHaveBeenCalledWith(
         { lat: 40.7128, lng: -74.0060 },
         1000,
+        undefined,
         undefined
       );
     });
 
-    it('deduplicates existing businesses by place_id', async () => {
+    it('skips existing businesses by place_id and returns only uncached leads', async () => {
       // Create existing business
       await prisma.business.create({
         data: {
@@ -151,22 +152,21 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
-      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
 
       const result = await service.search({
         location: 'TEST_Location',
         radius: 1000,
       }, testUserId);
 
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0].isNew).toBe(false);
-      expect(result.results[0].name).toBe('Updated Name');
+      expect(result.results).toHaveLength(0);
+      expect(mockClient.getPlaceDetails).not.toHaveBeenCalled();
 
-      // Verify database update
+      // Verify database was not updated/enhanced
       const business = await prisma.business.findUnique({
         where: { placeId: 'TEST_EXISTING' },
       });
-      expect(business?.name).toBe('Updated Name');
+      expect(business?.name).toBe('Old Name');
     });
 
     it('enriches nearby results with place details before persisting', async () => {
@@ -189,7 +189,7 @@ describe('PlacesService', () => {
       };
 
       mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
-      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: nearbyResults });
       mockClient.getPlaceDetails.mockResolvedValue(detailsResult);
 
       const result = await service.search(
@@ -222,7 +222,7 @@ describe('PlacesService', () => {
       expect(business?.website).toBe('https://nearby-only-business.test');
     });
 
-    it('always enriches all selected businesses', async () => {
+    it('enriches all selected uncached businesses', async () => {
       const nearbyResults: GooglePlaceResult[] = [
         { place_id: 'TEST_LIMIT_1', name: 'Limit 1', vicinity: 'A' },
         { place_id: 'TEST_LIMIT_2', name: 'Limit 2', vicinity: 'B' },
@@ -230,13 +230,26 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
-      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
-      mockClient.getPlaceDetails.mockResolvedValue({
-        place_id: 'TEST_LIMIT_1',
-        name: 'Limit Enriched',
-        formatted_address: 'Limit Enriched Address',
-        website: 'https://limit.test',
-      });
+      mockClient.nearbySearch.mockResolvedValue({ results: nearbyResults });
+      mockClient.getPlaceDetails
+        .mockResolvedValueOnce({
+          place_id: 'TEST_LIMIT_1',
+          name: 'Limit 1',
+          formatted_address: 'Limit 1 Address',
+          website: 'https://limit-1.test',
+        })
+        .mockResolvedValueOnce({
+          place_id: 'TEST_LIMIT_2',
+          name: 'Limit 2',
+          formatted_address: 'Limit 2 Address',
+          website: 'https://limit-2.test',
+        })
+        .mockResolvedValueOnce({
+          place_id: 'TEST_LIMIT_3',
+          name: 'Limit 3',
+          formatted_address: 'Limit 3 Address',
+          website: 'https://limit-3.test',
+        });
 
       await service.search(
         {
@@ -247,6 +260,54 @@ describe('PlacesService', () => {
       );
 
       expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(3);
+    });
+
+    it('skips place details enrichment for already cached place IDs', async () => {
+      await prisma.business.create({
+        data: {
+          placeId: 'TEST_CACHED_SKIP_1',
+          name: 'Cached Lead',
+          address: '100 Cached St',
+          websiteStatus: 'no_website',
+          source: 'google_maps',
+          cachedAt: new Date(),
+        },
+      });
+
+      const nearbyResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_CACHED_SKIP_1',
+          name: 'Cached Lead Updated',
+          vicinity: 'Cached',
+        },
+        {
+          place_id: 'TEST_CACHED_SKIP_2',
+          name: 'Fresh Lead',
+          vicinity: 'Fresh',
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
+      mockClient.nearbySearch.mockResolvedValue({ results: nearbyResults });
+      mockClient.getPlaceDetails.mockResolvedValue({
+        place_id: 'TEST_CACHED_SKIP_2',
+        name: 'Fresh Lead',
+        formatted_address: '200 Fresh St',
+      });
+
+      const result = await service.search(
+        {
+          location: 'TEST_Skip_Cached_Enrichment',
+          radius: 3000,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].placeId).toBe('TEST_CACHED_SKIP_2');
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledTimes(1);
+      expect(mockClient.getPlaceDetails).toHaveBeenCalledWith('TEST_CACHED_SKIP_2');
     });
 
     it('respects maxBusinesses limit for processed results', async () => {
@@ -264,7 +325,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 34.0522, lng: -118.2437 });
-      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: nearbyResults });
       mockClient.getPlaceDetails.mockResolvedValue({
         place_id: 'TEST_NO_ENRICH',
         name: 'No Enrich Business',
@@ -304,7 +365,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
-      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: nearbyResults });
       mockClient.getPlaceDetails.mockResolvedValue({
         place_id: 'TEST_SKIP_DETAILS_2',
         name: 'Allowed Clinic',
@@ -354,7 +415,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
-      mockClient.nearbySearch.mockResolvedValue(nearbyResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: nearbyResults });
       mockClient.getPlaceDetails
         .mockResolvedValueOnce({
           place_id: 'TEST_REPLACE_2',
@@ -390,7 +451,7 @@ describe('PlacesService', () => {
 
     it('creates search run record with correct status', async () => {
       mockClient.geocode.mockResolvedValue({ lat: 40.7, lng: -74.0 });
-      mockClient.nearbySearch.mockResolvedValue([]);
+      mockClient.nearbySearch.mockResolvedValue({ results: [] });
 
       await service.search({
         location: 'TEST_SearchRun',
@@ -504,7 +565,7 @@ describe('PlacesService', () => {
   });
 
   describe('caching', () => {
-    it('returns cached results when searching same location within TTL', async () => {
+    it('does not replay cached results for repeated searches', async () => {
       const mockResults: GooglePlaceResult[] = [
         {
           place_id: 'TEST_CACHE_1',
@@ -514,7 +575,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
-      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
 
       // First search - should call API
       const result1 = await service.search({
@@ -528,7 +589,7 @@ describe('PlacesService', () => {
       expect(result1.fromCache).toBe(false);
       expect(mockClient.nearbySearch).toHaveBeenCalledTimes(1);
 
-      // Second search with same parameters - should use cache
+      // Second search with same parameters should fetch again and skip existing place IDs
       const result2 = await service.search({
         location: 'TEST_Cache_Location',
         radius: 5000,
@@ -536,12 +597,10 @@ describe('PlacesService', () => {
       }, testUserId);
 
       expect(result2.status).toBe('success');
-      expect(result2.results).toHaveLength(1);
-      expect(result2.fromCache).toBe(true);
-      expect(result2.cacheAge).toBeDefined();
-      expect(result2.results[0].isCached).toBe(true);
-      // API should not be called again
-      expect(mockClient.nearbySearch).toHaveBeenCalledTimes(1);
+      expect(result2.results).toHaveLength(0);
+      expect(result2.fromCache).toBe(false);
+      // API should be called again to discover uncached leads
+      expect(mockClient.nearbySearch).toHaveBeenCalledTimes(2);
 
       // Verify search run records
       const searchRuns = await prisma.searchRun.findMany({
@@ -552,12 +611,136 @@ describe('PlacesService', () => {
       expect(searchRuns).toHaveLength(2);
       expect(searchRuns[0].usedCachedResults).toBe(false);
       expect(searchRuns[0].cacheKey).toBeTruthy();
-      expect(searchRuns[1].usedCachedResults).toBe(true);
-      expect(searchRuns[1].cachedFromSearchRunId).toBe(searchRuns[0].id);
+      expect(searchRuns[1].usedCachedResults).toBe(false);
+      expect(searchRuns[1].cachedFromSearchRunId).toBeNull();
       expect(searchRuns[1].cacheKey).toBe(searchRuns[0].cacheKey);
     });
 
-    it('bypasses cache when forceRefresh is true', async () => {
+    it('finds uncached leads on later nearby pages for repeated all-types searches', async () => {
+      const firstPage: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_ALL_TYPES_PAGE_1',
+          name: 'Page One Business',
+          formatted_address: '100 Page One St',
+        },
+      ];
+
+      const secondPageNewLead: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_ALL_TYPES_PAGE_2_NEW',
+          name: 'Page Two New Business',
+          formatted_address: '200 Page Two St',
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
+
+      // First run persists page 1 result.
+      mockClient.nearbySearch.mockResolvedValueOnce({ results: firstPage });
+      await service.search(
+        {
+          location: 'TEST_All_Types_Pagination',
+          radius: 5000,
+        },
+        testUserId
+      );
+
+      // Second run gets same first page (cached in DB), then follows next page token to a new lead.
+      mockClient.nearbySearch
+        .mockResolvedValueOnce({ results: firstPage, nextPageToken: 'PAGE_2_TOKEN' })
+        .mockResolvedValueOnce({ results: secondPageNewLead });
+
+      const secondRun = await service.search(
+        {
+          location: 'TEST_All_Types_Pagination',
+          radius: 5000,
+        },
+        testUserId
+      );
+
+      expect(secondRun.status).toBe('success');
+      expect(secondRun.results).toHaveLength(1);
+      expect(secondRun.results[0].placeId).toBe('TEST_ALL_TYPES_PAGE_2_NEW');
+      expect(mockClient.nearbySearch).toHaveBeenCalledTimes(3);
+      expect(mockClient.nearbySearch).toHaveBeenNthCalledWith(
+        3,
+        { lat: 47.6062, lng: -122.3321 },
+        5000,
+        undefined,
+        'PAGE_2_TOKEN'
+      );
+    });
+
+    it('fetches all available nearby search pages when next page tokens continue', async () => {
+      mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
+
+      mockClient.nearbySearch
+        .mockResolvedValueOnce({
+          results: [
+            { place_id: 'TEST_ALL_PAGES_1', name: 'All Pages 1', formatted_address: 'P1' },
+          ],
+          nextPageToken: 'TOKEN_2',
+        })
+        .mockResolvedValueOnce({
+          results: [
+            { place_id: 'TEST_ALL_PAGES_2', name: 'All Pages 2', formatted_address: 'P2' },
+          ],
+          nextPageToken: 'TOKEN_3',
+        })
+        .mockResolvedValueOnce({
+          results: [
+            { place_id: 'TEST_ALL_PAGES_3', name: 'All Pages 3', formatted_address: 'P3' },
+          ],
+          nextPageToken: 'TOKEN_4',
+        })
+        .mockResolvedValueOnce({
+          results: [
+            { place_id: 'TEST_ALL_PAGES_4', name: 'All Pages 4', formatted_address: 'P4' },
+          ],
+        });
+
+      const result = await service.search(
+        {
+          location: 'TEST_All_Nearby_Pages',
+          radius: 5000,
+          maxBusinesses: 4,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.results).toHaveLength(4);
+      expect(result.results.map((business) => business.placeId)).toEqual([
+        'TEST_ALL_PAGES_1',
+        'TEST_ALL_PAGES_2',
+        'TEST_ALL_PAGES_3',
+        'TEST_ALL_PAGES_4',
+      ]);
+      expect(mockClient.nearbySearch).toHaveBeenCalledTimes(4);
+      expect(mockClient.nearbySearch).toHaveBeenNthCalledWith(
+        2,
+        { lat: 47.6062, lng: -122.3321 },
+        5000,
+        undefined,
+        'TOKEN_2'
+      );
+      expect(mockClient.nearbySearch).toHaveBeenNthCalledWith(
+        3,
+        { lat: 47.6062, lng: -122.3321 },
+        5000,
+        undefined,
+        'TOKEN_3'
+      );
+      expect(mockClient.nearbySearch).toHaveBeenNthCalledWith(
+        4,
+        { lat: 47.6062, lng: -122.3321 },
+        5000,
+        undefined,
+        'TOKEN_4'
+      );
+    });
+
+    it('continues to fetch fresh results when forceRefresh is true', async () => {
       const mockResults: GooglePlaceResult[] = [
         {
           place_id: 'TEST_FORCE_REFRESH',
@@ -567,7 +750,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
-      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
 
       // First search
       await service.search({
@@ -591,7 +774,7 @@ describe('PlacesService', () => {
 
     it('generates different cache keys for different parameters', async () => {
       mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
-      mockClient.nearbySearch.mockResolvedValue([]);
+      mockClient.nearbySearch.mockResolvedValue({ results: [] });
 
       // Search with different parameters
       await service.search({
@@ -632,7 +815,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
-      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
 
       await service.search({
         location: 'TEST_Timestamp',
@@ -647,7 +830,7 @@ describe('PlacesService', () => {
       expect(business?.cachedAt).toBeInstanceOf(Date);
     });
 
-    it('filters excluded business-type entries from cached replay payloads', async () => {
+    it('filters excluded business-type entries from fresh results', async () => {
       const mockResults: GooglePlaceResult[] = [
         {
           place_id: 'TEST_CACHE_FILTER_1',
@@ -664,7 +847,7 @@ describe('PlacesService', () => {
       ];
 
       mockClient.geocode.mockResolvedValue({ lat: 47.6062, lng: -122.3321 });
-      mockClient.nearbySearch.mockResolvedValue(mockResults);
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
       mockClient.getPlaceDetails
         .mockResolvedValueOnce({
           place_id: 'TEST_CACHE_FILTER_1',
@@ -700,10 +883,8 @@ describe('PlacesService', () => {
         testUserId
       );
 
-      expect(cachedReplayResult.fromCache).toBe(true);
-      expect(cachedReplayResult.results).toHaveLength(1);
-      expect(cachedReplayResult.results[0].placeId).toBe('TEST_CACHE_FILTER_2');
-      expect(cachedReplayResult.results.some((business) => business.placeId === 'TEST_CACHE_FILTER_1')).toBe(false);
+      expect(cachedReplayResult.fromCache).toBe(false);
+      expect(cachedReplayResult.results).toHaveLength(0);
     });
   });
 });

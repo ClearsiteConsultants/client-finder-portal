@@ -3,7 +3,7 @@
  */
 
 import { Client } from '@googlemaps/google-maps-services-js';
-import type { GooglePlaceResult, PlacesApiError } from './types';
+import type { GooglePlaceResult, NearbySearchResponse, PlacesApiError } from './types';
 
 export class PlacesClient {
   private client: Client;
@@ -23,20 +23,28 @@ export class PlacesClient {
   async nearbySearch(
     location: { lat: number; lng: number },
     radius: number,
-    type?: string
-  ): Promise<GooglePlaceResult[]> {
+    type?: string,
+    pageToken?: string
+  ): Promise<NearbySearchResponse> {
     try {
       const response = await this.client.placesNearby({
         params: {
-          location,
-          radius,
-          type,
+          ...(pageToken
+            ? { pagetoken: pageToken }
+            : {
+                location,
+                radius,
+                type,
+              }),
           key: this.apiKey,
         },
       });
 
       if (response.data.status === 'OK' || response.data.status === 'ZERO_RESULTS') {
-        return (response.data.results || []) as GooglePlaceResult[];
+        return {
+          results: (response.data.results || []) as GooglePlaceResult[],
+          nextPageToken: response.data.next_page_token,
+        };
       }
 
       throw this.createError(response.data.status, response.data.error_message);
