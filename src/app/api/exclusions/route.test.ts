@@ -2,7 +2,7 @@
  * Integration tests for exclusions API endpoints
  */
 import { POST, GET, DELETE } from './route';
-import { prisma } from '@/lib/prisma';
+import { disconnectPrisma, prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
 // Mock next-auth
@@ -53,7 +53,7 @@ describe('Exclusions API', () => {
     await prisma.user.deleteMany({
       where: { id: mockUserId },
     });
-    await prisma.$disconnect();
+    await disconnectPrisma();
   });
 
   describe('POST /api/exclusions', () => {

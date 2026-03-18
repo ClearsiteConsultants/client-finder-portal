@@ -1,5 +1,5 @@
 import { createUser, deleteUser } from "./user";
-import { prisma } from "./prisma";
+import { disconnectPrisma, prisma } from "./prisma";
 import { compare } from "bcryptjs";
 
 describe("User authentication helpers", () => {
@@ -21,7 +21,7 @@ describe("User authentication helpers", () => {
 
   afterAll(async () => {
     consoleLogSpy.mockRestore();
-    await prisma.$disconnect();
+    await disconnectPrisma();
   });
 
   describe("createUser", () => {

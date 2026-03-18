@@ -4,7 +4,7 @@
 
 import { PlacesService } from './service';
 import { PlacesClient } from './client';
-import { prisma } from '../prisma';
+import { disconnectPrisma, prisma } from '../prisma';
 import type { GooglePlaceResult } from './types';
 import { addBusinessTypeToExcludeList } from '../scoring/exclusions';
 
@@ -25,6 +25,10 @@ describe('PlacesService', () => {
   let service: PlacesService;
   let mockClient: jest.Mocked<PlacesClient>;
   let testUserId: string;
+
+  afterAll(async () => {
+    await disconnectPrisma();
+  });
 
   beforeEach(async () => {
     // Create a test user for search runs

@@ -2,7 +2,7 @@
  * Tests for business exclusion system
  */
 
-import { prisma } from '../prisma';
+import { disconnectPrisma, prisma } from '../prisma';
 import {
   checkBusinessExclusion,
   checkBusinessTypeExclusion,
@@ -61,7 +61,7 @@ describe('exclusions', () => {
     await prisma.user.deleteMany({
       where: { id: TEST_USER_ID },
     });
-    await prisma.$disconnect();
+    await disconnectPrisma();
   });
 
   describe('normalizeBusinessName', () => {

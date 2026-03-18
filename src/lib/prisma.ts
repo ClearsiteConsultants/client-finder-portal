@@ -16,14 +16,36 @@ function createPrismaClient() {
   const pool = new pg.Pool({ connectionString });
   const adapter = new PrismaPg(pool);
 
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  });
+  return {
+    pool,
+    prisma: new PrismaClient({
+      adapter,
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    }),
+  };
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+const prismaResources = globalForPrisma.prisma && globalForPrisma.pool
+  ? {
+      prisma: globalForPrisma.prisma,
+      pool: globalForPrisma.pool,
+    }
+  : createPrismaClient();
+
+export const prisma = prismaResources.prisma;
+const pool = prismaResources.pool;
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
+  globalForPrisma.pool = pool;
+}
+
+export async function disconnectPrisma(): Promise<void> {
+  await prisma.$disconnect();
+  await pool.end();
+
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = undefined;
+    globalForPrisma.pool = undefined;
+  }
 }
