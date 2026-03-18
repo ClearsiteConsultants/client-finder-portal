@@ -29,13 +29,10 @@ export class PlacesClient {
     try {
       const response = await this.client.placesNearby({
         params: {
-          ...(pageToken
-            ? { pagetoken: pageToken }
-            : {
-                location,
-                radius,
-                type,
-              }),
+          location,
+          radius,
+          ...(type ? { type } : {}),
+          ...(pageToken ? { pagetoken: pageToken } : {}),
           key: this.apiKey,
         },
       });
