@@ -76,7 +76,7 @@ describe("SearchForm", () => {
     };
 
     (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
-      if (String(url) === "/api/places/business-types") {
+      if (String(url).startsWith("/api/places/business-types")) {
         return {
           ok: true,
           json: async () => ({ businessTypes: [] }),
@@ -122,7 +122,7 @@ describe("SearchForm", () => {
   it("displays error message when API returns error", async () => {
     const errorMessage = "Invalid location provided";
     (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
-      if (String(url) === "/api/places/business-types") {
+      if (String(url).startsWith("/api/places/business-types")) {
         return {
           ok: true,
           json: async () => ({ businessTypes: [] }),
@@ -150,7 +150,7 @@ describe("SearchForm", () => {
 
   it("displays loading state during search", async () => {
     (global.fetch as jest.Mock).mockImplementation((url: RequestInfo | URL) => {
-      if (String(url) === "/api/places/business-types") {
+      if (String(url).startsWith("/api/places/business-types")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ businessTypes: [] }),
@@ -186,7 +186,7 @@ describe("SearchForm", () => {
 
   it("handles network errors gracefully", async () => {
     (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
-      if (String(url) === "/api/places/business-types") {
+      if (String(url).startsWith("/api/places/business-types")) {
         return {
           ok: true,
           json: async () => ({ businessTypes: [] }),
@@ -226,7 +226,7 @@ describe("SearchForm", () => {
     };
 
     (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
-      if (String(url) === "/api/places/business-types") {
+      if (String(url).startsWith("/api/places/business-types")) {
         return {
           ok: true,
           json: async () => ({ businessTypes: [] }),
@@ -249,5 +249,259 @@ describe("SearchForm", () => {
       expect(screen.getAllByText("5").length).toBeGreaterThan(0);
       expect(screen.getByText(/Total Calls/i)).toBeInTheDocument();
     });
+  });
+
+  it("warns and cancels repeated search when same filters previously exhausted results", async () => {
+    const exhaustedResponse = {
+      status: "success",
+      results: [],
+      reachedEndOfResults: true,
+      fromCache: false,
+      metrics: {
+        geocodeCalls: 1,
+        nearbySearchCalls: 1,
+        placeDetailsCalls: 0,
+        placeDetailsFailures: 0,
+        detailsCandidates: 0,
+        detailsSelected: 0,
+        totalGooglePlacesCalls: 2,
+      },
+    };
+
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => exhaustedResponse,
+      };
+    });
+
+    render(<SearchForm />);
+
+    fireEvent.change(screen.getByLabelText(/location/i), { target: { value: "Seattle" } });
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/places/search",
+        expect.objectContaining({ method: "POST" })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /search businesses/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /repeat search warning/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel search/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /repeat search warning/i })).not.toBeInTheDocument();
+    });
+
+    const searchCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      ([url]) => url === "/api/places/search"
+    );
+    expect(searchCalls).toHaveLength(1);
+  });
+
+  it("warns and proceeds repeated search when user confirms", async () => {
+    const lowResultResponse = {
+      status: "success",
+      results: [
+        {
+          placeId: "test-1",
+          name: "Test Business",
+          address: "123 Test St",
+          lat: 40.7128,
+          lng: -74.006,
+          hasWebsite: true,
+          isNew: true,
+          businessTypes: ["restaurant"],
+        },
+      ],
+      reachedEndOfResults: false,
+      fromCache: false,
+      metrics: {
+        geocodeCalls: 1,
+        nearbySearchCalls: 1,
+        placeDetailsCalls: 1,
+        placeDetailsFailures: 0,
+        detailsCandidates: 1,
+        detailsSelected: 1,
+        totalGooglePlacesCalls: 3,
+      },
+    };
+
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => lowResultResponse,
+      };
+    });
+
+    render(<SearchForm />);
+
+    fireEvent.change(screen.getByLabelText(/location/i), { target: { value: "Seattle" } });
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/places/search",
+        expect.objectContaining({ method: "POST" })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /search businesses/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /repeat search warning/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /proceed with search/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /repeat search warning/i })).not.toBeInTheDocument();
+    });
+
+    const searchCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      ([url]) => url === "/api/places/search"
+    );
+    expect(searchCalls).toHaveLength(2);
+  });
+
+  it("closes warning modal on escape key and cancels repeated search", async () => {
+    const exhaustedResponse = {
+      status: "success",
+      results: [],
+      reachedEndOfResults: true,
+      fromCache: false,
+      metrics: {
+        geocodeCalls: 1,
+        nearbySearchCalls: 1,
+        placeDetailsCalls: 0,
+        placeDetailsFailures: 0,
+        detailsCandidates: 0,
+        detailsSelected: 0,
+        totalGooglePlacesCalls: 2,
+      },
+    };
+
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => exhaustedResponse,
+      };
+    });
+
+    render(<SearchForm />);
+
+    fireEvent.change(screen.getByLabelText(/location/i), { target: { value: "Seattle" } });
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /search businesses/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /repeat search warning/i })).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /repeat search warning/i })).not.toBeInTheDocument();
+    });
+
+    const searchCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      ([url]) => url === "/api/places/search"
+    );
+    expect(searchCalls).toHaveLength(1);
+  });
+
+  it("closes warning modal on outside click and cancels repeated search", async () => {
+    const exhaustedResponse = {
+      status: "success",
+      results: [],
+      reachedEndOfResults: true,
+      fromCache: false,
+      metrics: {
+        geocodeCalls: 1,
+        nearbySearchCalls: 1,
+        placeDetailsCalls: 0,
+        placeDetailsFailures: 0,
+        detailsCandidates: 0,
+        detailsSelected: 0,
+        totalGooglePlacesCalls: 2,
+      },
+    };
+
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => exhaustedResponse,
+      };
+    });
+
+    render(<SearchForm />);
+
+    fireEvent.change(screen.getByLabelText(/location/i), { target: { value: "Seattle" } });
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /search businesses/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /repeat search warning/i });
+    fireEvent.click(dialog);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /repeat search warning/i })).not.toBeInTheDocument();
+    });
+
+    const searchCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      ([url]) => url === "/api/places/search"
+    );
+    expect(searchCalls).toHaveLength(1);
   });
 });

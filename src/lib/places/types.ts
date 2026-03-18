@@ -22,6 +22,7 @@ export interface SearchMetrics {
 export interface SearchResponse {
   results: BusinessResult[];
   nextPageToken?: string;
+  reachedEndOfResults?: boolean;
   status: 'success' | 'error';
   error?: string;
   fromCache?: boolean; // Whether results came from cache

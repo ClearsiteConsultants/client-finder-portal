@@ -20,6 +20,51 @@ type DebugRun = {
   metrics: SearchMetrics;
 };
 
+type NormalizedSearchFilters = {
+  location: string;
+  radius: number;
+  businessType: string;
+  maxBusinesses: number;
+};
+
+type LastSearchSnapshot = {
+  filters: NormalizedSearchFilters;
+  resultCount: number;
+  reachedEndOfResults: boolean;
+};
+
+type PendingSearch = {
+  filters: NormalizedSearchFilters;
+};
+
+function normalizeSearchFilters(params: {
+  location: string;
+  radius: string;
+  businessType: string;
+  maxBusinesses: string;
+}): NormalizedSearchFilters {
+  const parsedMaxBusinesses = Number.parseInt(params.maxBusinesses, 10);
+  const safeMaxBusinesses = Number.isFinite(parsedMaxBusinesses)
+    ? Math.min(20, Math.max(1, parsedMaxBusinesses))
+    : 20;
+
+  return {
+    location: params.location.trim(),
+    radius: parseInt(params.radius, 10),
+    businessType: params.businessType,
+    maxBusinesses: safeMaxBusinesses,
+  };
+}
+
+function hasSameFilters(a: NormalizedSearchFilters, b: NormalizedSearchFilters): boolean {
+  return (
+    a.location === b.location &&
+    a.radius === b.radius &&
+    a.businessType === b.businessType &&
+    a.maxBusinesses === b.maxBusinesses
+  );
+}
+
 function InfoTooltip({ label, text }: InfoTooltipProps) {
   return (
     <span className="relative inline-flex items-center">
@@ -49,6 +94,9 @@ export default function SearchForm() {
   const [hasSearched, setHasSearched] = useState(false);
   const [latestMetrics, setLatestMetrics] = useState<SearchMetrics | null>(null);
   const [debugHistory, setDebugHistory] = useState<DebugRun[]>([]);
+  const [lastSearchSnapshot, setLastSearchSnapshot] = useState<LastSearchSnapshot | null>(null);
+  const [showRepeatWarning, setShowRepeatWarning] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState<PendingSearch | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -76,28 +124,22 @@ export default function SearchForm() {
     };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeSearch = async (normalizedFilters: NormalizedSearchFilters) => {
     setError(null);
     setIsSearching(true);
     setHasSearched(true);
 
     try {
-      const parsedMaxBusinesses = Number.parseInt(maxBusinesses, 10);
-      const safeMaxBusinesses = Number.isFinite(parsedMaxBusinesses)
-        ? Math.min(20, Math.max(1, parsedMaxBusinesses))
-        : 20;
-
       const response = await fetch("/api/places/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          location,
-          radius: parseInt(radius, 10),
-          businessType: businessType || undefined,
-          maxBusinesses: safeMaxBusinesses,
+          location: normalizedFilters.location,
+          radius: normalizedFilters.radius,
+          businessType: normalizedFilters.businessType || undefined,
+          maxBusinesses: normalizedFilters.maxBusinesses,
         }),
       });
 
@@ -111,7 +153,15 @@ export default function SearchForm() {
         throw new Error(data.error || "Search failed");
       }
 
-      setResults(data.results || []);
+      const responseResults = data.results || [];
+      setResults(responseResults);
+      setLastSearchSnapshot({
+        filters: normalizedFilters,
+        resultCount: responseResults.length,
+        reachedEndOfResults:
+          data.reachedEndOfResults === true ||
+          responseResults.length < normalizedFilters.maxBusinesses,
+      });
 
       const metrics = data.metrics || {
         geocodeCalls: 0,
@@ -141,6 +191,67 @@ export default function SearchForm() {
       setIsSearching(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const normalizedFilters = normalizeSearchFilters({
+      location,
+      radius,
+      businessType,
+      maxBusinesses,
+    });
+
+    const shouldWarnForRepeatedSearch =
+      !!lastSearchSnapshot &&
+      hasSameFilters(lastSearchSnapshot.filters, normalizedFilters) &&
+      (lastSearchSnapshot.reachedEndOfResults ||
+        lastSearchSnapshot.resultCount < normalizedFilters.maxBusinesses);
+
+    if (shouldWarnForRepeatedSearch) {
+      setPendingSearch({ filters: normalizedFilters });
+      setShowRepeatWarning(true);
+      return;
+    }
+
+    await executeSearch(normalizedFilters);
+  };
+
+  const handleProceedRepeatedSearch = async () => {
+    if (!pendingSearch) {
+      setShowRepeatWarning(false);
+      return;
+    }
+
+    setShowRepeatWarning(false);
+    const searchToRun = pendingSearch;
+    setPendingSearch(null);
+    await executeSearch(searchToRun.filters);
+  };
+
+  const handleCancelRepeatedSearch = () => {
+    setShowRepeatWarning(false);
+    setPendingSearch(null);
+  };
+
+  useEffect(() => {
+    if (!showRepeatWarning) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        handleCancelRepeatedSearch();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showRepeatWarning]);
 
   return (
     <div className="space-y-8">
@@ -310,6 +421,51 @@ export default function SearchForm() {
 
       {hasSearched && (
         <SearchResults results={results} isLoading={isSearching} />
+      )}
+
+      {showRepeatWarning && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="repeat-search-warning-title"
+          aria-describedby="repeat-search-warning-description"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              handleCancelRepeatedSearch();
+            }
+          }}
+        >
+          <div className="theme-surface theme-border w-full max-w-lg rounded-xl border p-6 shadow-xl">
+            <h2 id="repeat-search-warning-title" className="text-lg font-semibold">
+              Repeat Search Warning
+            </h2>
+            <p
+              id="repeat-search-warning-description"
+              className="theme-text-muted mt-2 text-sm leading-relaxed"
+            >
+              Your last search with these exact filters likely exhausted available Google
+              Places results for this query. Running it again may consume additional API
+              calls with little or no new leads.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleCancelRepeatedSearch}
+                className="theme-input rounded-lg border px-4 py-2 text-sm font-medium"
+              >
+                Cancel Search
+              </button>
+              <button
+                type="button"
+                onClick={handleProceedRepeatedSearch}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+              >
+                Proceed With Search
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

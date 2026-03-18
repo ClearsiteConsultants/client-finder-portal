@@ -129,6 +129,7 @@ export class PlacesService {
         const maxBusinesses = Number.isInteger(configuredMaxBusinesses)
           ? Math.max(1, Math.min(20, configuredMaxBusinesses as number))
           : 20;
+        const reachedEndOfResults = places.length <= maxBusinesses;
 
         const excludedBusinessTypes = await getExcludedBusinessTypes();
         const excludedBusinessTypeSet = new Set(
@@ -325,6 +326,7 @@ export class PlacesService {
 
         return {
           results,
+          reachedEndOfResults,
           status: 'success',
           fromCache: false,
           metrics: finalizeMetrics(),
