@@ -43,6 +43,38 @@ describe("SearchForm", () => {
     expect(radiusSelect.required).toBe(true);
   });
 
+  it("opens search radius dropdown on Enter without submitting", () => {
+    render(<SearchForm />);
+
+    const radiusSelect = screen.getByLabelText(/search radius/i) as HTMLSelectElement;
+    const clickSpy = jest.spyOn(radiusSelect, "click").mockImplementation(() => undefined);
+
+    fireEvent.keyDown(radiusSelect, { key: "Enter" });
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    const fetchCalls = (global.fetch as jest.Mock).mock.calls;
+    const searchCall = fetchCalls.find(([url]) => url === "/api/places/search");
+    expect(searchCall).toBeUndefined();
+
+    clickSpy.mockRestore();
+  });
+
+  it("opens business type dropdown on Enter without submitting", () => {
+    render(<SearchForm />);
+
+    const businessTypeSelect = screen.getByLabelText(/business type/i) as HTMLSelectElement;
+    const clickSpy = jest.spyOn(businessTypeSelect, "click").mockImplementation(() => undefined);
+
+    fireEvent.keyDown(businessTypeSelect, { key: "Enter" });
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    const fetchCalls = (global.fetch as jest.Mock).mock.calls;
+    const searchCall = fetchCalls.find(([url]) => url === "/api/places/search");
+    expect(searchCall).toBeUndefined();
+
+    clickSpy.mockRestore();
+  });
+
   it("rejects invalid location (empty string)", async () => {
     render(<SearchForm />);
 

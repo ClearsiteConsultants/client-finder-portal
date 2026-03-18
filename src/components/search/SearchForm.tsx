@@ -234,6 +234,25 @@ export default function SearchForm() {
     setPendingSearch(null);
   };
 
+  const handleSelectEnterKeyDown = (event: React.KeyboardEvent<HTMLSelectElement>) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    // Prevent accidental form submit and open the native select picker instead.
+    event.preventDefault();
+    const selectElement = event.currentTarget as HTMLSelectElement & {
+      showPicker?: () => void;
+    };
+
+    if (typeof selectElement.showPicker === "function") {
+      selectElement.showPicker();
+      return;
+    }
+
+    selectElement.click();
+  };
+
   useEffect(() => {
     if (!showRepeatWarning) {
       return;
@@ -286,6 +305,7 @@ export default function SearchForm() {
               id="radius"
               value={radius}
               onChange={(e) => setRadius(e.target.value)}
+              onKeyDown={handleSelectEnterKeyDown}
               required
               className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
@@ -308,6 +328,7 @@ export default function SearchForm() {
               id="businessType"
               value={businessType}
               onChange={(e) => setBusinessType(e.target.value)}
+              onKeyDown={handleSelectEnterKeyDown}
               className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">All Business Types</option>
