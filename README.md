@@ -138,6 +138,10 @@ scripts/
 
 See `.env.example` for a complete list of required and optional environment variables.
 
+### Troubleshooting local database auth
+
+If the home page System health card shows a database login failure, verify the username/password inside `DATABASE_URL` in `.env.local`.
+
 ### Required
 - `DATABASE_URL` - PostgreSQL connection string
 - `NEXTAUTH_URL` - Application URL for authentication

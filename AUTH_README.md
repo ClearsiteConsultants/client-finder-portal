@@ -91,6 +91,18 @@ npm test src/lib/user.test.ts
 npm test src/app/api/protected/route.test.ts
 ```
 
+## Troubleshooting
+
+### System health shows database login failed
+
+If the home page System health card shows:
+
+- `Database login failed. Check the username/password in your local DATABASE_URL environment variable (.env.local).`
+
+your local Postgres credentials in `.env.local` are incorrect.
+
+Verify `DATABASE_URL` has the right username, password, host, port, and database name for your local environment.
+
 ## Database Schema
 
 The following tables are added for NextAuth:

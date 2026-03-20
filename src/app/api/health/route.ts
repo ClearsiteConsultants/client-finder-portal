@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getDatabaseHealthMessage } from "./error-message";
 
 export async function GET() {
   const checks = {
@@ -16,8 +17,7 @@ export async function GET() {
     checks.database.message = "Connected";
   } catch (error) {
     checks.database.status = "unhealthy";
-    checks.database.message =
-      error instanceof Error ? error.message : "Connection failed";
+    checks.database.message = getDatabaseHealthMessage(error);
   }
 
   const isHealthy = checks.database.status === "healthy";
