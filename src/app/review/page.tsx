@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { googleMapsPlaceUrl } from '@/lib/places/maps';
 import ManualLeadForm from '@/components/ManualLeadForm';
+import { formatGooglePlaceTypeLabel } from '@/lib/places/business-types';
 
 type Lead = {
   id: string;
@@ -45,6 +46,8 @@ export default function ReviewQueuePage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [statusFilter, setStatusFilter] = useState('pending');
   const [websiteStatusFilter, setWebsiteStatusFilter] = useState('');
+  const [businessTypeFilter, setBusinessTypeFilter] = useState('');
+  const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>([]);
   const [showConfirm, setShowConfirm] = useState<'approve' | 'reject' | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showManualForm, setShowManualForm] = useState(false);
@@ -60,7 +63,42 @@ export default function ReviewQueuePage() {
     if (status === 'authenticated') {
       fetchLeads();
     }
-  }, [status, page, sortBy, sortOrder, statusFilter, websiteStatusFilter]);
+  }, [status, page, sortBy, sortOrder, statusFilter, websiteStatusFilter, businessTypeFilter]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchBusinessTypeOptions = async () => {
+      try {
+        const response = await fetch('/api/places/business-types', {
+          cache: 'no-store',
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const data: { businessTypes?: string[] } = await response.json();
+        if (isMounted && Array.isArray(data.businessTypes)) {
+          setBusinessTypeOptions(data.businessTypes);
+          setBusinessTypeFilter((currentValue) => (
+            currentValue && !data.businessTypes?.includes(currentValue) ? '' : currentValue
+          ));
+        }
+      } catch {
+        // Keep empty options when dynamic loading fails.
+      }
+    };
+
+    void fetchBusinessTypeOptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [status]);
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -74,6 +112,7 @@ export default function ReviewQueuePage() {
       
       if (statusFilter) params.append('status', statusFilter);
       if (websiteStatusFilter) params.append('websiteStatus', websiteStatusFilter);
+      if (businessTypeFilter) params.append('businessType', businessTypeFilter);
 
       const response = await fetch(`/api/leads/queue?${params}`);
       if (response.ok) {
@@ -245,6 +284,8 @@ export default function ReviewQueuePage() {
     setPageInput(page.toString());
   }, [page]);
 
+  const hasResults = totalPages > 0;
+
   const getWebsiteStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       no_website: 'bg-red-100 text-red-800',
@@ -330,6 +371,25 @@ export default function ReviewQueuePage() {
             <option value="technical_issues">Technical Issues</option>
             <option value="outdated">Outdated</option>
             <option value="acceptable">Acceptable</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="theme-text-muted block text-sm font-medium mb-1">Business Type</label>
+          <select
+            value={businessTypeFilter}
+            onChange={(e) => {
+              setBusinessTypeFilter(e.target.value);
+              setPage(1);
+            }}
+            className="theme-input rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          >
+            <option value="">All</option>
+            {businessTypeOptions.map((businessType) => (
+              <option key={businessType} value={businessType}>
+                {formatGooglePlaceTypeLabel(businessType)}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -448,86 +508,97 @@ export default function ReviewQueuePage() {
         />
       )}
 
-      {/* Table */}
-      <div className="mb-4">
-        {renderPaginationControls()}
-      </div>
+      {hasResults ? (
+        <>
+          {/* Table */}
+          <div className="mb-4">
+            {renderPaginationControls()}
+          </div>
 
-      <div className="theme-surface theme-border overflow-x-auto rounded-2xl border shadow-sm">
-        <table className="min-w-full text-sm">
-          <thead className="theme-surface-muted theme-text-muted">
-            <tr>
-              <th className="px-4 py-3 text-left">
-                <input
-                  type="checkbox"
-                  checked={leads.length > 0 && leads.every((lead) => selectedIds.has(lead.id))}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                />
-              </th>
-              <th className="px-4 py-3 text-left font-medium">Name</th>
-              <th className="px-4 py-3 text-left font-medium">Address</th>
-              <th className="px-4 py-3 text-left font-medium">Maps</th>
-              <th className="px-4 py-3 text-left font-medium">Website Status</th>
-              <th className="px-4 py-3 text-left font-medium">Score</th>
-              <th className="px-4 py-3 text-left font-medium">Contact</th>
-              <th className="px-4 py-3 text-left font-medium">Rating</th>
-            </tr>
-          </thead>
-          <tbody className="theme-border divide-y">
-            {leads.map((lead) => (
-              <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(lead.id)}
-                    onChange={(e) => handleSelectOne(lead.id, e.target.checked)}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <a
-                    href={`/leads/${lead.id}`}
-                    className="text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    {lead.name}
-                  </a>
-                </td>
-                <td className="theme-text-muted px-4 py-3">{lead.address}</td>
-                <td className="px-4 py-3">
-                  {lead.placeId ? (
-                    <a
-                      href={googleMapsPlaceUrl(lead.placeId)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      View
-                    </a>
-                  ) : (
-                    <span className="theme-text-muted">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">{getWebsiteStatusBadge(lead.websiteStatus)}</td>
-                <td className="px-4 py-3">{lead.smallBusinessScore || 'N/A'}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    {lead.hasEmail && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">✉️</span>}
-                    {lead.hasPhone && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">📞</span>}
-                    {lead.hasSocial && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">📱</span>}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  {lead.rating ? `⭐ ${lead.rating.toFixed(1)} (${lead.reviewCount})` : 'N/A'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          <div className="theme-surface theme-border overflow-x-auto rounded-2xl border shadow-sm">
+            <table className="min-w-full text-sm">
+              <thead className="theme-surface-muted theme-text-muted">
+                <tr>
+                  <th className="px-4 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={leads.length > 0 && leads.every((lead) => selectedIds.has(lead.id))}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">Name</th>
+                  <th className="px-4 py-3 text-left font-medium">Address</th>
+                  <th className="px-4 py-3 text-left font-medium">Maps</th>
+                  <th className="px-4 py-3 text-left font-medium">Website Status</th>
+                  <th className="px-4 py-3 text-left font-medium">Score</th>
+                  <th className="px-4 py-3 text-left font-medium">Contact</th>
+                  <th className="px-4 py-3 text-left font-medium">Rating</th>
+                </tr>
+              </thead>
+              <tbody className="theme-border divide-y">
+                {leads.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(lead.id)}
+                        onChange={(e) => handleSelectOne(lead.id, e.target.checked)}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <a
+                        href={`/leads/${lead.id}`}
+                        className="text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        {lead.name}
+                      </a>
+                    </td>
+                    <td className="theme-text-muted px-4 py-3">{lead.address}</td>
+                    <td className="px-4 py-3">
+                      {lead.placeId ? (
+                        <a
+                          href={googleMapsPlaceUrl(lead.placeId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <span className="theme-text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{getWebsiteStatusBadge(lead.websiteStatus)}</td>
+                    <td className="px-4 py-3">{lead.smallBusinessScore || 'N/A'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        {lead.hasEmail && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">✉️</span>}
+                        {lead.hasPhone && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">📞</span>}
+                        {lead.hasSocial && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">📱</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {lead.rating ? `⭐ ${lead.rating.toFixed(1)} (${lead.reviewCount})` : 'N/A'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Pagination */}
-      <div className="mt-6">
-        {renderPaginationControls()}
-      </div>
+          {/* Pagination */}
+          <div className="mt-6">
+            {renderPaginationControls()}
+          </div>
+        </>
+      ) : (
+        <div className="theme-surface theme-border rounded-2xl border p-10 text-center shadow-sm">
+          <h2 className="text-lg font-semibold">No results</h2>
+          <p className="theme-text-muted mt-2 text-sm">
+            No leads match the selected filters.
+          </p>
+        </div>
+      )}
       </main>
     </div>
   );

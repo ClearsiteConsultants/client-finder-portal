@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'asc';
     const statusFilter = searchParams.get('status') as LeadStatus | null;
     const websiteStatusFilter = searchParams.get('websiteStatus') as WebsiteStatus | null;
+    const businessTypeFilter = searchParams.get('businessType');
 
     const skip = (page - 1) * pageSize;
 
@@ -29,6 +30,12 @@ export async function GET(request: NextRequest) {
 
     if (websiteStatusFilter) {
       where.websiteStatus = websiteStatusFilter;
+    }
+
+    if (businessTypeFilter) {
+      where.businessTypes = {
+        has: businessTypeFilter,
+      };
     }
 
     let orderBy: any = {};
