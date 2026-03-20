@@ -6,8 +6,11 @@ import type { BusinessResult, SearchMetrics, SearchResponse } from "@/lib/places
 import {
   GOOGLE_PLACES_BUSINESS_TYPES,
   formatGooglePlaceTypeLabel,
-  mergeBusinessTypes,
 } from "@/lib/places/business-types";
+import {
+  BUSINESS_TYPE_OPTIONS_UPDATED_EVENT,
+  BUSINESS_TYPE_OPTIONS_UPDATED_STORAGE_KEY,
+} from "@/lib/places/business-type-sync";
 
 type InfoTooltipProps = {
   label: string;
@@ -56,12 +59,11 @@ function normalizeSearchFilters(params: {
   };
 }
 
-function hasSameFilters(a: NormalizedSearchFilters, b: NormalizedSearchFilters): boolean {
+function hasSameSearchCriteria(a: NormalizedSearchFilters, b: NormalizedSearchFilters): boolean {
   return (
     a.location === b.location &&
     a.radius === b.radius &&
-    a.businessType === b.businessType &&
-    a.maxBusinesses === b.maxBusinesses
+    a.businessType === b.businessType
   );
 }
 
@@ -103,24 +105,44 @@ export default function SearchForm() {
 
     const loadBusinessTypes = async () => {
       try {
-        const response = await fetch('/api/places/business-types?forSearch=true');
+        const response = await fetch('/api/places/business-types?forSearch=true', {
+          cache: 'no-store',
+        });
         if (!response.ok) {
           return;
         }
 
         const data: { businessTypes?: string[] } = await response.json();
         if (isMounted && Array.isArray(data.businessTypes)) {
-          setBusinessTypeOptions(mergeBusinessTypes(data.businessTypes));
+          setBusinessTypeOptions(data.businessTypes);
+          setBusinessType((currentValue) => (
+            currentValue && !data.businessTypes?.includes(currentValue) ? "" : currentValue
+          ));
         }
       } catch {
         // Keep static defaults when dynamic loading fails.
       }
     };
 
+    const handleBusinessTypeOptionsUpdated = () => {
+      void loadBusinessTypes();
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === BUSINESS_TYPE_OPTIONS_UPDATED_STORAGE_KEY) {
+        void loadBusinessTypes();
+      }
+    };
+
     loadBusinessTypes();
+
+    window.addEventListener(BUSINESS_TYPE_OPTIONS_UPDATED_EVENT, handleBusinessTypeOptionsUpdated);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
       isMounted = false;
+      window.removeEventListener(BUSINESS_TYPE_OPTIONS_UPDATED_EVENT, handleBusinessTypeOptionsUpdated);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
@@ -204,9 +226,9 @@ export default function SearchForm() {
 
     const shouldWarnForRepeatedSearch =
       !!lastSearchSnapshot &&
-      hasSameFilters(lastSearchSnapshot.filters, normalizedFilters) &&
+      hasSameSearchCriteria(lastSearchSnapshot.filters, normalizedFilters) &&
       (lastSearchSnapshot.reachedEndOfResults ||
-        lastSearchSnapshot.resultCount < normalizedFilters.maxBusinesses);
+        lastSearchSnapshot.resultCount < lastSearchSnapshot.filters.maxBusinesses);
 
     if (shouldWarnForRepeatedSearch) {
       setPendingSearch({ filters: normalizedFilters });

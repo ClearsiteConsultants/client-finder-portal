@@ -32,7 +32,14 @@ export async function GET(request: Request) {
       businessTypes = businessTypes.filter((type) => !excludedSet.has(type.trim().toLowerCase()));
     }
 
-    return NextResponse.json({ businessTypes });
+    return NextResponse.json(
+      { businessTypes },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
   } catch (error) {
     console.error('Error fetching business types:', error);
     return NextResponse.json({ error: 'Failed to fetch business types' }, { status: 500 });

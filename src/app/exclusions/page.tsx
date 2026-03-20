@@ -9,6 +9,7 @@ import {
   formatGooglePlaceTypeLabel,
   mergeBusinessTypes,
 } from '@/lib/places/business-types';
+import { notifyBusinessTypeOptionsUpdated } from '@/lib/places/business-type-sync';
 
 type ExcludedBusiness = {
   id: string;
@@ -58,6 +59,24 @@ export default function ExclusionsPage() {
     }
   };
 
+  const fetchBusinessTypeOptions = async () => {
+    try {
+      const response = await fetch('/api/places/business-types', {
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        return;
+      }
+
+      const data: { businessTypes?: string[] } = await response.json();
+      if (Array.isArray(data.businessTypes)) {
+        setBusinessTypeOptions(mergeBusinessTypes(data.businessTypes));
+      }
+    } catch {
+      // Keep static defaults when dynamic loading fails.
+    }
+  };
+
   useEffect(() => {
     if (status === 'authenticated') {
       fetchExcluded();
@@ -73,7 +92,9 @@ export default function ExclusionsPage() {
 
     const loadBusinessTypes = async () => {
       try {
-        const response = await fetch('/api/places/business-types');
+        const response = await fetch('/api/places/business-types', {
+          cache: 'no-store',
+        });
         if (!response.ok) {
           return;
         }
@@ -120,10 +141,14 @@ export default function ExclusionsPage() {
         throw new Error(data.error || 'Failed to add business');
       }
 
+      if (newExclusionMode === 'business_type') {
+        notifyBusinessTypeOptionsUpdated();
+      }
+
       setNewBusinessName('');
       setNewBusinessType('');
       setNewReason('');
-      await fetchExcluded();
+      await Promise.all([fetchExcluded(), fetchBusinessTypeOptions()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add business');
     } finally {
