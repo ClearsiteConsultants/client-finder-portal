@@ -252,7 +252,7 @@ export default function ClientDetailPage() {
                   <select
                     value={clientStatus}
                     onChange={(e) => setClientStatus(e.target.value)}
-                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="active">Active</option>
@@ -269,7 +269,7 @@ export default function ClientDetailPage() {
                   <select
                     value={subscriptionStatus}
                     onChange={(e) => setSubscriptionStatus(e.target.value)}
-                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="active">Active</option>
@@ -288,7 +288,7 @@ export default function ClientDetailPage() {
                   <select
                     value={initialPaymentStatus}
                     onChange={(e) => setInitialPaymentStatus(e.target.value)}
-                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select status</option>
                     <option value="confirmed">Confirmed</option>
@@ -305,7 +305,7 @@ export default function ClientDetailPage() {
                     type="date"
                     value={nextPaymentDueDate}
                     onChange={(e) => setNextPaymentDueDate(e.target.value)}
-                    className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -318,7 +318,7 @@ export default function ClientDetailPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={4}
-                  className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   placeholder="Internal notes about this client..."
                 />
               </div>
@@ -427,7 +427,7 @@ export default function ClientDetailPage() {
                   <select
                     value={checklistAction}
                     onChange={(e) => setChecklistAction(e.target.value)}
-                    className="theme-input w-full mb-2 rounded-md border"
+                    className="theme-input w-full mb-2 rounded-md border px-3 py-2"
                   >
                     <option value="">Select action</option>
                     <option value="subscription_verified">Subscription Verified</option>
@@ -442,7 +442,7 @@ export default function ClientDetailPage() {
                     onChange={(e) => setChecklistNotes(e.target.value)}
                     rows={2}
                     placeholder="Optional notes..."
-                    className="theme-input w-full mb-2 rounded-md border"
+                    className="theme-input w-full mb-2 rounded-md border px-3 py-2"
                   />
                   <div className="flex space-x-2">
                     <button

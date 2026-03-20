@@ -177,7 +177,7 @@ export default function ActiveClientsPage() {
                   setSubscriptionStatusFilter(e.target.value);
                   setPagination({ ...pagination, page: 1 });
                 }}
-                className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
@@ -199,7 +199,7 @@ export default function ActiveClientsPage() {
                   setClientStatusFilter(e.target.value);
                   setPagination({ ...pagination, page: 1 });
                 }}
-                className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
@@ -216,7 +216,7 @@ export default function ActiveClientsPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="theme-input w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="updatedAt">Recently Updated</option>
                 <option value="convertedAt">Conversion Date</option>
