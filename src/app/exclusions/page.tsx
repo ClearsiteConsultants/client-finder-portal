@@ -5,9 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import {
-  GOOGLE_PLACES_BUSINESS_TYPES,
   formatGooglePlaceTypeLabel,
-  mergeBusinessTypes,
 } from '@/lib/places/business-types';
 import { notifyBusinessTypeOptionsUpdated } from '@/lib/places/business-type-sync';
 
@@ -27,7 +25,7 @@ export default function ExclusionsPage() {
   const { status } = useSession();
   const router = useRouter();
   const [excluded, setExcluded] = useState<ExcludedBusiness[]>([]);
-  const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>(GOOGLE_PLACES_BUSINESS_TYPES);
+  const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newBusinessName, setNewBusinessName] = useState('');
@@ -61,7 +59,7 @@ export default function ExclusionsPage() {
 
   const fetchBusinessTypeOptions = async () => {
     try {
-      const response = await fetch('/api/places/business-types', {
+      const response = await fetch('/api/places/business-types?forSearch=true', {
         cache: 'no-store',
       });
       if (!response.ok) {
@@ -70,10 +68,13 @@ export default function ExclusionsPage() {
 
       const data: { businessTypes?: string[] } = await response.json();
       if (Array.isArray(data.businessTypes)) {
-        setBusinessTypeOptions(mergeBusinessTypes(data.businessTypes));
+        setBusinessTypeOptions(data.businessTypes);
+        setNewBusinessType((currentValue) => (
+          currentValue && !data.businessTypes?.includes(currentValue) ? '' : currentValue
+        ));
       }
     } catch {
-      // Keep static defaults when dynamic loading fails.
+      // Keep the last loaded options when dynamic loading fails.
     }
   };
 
@@ -88,31 +89,7 @@ export default function ExclusionsPage() {
       return;
     }
 
-    let isMounted = true;
-
-    const loadBusinessTypes = async () => {
-      try {
-        const response = await fetch('/api/places/business-types', {
-          cache: 'no-store',
-        });
-        if (!response.ok) {
-          return;
-        }
-
-        const data: { businessTypes?: string[] } = await response.json();
-        if (isMounted && Array.isArray(data.businessTypes)) {
-          setBusinessTypeOptions(mergeBusinessTypes(data.businessTypes));
-        }
-      } catch {
-        // Keep static defaults when dynamic loading fails.
-      }
-    };
-
-    loadBusinessTypes();
-
-    return () => {
-      isMounted = false;
-    };
+    void fetchBusinessTypeOptions();
   }, [status]);
 
   const handleAdd = async (e: React.FormEvent) => {

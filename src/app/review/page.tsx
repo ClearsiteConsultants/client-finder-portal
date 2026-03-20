@@ -48,6 +48,7 @@ export default function ReviewQueuePage() {
   const [showConfirm, setShowConfirm] = useState<'approve' | 'reject' | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showManualForm, setShowManualForm] = useState(false);
+  const [pageInput, setPageInput] = useState('1');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -148,6 +149,101 @@ export default function ReviewQueuePage() {
       console.error('Error rejecting leads:', error);
     }
   };
+
+  const goToPage = (targetPage: number) => {
+    const boundedPage = Math.min(totalPages, Math.max(1, targetPage));
+    setPage(boundedPage);
+    setPageInput(boundedPage.toString());
+  };
+
+  const handlePageInputSubmit = () => {
+    const parsedPage = Number.parseInt(pageInput, 10);
+    if (Number.isNaN(parsedPage)) {
+      setPageInput(page.toString());
+      return;
+    }
+
+    goToPage(parsedPage);
+  };
+
+  const renderPaginationControls = () => (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="theme-text-muted text-sm">
+        Showing page {page} of {totalPages}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => goToPage(1)}
+          disabled={page === 1}
+          aria-label="First page"
+          title="First page"
+          className="theme-border theme-text-muted inline-flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+        >
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 6l-6 6 6 6" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 6l-6 6 6 6" />
+          </svg>
+        </button>
+        <button
+          onClick={() => goToPage(page - 1)}
+          disabled={page === 1}
+          aria-label="Previous page"
+          title="Previous page"
+          className="theme-border theme-text-muted inline-flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+        >
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <div className="theme-text-muted flex items-center gap-2 text-sm">
+          <span>Page</span>
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={pageInput}
+            onChange={(e) => setPageInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handlePageInputSubmit();
+              }
+            }}
+            className="theme-input w-20 rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            aria-label="Go to page"
+          />
+          <span>of {totalPages}</span>
+        </div>
+        <button
+          onClick={() => goToPage(page + 1)}
+          disabled={page === totalPages}
+          aria-label="Next page"
+          title="Next page"
+          className="theme-border theme-text-muted inline-flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+        >
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+          </svg>
+        </button>
+        <button
+          onClick={() => goToPage(totalPages)}
+          disabled={page === totalPages}
+          aria-label="Last page"
+          title="Last page"
+          className="theme-border theme-text-muted inline-flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+        >
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 6l6 6-6 6" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 6l6 6-6 6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  useEffect(() => {
+    setPageInput(page.toString());
+  }, [page]);
 
   const getWebsiteStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -353,6 +449,10 @@ export default function ReviewQueuePage() {
       )}
 
       {/* Table */}
+      <div className="mb-4">
+        {renderPaginationControls()}
+      </div>
+
       <div className="theme-surface theme-border overflow-x-auto rounded-2xl border shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="theme-surface-muted theme-text-muted">
@@ -425,26 +525,8 @@ export default function ReviewQueuePage() {
       </div>
 
       {/* Pagination */}
-      <div className="mt-6 flex justify-between items-center">
-        <div className="theme-text-muted text-sm">
-          Showing page {page} of {totalPages}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="theme-border theme-text-muted rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="theme-border theme-text-muted rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed dark:hover:bg-slate-900 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
-          >
-            Next
-          </button>
-        </div>
+      <div className="mt-6">
+        {renderPaginationControls()}
       </div>
       </main>
     </div>
