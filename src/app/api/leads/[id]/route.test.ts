@@ -9,6 +9,8 @@ const mockAuth = jest.fn();
 const mockBusinessUpdate = jest.fn();
 const mockBusinessFindUnique = jest.fn();
 const mockContactFindFirst = jest.fn();
+const mockContactUpdate = jest.fn();
+const mockContactCreate = jest.fn();
 const mockDeriveWebsiteStatus = jest.fn();
 
 jest.mock('@/lib/auth', () => ({
@@ -24,8 +26,8 @@ jest.mock('@/lib/prisma', () => ({
     },
     contactInfo: {
       findFirst: (...args: any[]) => mockContactFindFirst(...args),
-      update: jest.fn(),
-      create: jest.fn(),
+      update: (...args: any[]) => mockContactUpdate(...args),
+      create: (...args: any[]) => mockContactCreate(...args),
     },
   },
 }));
@@ -39,6 +41,8 @@ describe('/api/leads/[id]', () => {
     jest.clearAllMocks();
     mockAuth.mockResolvedValue({ user: { id: 'user-123' } });
     mockContactFindFirst.mockResolvedValue(null);
+    mockContactUpdate.mockResolvedValue(null);
+    mockContactCreate.mockResolvedValue(null);
     mockBusinessFindUnique.mockResolvedValue({
       website: null,
       contactInfo: [],
@@ -250,5 +254,57 @@ describe('/api/leads/[id]', () => {
     expect(response.status).toBe(400);
     expect(data.error).toContain('no longer supported');
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+
+  it('PATCH updates contactInfo email when provided', async () => {
+    const { PATCH } = await import('./route');
+
+    mockBusinessUpdate.mockResolvedValue({
+      id: 'lead-123',
+      approvedByUser: null,
+      rejectedByUser: null,
+      contactInfo: [],
+    });
+
+    mockContactFindFirst.mockResolvedValue({
+      id: 'contact-123',
+      businessId: 'lead-123',
+    });
+
+    mockBusinessFindUnique.mockResolvedValue({
+      id: 'lead-123',
+      approvedByUser: null,
+      rejectedByUser: null,
+      contactInfo: [
+        {
+          id: 'contact-123',
+          email: 'owner@example.com',
+          phone: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          linkedinUrl: null,
+        },
+      ],
+    });
+
+    const request = new NextRequest('http://localhost/api/leads/lead-123', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        email: ' owner@example.com ',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'lead-123' }) });
+
+    expect(response.status).toBe(200);
+    expect(mockContactUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'contact-123' },
+        data: expect.objectContaining({
+          email: 'owner@example.com',
+        }),
+      })
+    );
   });
 });

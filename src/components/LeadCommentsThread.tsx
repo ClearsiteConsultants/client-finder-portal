@@ -216,14 +216,14 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
     const isAuthor = currentUserId === comment.authorUser.id;
 
     return (
-      <div key={comment.id} className={depth > 0 ? 'mt-3 ml-4 border-l border-slate-200 pl-4 dark:border-slate-700' : 'mt-4'}>
-        <div className="rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950">
-          <div className="flex items-center justify-between rounded-t-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+      <div key={comment.id} className={depth > 0 ? 'theme-border mt-3 ml-4 border-l pl-4' : 'mt-4'}>
+        <div className="theme-surface theme-border rounded-lg border">
+          <div className="theme-surface-muted flex items-center justify-between rounded-t-lg px-3 py-2 text-sm">
             <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+              <div className="theme-badge-info flex h-6 w-6 items-center justify-center rounded-full border border-white/10 text-xs font-semibold">
                 {getInitials(displayName)}
               </div>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{displayName}</span>
+              <span className="font-semibold">{displayName}</span>
               <span className="theme-text-muted">commented on {formatCommentDate(comment.createdAt)}</span>
               {isEdited && <span className="theme-text-muted">(edited)</span>}
             </div>
@@ -235,7 +235,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
                   setReplyDraft('');
                   setEditingId(null);
                 }}
-                className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                className="text-xs font-medium text-blue-600 hover:text-blue-800"
               >
                 Reply
               </button>
@@ -243,7 +243,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
                 <button
                   type="button"
                   onClick={() => startEditing(comment)}
-                  className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800"
                 >
                   Edit
                 </button>
@@ -265,7 +265,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
                     type="button"
                     onClick={() => saveEdit(comment.id)}
                     disabled={savingEdit || !editDraft.trim()}
-                    className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-md bg-[#be779e] px-3 py-1.5 text-xs font-semibold text-[#0a0a0a] hover:bg-[#cf8ab1] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {savingEdit ? 'Saving...' : 'Save changes'}
                   </button>
@@ -276,20 +276,20 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
                       setEditDraft('');
                     }}
                     disabled={savingEdit}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+                    className="theme-input rounded-md border px-3 py-1.5 text-xs font-semibold"
                   >
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-100">{comment.content}</p>
+              <p className="whitespace-pre-wrap text-sm">{comment.content}</p>
             )}
           </div>
         </div>
 
         {replyingToId === comment.id && (
-          <div className="mt-2 ml-4 rounded-lg border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+          <div className="theme-surface-muted theme-border mt-2 ml-4 rounded-lg border p-3">
             <textarea
               value={replyDraft}
               onChange={(event) => setReplyDraft(event.target.value)}
@@ -302,7 +302,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
                 type="button"
                 onClick={() => submitReply(comment.id)}
                 disabled={postingReply || !replyDraft.trim()}
-                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-[#be779e] px-3 py-1.5 text-xs font-semibold text-[#0a0a0a] hover:bg-[#cf8ab1] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {postingReply ? 'Replying...' : 'Reply'}
               </button>
@@ -313,7 +313,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
                   setReplyDraft('');
                 }}
                 disabled={postingReply}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+                className="theme-input rounded-md border px-3 py-1.5 text-xs font-semibold"
               >
                 Cancel
               </button>
@@ -335,7 +335,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
       <h2 className="text-lg font-semibold">Notes</h2>
       <p className="theme-text-muted mt-1 text-sm">Discussion for this lead, including replies and edits.</p>
 
-      <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+      <div className="mt-4">
         <textarea
           value={newComment}
           onChange={(event) => setNewComment(event.target.value)}
@@ -349,7 +349,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
             type="button"
             onClick={submitComment}
             disabled={postingComment || !newComment.trim()}
-            className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {postingComment ? 'Commenting...' : 'Comment'}
           </button>

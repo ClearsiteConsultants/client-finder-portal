@@ -92,6 +92,7 @@ export async function PATCH(
       websiteStatus,
       businessTypes,
       rating,
+      email,
       facebookUrl,
       instagramUrl,
       linkedinUrl,
@@ -106,11 +107,14 @@ export async function PATCH(
 
     const updateData: Prisma.BusinessUpdateInput = {};
     const normalizedWebsite = website !== undefined ? website?.trim() || null : undefined;
+    const normalizedEmail = email !== undefined ? email?.trim() || null : undefined;
     const normalizedFacebookUrl = facebookUrl !== undefined ? facebookUrl?.trim() || null : undefined;
     const normalizedInstagramUrl = instagramUrl !== undefined ? instagramUrl?.trim() || null : undefined;
     const normalizedLinkedinUrl = linkedinUrl !== undefined ? linkedinUrl?.trim() || null : undefined;
     const socialFieldsProvided =
       facebookUrl !== undefined || instagramUrl !== undefined || linkedinUrl !== undefined;
+    const contactFieldsProvided =
+      email !== undefined || socialFieldsProvided;
 
     if (notes !== undefined) {
       updateData.notes = notes;
@@ -234,7 +238,7 @@ export async function PATCH(
     });
 
     // Handle social media updates in ContactInfo
-    if (socialFieldsProvided) {
+    if (contactFieldsProvided) {
       const existingContact = await prisma.contactInfo.findFirst({
         where: { businessId: id },
       });
@@ -242,6 +246,7 @@ export async function PATCH(
       if (existingContact) {
         // Update existing contact info
         const contactUpdateData: Prisma.ContactInfoUpdateInput = {};
+        if (email !== undefined) contactUpdateData.email = normalizedEmail;
         if (facebookUrl !== undefined) contactUpdateData.facebookUrl = normalizedFacebookUrl;
         if (instagramUrl !== undefined) contactUpdateData.instagramUrl = normalizedInstagramUrl;
         if (linkedinUrl !== undefined) contactUpdateData.linkedinUrl = normalizedLinkedinUrl;
@@ -250,11 +255,12 @@ export async function PATCH(
           where: { id: existingContact.id },
           data: contactUpdateData,
         });
-      } else if (normalizedFacebookUrl || normalizedInstagramUrl || normalizedLinkedinUrl) {
-        // Create new contact info if any social media link is provided
+      } else if (normalizedEmail || normalizedFacebookUrl || normalizedInstagramUrl || normalizedLinkedinUrl) {
+        // Create new contact info if any contact field is provided
         await prisma.contactInfo.create({
           data: {
             businessId: id,
+            email: normalizedEmail,
             facebookUrl: normalizedFacebookUrl,
             instagramUrl: normalizedInstagramUrl,
             linkedinUrl: normalizedLinkedinUrl,

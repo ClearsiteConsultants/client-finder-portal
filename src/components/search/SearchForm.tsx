@@ -73,10 +73,10 @@ function InfoTooltip({ label, text }: InfoTooltipProps) {
       <button
         type="button"
         aria-label={label}
-        className="group inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-400 text-[10px] font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-500 dark:text-slate-300"
+        className="theme-border theme-text-muted group inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-[#be779e]"
       >
         i
-        <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 hidden w-64 -translate-y-1/2 rounded-md bg-slate-900 px-2 py-1.5 text-left text-xs font-normal text-white shadow-lg group-hover:block group-focus:block dark:bg-slate-800">
+        <span className="theme-surface theme-border pointer-events-none absolute left-full top-1/2 z-20 ml-2 hidden w-64 -translate-y-1/2 rounded-md border px-2 py-1.5 text-left text-xs font-normal text-[var(--surface-foreground)] shadow-lg group-hover:block group-focus:block">
           {text}
         </span>
       </button>
@@ -384,19 +384,19 @@ export default function SearchForm() {
           <button
             type="submit"
             disabled={isSearching}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-slate-950"
+            className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSearching ? "Searching..." : "Search Businesses"}
           </button>
         </form>
 
         {error && (
-          <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
+          <div className="theme-badge-critical mt-4 rounded-lg border border-white/10 p-4 text-sm">
             {error}
           </div>
         )}
 
-        {process.env.NODE_ENV !== 'production' && <div className="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+        {process.env.NODE_ENV !== 'production' && <div className="theme-surface-muted theme-border mt-4 rounded-lg border p-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">Google Places API Debug</h3>
             <span className="theme-text-muted text-xs">Last 10 searches</span>
@@ -408,19 +408,19 @@ export default function SearchForm() {
             </p>
           ) : (
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
-              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+              <div className="theme-surface theme-border rounded border p-2">
                 <div className="theme-text-muted">Total Calls</div>
                 <div className="font-semibold">{latestMetrics.totalGooglePlacesCalls}</div>
               </div>
-              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+              <div className="theme-surface theme-border rounded border p-2">
                 <div className="theme-text-muted">Geocode</div>
                 <div className="font-semibold">{latestMetrics.geocodeCalls}</div>
               </div>
-              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+              <div className="theme-surface theme-border rounded border p-2">
                 <div className="theme-text-muted">Nearby Search</div>
                 <div className="font-semibold">{latestMetrics.nearbySearchCalls}</div>
               </div>
-              <div className="rounded border border-slate-200 p-2 dark:border-slate-700">
+              <div className="theme-surface theme-border rounded border p-2">
                 <div className="theme-text-muted">Place Details</div>
                 <div className="font-semibold">{latestMetrics.placeDetailsCalls}</div>
               </div>
@@ -431,7 +431,7 @@ export default function SearchForm() {
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-xs">
                 <thead>
-                  <tr className="theme-text-muted border-b border-slate-200 text-left dark:border-slate-700">
+                  <tr className="theme-text-muted theme-border border-b text-left">
                     <th className="px-2 py-1">Time</th>
                     <th className="px-2 py-1">Cache</th>
                     <th className="px-2 py-1">Total</th>
@@ -444,7 +444,7 @@ export default function SearchForm() {
                 </thead>
                 <tbody>
                   {debugHistory.map((run, idx) => (
-                    <tr key={`${run.timestamp}-${idx}`} className="border-b border-slate-100 dark:border-slate-800">
+                    <tr key={`${run.timestamp}-${idx}`} className="theme-border border-b">
                       <td className="px-2 py-1">{run.timestamp}</td>
                       <td className="px-2 py-1">{run.fromCache ? "yes" : "no"}</td>
                       <td className="px-2 py-1 font-medium">{run.metrics.totalGooglePlacesCalls}</td>
@@ -468,7 +468,7 @@ export default function SearchForm() {
 
       {showRepeatWarning && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="repeat-search-warning-title"
@@ -502,7 +502,7 @@ export default function SearchForm() {
               <button
                 type="button"
                 onClick={handleProceedRepeatedSearch}
-                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+                className="rounded-lg bg-[#be779e] px-4 py-2 text-sm font-medium text-[#0a0a0a] hover:bg-[#cf8ab1] focus:outline-none focus:ring-2 focus:ring-[#be779e] focus:ring-offset-2 focus:ring-offset-[#0a0a0a]"
               >
                 Proceed With Search
               </button>

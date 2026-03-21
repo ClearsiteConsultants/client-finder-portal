@@ -62,7 +62,7 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                  <div className="theme-text-muted flex items-center gap-1.5">
                     <span className="font-medium">Website:</span>
                     {business.hasWebsite ? (
                       business.website ? (
@@ -70,34 +70,34 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
                           href={business.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline dark:text-blue-400"
+                          className="text-[#be779e] hover:underline"
                         >
                           View
                         </a>
                       ) : (
-                        <span className="text-emerald-600 dark:text-emerald-400">
+                        <span className="text-[#9fd2a5]">
                           Yes
                         </span>
                       )
                     ) : (
-                      <span className="text-slate-500">None</span>
+                      <span className="theme-text-muted">None</span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                  <div className="theme-text-muted flex items-center gap-1.5">
                     <span className="font-medium">Maps:</span>
                     <a
                       href={googleMapsPlaceUrl(business.placeId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline dark:text-blue-400"
+                      className="text-[#be779e] hover:underline"
                     >
                       View
                     </a>
                   </div>
 
                   {business.rating !== undefined && business.rating !== null && (
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                    <div className="theme-text-muted flex items-center gap-1.5">
                       <span className="font-medium">Rating:</span>
                       <span>
                         {business.rating.toFixed(1)} ⭐
@@ -106,7 +106,7 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
                   )}
 
                   {business.reviewCount !== undefined && business.reviewCount !== null && (
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                    <div className="theme-text-muted flex items-center gap-1.5">
                       <span className="font-medium">Reviews:</span>
                       <span>{business.reviewCount}</span>
                     </div>
@@ -118,7 +118,7 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
                     {business.businessTypes.slice(0, 3).map((type) => (
                       <span
                         key={type}
-                        className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        className="theme-badge-info inline-flex rounded-full border border-white/10 px-2.5 py-0.5 text-xs font-medium"
                       >
                         {type.replace(/_/g, " ")}
                       </span>
@@ -129,12 +129,12 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
 
               <div className="ml-4 flex flex-col items-end gap-2">
                 {business.isNew && (
-                  <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  <span className="theme-badge-accent inline-flex rounded-full border border-white/10 px-2.5 py-0.5 text-xs font-medium">
                     New Lead
                   </span>
                 )}
                 {business.isCached && (
-                  <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                  <span className="theme-badge-warning inline-flex rounded-full border border-white/10 px-2.5 py-0.5 text-xs font-medium">
                     Cached
                   </span>
                 )}
@@ -144,8 +144,8 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
         ))}
       </div>
 
-      <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
-        <p className="text-sm text-blue-800 dark:text-blue-300">
+      <div className="theme-badge-info rounded-lg border border-white/10 p-4">
+        <p className="text-sm">
           <strong>Note:</strong> Results marked as "New Lead" have been automatically
           added to your lead list with a status of "pending" for review.
         </p>

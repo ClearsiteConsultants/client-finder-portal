@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background-light: #ffffff;
-  --color-foreground-light: #0f172a;
-  --color-background-dark: #020617;
-  --color-foreground-dark: #f8fafc;
+  --color-background-light: #0a0a0a;
+  --color-foreground-light: #dddcde;
+  --color-background-dark: #0a0a0a;
+  --color-foreground-dark: #dddcde;
 }
 
 :root {
   --background: var(--color-background-light);
   --foreground: var(--color-foreground-light);
 
-  /* Semantic light theme tokens */
-  --surface: #ffffff;
-  --surface-muted: #f8fafc;
-  --surface-foreground: #0f172a;
-  --muted-foreground: #475569;
-  --border-subtle: #e2e8f0;
-  --input-background: #ffffff;
-  --input-foreground: #0f172a;
-  --input-placeholder: #64748b;
+  /* Default to a darker palette for better contrast and visual consistency */
+  --surface: #1b1b1b;
+  --surface-muted: #323232;
+  --surface-foreground: #dddcde;
+  --muted-foreground: #bebac0;
+  --border-subtle: #5e5e5e;
+  --input-background: #141414;
+  --input-foreground: #dddcde;
+  --input-placeholder: #9f9fa3;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,19 +28,19 @@
     --foreground: var(--color-foreground-dark);
 
     /* Semantic dark theme tokens */
-    --surface: #0f172a;
-    --surface-muted: #1e293b;
-    --surface-foreground: #f8fafc;
-    --muted-foreground: #cbd5e1;
-    --border-subtle: #334155;
-    --input-background: #0b1220;
-    --input-foreground: #f8fafc;
-    --input-placeholder: #94a3b8;
+    --surface: #1b1b1b;
+    --surface-muted: #323232;
+    --surface-foreground: #dddcde;
+    --muted-foreground: #bebac0;
+    --border-subtle: #5e5e5e;
+    --input-background: #141414;
+    --input-foreground: #dddcde;
+    --input-placeholder: #9f9fa3;
   }
 }
 
 html {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 body {
@@ -82,4 +82,29 @@ a {
 
 .theme-input::placeholder {
   color: var(--input-placeholder);
+}
+
+.theme-badge-critical {
+  background-color: #3a232e;
+  color: #f0b3cf;
+}
+
+.theme-badge-warning {
+  background-color: #3a3425;
+  color: #e8d38b;
+}
+
+.theme-badge-success {
+  background-color: #253328;
+  color: #9fd2a5;
+}
+
+.theme-badge-info {
+  background-color: #2f2f35;
+  color: #dddcde;
+}
+
+.theme-badge-accent {
+  background-color: #3d2834;
+  color: #be779e;
 }

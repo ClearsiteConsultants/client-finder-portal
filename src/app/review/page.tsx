@@ -288,15 +288,15 @@ export default function ReviewQueuePage() {
 
   const getWebsiteStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      no_website: 'bg-red-100 text-red-800',
-      social_only: 'bg-orange-100 text-orange-800',
-      broken: 'bg-red-100 text-red-800',
-      technical_issues: 'bg-yellow-100 text-yellow-800',
-      outdated: 'bg-yellow-100 text-yellow-800',
-      acceptable: 'bg-green-100 text-green-800',
+      no_website: 'theme-badge-critical',
+      social_only: 'theme-badge-warning',
+      broken: 'theme-badge-critical',
+      technical_issues: 'theme-badge-warning',
+      outdated: 'theme-badge-warning',
+      acceptable: 'theme-badge-success',
     };
     return (
-      <span className={`px-2 py-1 text-xs rounded ${colors[status] || colors.no_website}`}>
+      <span className={`inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium ${colors[status] || colors.no_website}`}>
         {status.replace('_', ' ')}
       </span>
     );
@@ -572,9 +572,9 @@ export default function ReviewQueuePage() {
                     <td className="px-4 py-3">{lead.smallBusinessScore || 'N/A'}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        {lead.hasEmail && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">✉️</span>}
-                        {lead.hasPhone && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">📞</span>}
-                        {lead.hasSocial && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">📱</span>}
+                        {lead.hasEmail && <span className="theme-badge-info inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium">✉️</span>}
+                        {lead.hasPhone && <span className="theme-badge-success inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium">📞</span>}
+                        {lead.hasSocial && <span className="theme-badge-accent inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium">📱</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3">

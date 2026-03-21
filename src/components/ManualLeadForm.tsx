@@ -10,7 +10,7 @@ type ManualLeadFormData = {
   email?: string;
   instagram?: string;
   facebook?: string;
-  twitter?: string;
+  linkedin?: string;
 };
 
 type DuplicateWarning = {
@@ -34,7 +34,7 @@ export default function ManualLeadForm({ onClose, onSuccess }: ManualLeadFormPro
     email: '',
     instagram: '',
     facebook: '',
-    twitter: '',
+    linkedin: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
@@ -301,13 +301,13 @@ export default function ManualLeadForm({ onClose, onSuccess }: ManualLeadFormPro
               </div>
               
               <div>
-                <label className="block theme-text-muted text-sm font-medium mb-1">Twitter/X URL</label>
+                <label className="block theme-text-muted text-sm font-medium mb-1">LinkedIn URL</label>
                 <input
                   type="url"
-                  value={formData.twitter}
-                  onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                  value={formData.linkedin}
+                  onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
                   className="theme-input w-full rounded-lg border theme-border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                  placeholder="https://twitter.com/business"
+                  placeholder="https://linkedin.com/company/business"
                 />
               </div>
             </div>

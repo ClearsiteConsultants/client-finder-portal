@@ -163,7 +163,7 @@ describe('ManualLeadForm', () => {
           email: '',
           instagram: '',
           facebook: '',
-          twitter: '',
+          linkedin: '',
         }),
       })
     );

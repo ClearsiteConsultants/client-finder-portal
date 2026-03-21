@@ -110,6 +110,45 @@ describe('LeadDetailPage', () => {
     });
   });
 
+  it('should display email in business info when available in any contact record', async () => {
+    const businessWithSecondaryEmail = {
+      ...mockBusiness,
+      contactInfo: [
+        {
+          id: 'contact-1',
+          email: null,
+          phone: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          linkedinUrl: null,
+        },
+        {
+          id: 'contact-2',
+          email: 'owner@testbusiness.com',
+          phone: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          linkedinUrl: null,
+        },
+      ],
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => businessWithSecondaryEmail,
+    });
+
+    render(<LeadDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Email')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'owner@testbusiness.com' })).toHaveAttribute(
+        'href',
+        'mailto:owner@testbusiness.com',
+      );
+    });
+  });
+
   it('should show edit form when pencil icon is clicked', async () => {
     render(<LeadDetailPage />);
 
@@ -226,6 +265,44 @@ describe('LeadDetailPage', () => {
     fireEvent.change(phoneInput, { target: { value: '555-9999' } });
 
     expect(phoneInput.value).toBe('555-9999');
+  });
+
+  it('should allow editing email field', async () => {
+    const businessWithEmail = {
+      ...mockBusiness,
+      contactInfo: [
+        {
+          id: 'contact-123',
+          email: 'owner@testbusiness.com',
+          phone: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          linkedinUrl: null,
+        },
+      ],
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => businessWithEmail,
+    });
+
+    render(<LeadDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Business Inc')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle('Edit Business Information'));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('owner@testbusiness.com')).toBeInTheDocument();
+    });
+
+    const emailInput = screen.getByDisplayValue('owner@testbusiness.com') as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: 'contact@testbusiness.com' } });
+
+    expect(emailInput.value).toBe('contact@testbusiness.com');
   });
 
   it('should allow editing website field', async () => {
