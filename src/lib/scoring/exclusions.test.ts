@@ -19,6 +19,7 @@ import { normalizeBusinessName } from './scorer';
 // Mock user ID for tests
 const TEST_USER_ID = '00000000-0000-0000-0000-00000000aa01';
 const TEST_USER_EMAIL = 'exclusions-test-user@example.com';
+const TEST_BUSINESS_PREFIX = 'Excl Status Test';
 
 // Helper to create a test user
 async function createTestUser() {
@@ -38,11 +39,36 @@ async function createTestUser() {
   });
 }
 
+async function createTestBusiness(input: {
+  name: string;
+  businessTypes?: string[];
+  leadStatus?: 'pending' | 'approved' | 'rejected' | 'contacted' | 'responded' | 'inactive';
+  rejectedReason?: string | null;
+}) {
+  return prisma.business.create({
+    data: {
+      name: input.name,
+      address: '123 Test Street',
+      businessTypes: input.businessTypes ?? [],
+      leadStatus: input.leadStatus ?? 'pending',
+      rejectedReason: input.rejectedReason ?? null,
+    },
+  });
+}
+
 // Clean up test data
 async function cleanupTestData() {
   await prisma.excludedBusiness.deleteMany({
     where: {
       addedByUserId: TEST_USER_ID,
+    },
+  });
+
+  await prisma.business.deleteMany({
+    where: {
+      name: {
+        startsWith: TEST_BUSINESS_PREFIX,
+      },
     },
   });
 }
@@ -115,6 +141,23 @@ describe('exclusions', () => {
       });
       
       expect(count).toBe(1);
+    });
+
+    it('should automatically reject matching leads when a business name is excluded', async () => {
+      const created = await createTestBusiness({
+        name: `${TEST_BUSINESS_PREFIX} Cafe`,
+      });
+
+      await addBusinessToExcludeList(`${TEST_BUSINESS_PREFIX} Cafe`, TEST_USER_ID);
+
+      const updated = await prisma.business.findUnique({
+        where: { id: created.id },
+      });
+
+      expect(updated?.leadStatus).toBe('rejected');
+      expect(updated?.rejectedReason).toBe('Auto-rejected by exclusion list');
+      expect(updated?.rejectedByUserId).toBe(TEST_USER_ID);
+      expect(updated?.rejectedAt).toBeTruthy();
     });
   });
 
@@ -243,6 +286,28 @@ describe('exclusions', () => {
       await addBusinessTypeToExcludeList('gym', TEST_USER_ID);
     });
 
+    it('should automatically reject matching leads when a business type is excluded', async () => {
+      const matching = await createTestBusiness({
+        name: `${TEST_BUSINESS_PREFIX} Bistro`,
+        businessTypes: ['Restaurant'],
+      });
+      const nonMatching = await createTestBusiness({
+        name: `${TEST_BUSINESS_PREFIX} Clinic`,
+        businessTypes: ['doctor'],
+      });
+
+      await addBusinessTypeToExcludeList('restaurant', TEST_USER_ID);
+
+      const [matchingUpdated, nonMatchingUpdated] = await Promise.all([
+        prisma.business.findUnique({ where: { id: matching.id } }),
+        prisma.business.findUnique({ where: { id: nonMatching.id } }),
+      ]);
+
+      expect(matchingUpdated?.leadStatus).toBe('rejected');
+      expect(matchingUpdated?.rejectedReason).toBe('Auto-rejected by exclusion list');
+      expect(nonMatchingUpdated?.leadStatus).toBe('pending');
+    });
+
     it('should detect an excluded business type', async () => {
       const result = await checkBusinessTypeExclusion(['food', 'restaurant']);
 
@@ -295,6 +360,70 @@ describe('exclusions', () => {
       
       result = await checkBusinessExclusion('Starbucks');
       expect(result.isExcluded).toBe(false);
+    });
+
+    it('should restore lead status to pending when a matching business-name exclusion is removed', async () => {
+      const created = await createTestBusiness({
+        name: `${TEST_BUSINESS_PREFIX} Bakery`,
+      });
+
+      const exclusionId = await addBusinessToExcludeList(
+        `${TEST_BUSINESS_PREFIX} Bakery`,
+        TEST_USER_ID
+      );
+
+      await removeBusinessFromExcludeList(exclusionId);
+
+      const updated = await prisma.business.findUnique({
+        where: { id: created.id },
+      });
+
+      expect(updated?.leadStatus).toBe('pending');
+      expect(updated?.rejectedReason).toBeNull();
+      expect(updated?.rejectedByUserId).toBeNull();
+      expect(updated?.rejectedAt).toBeNull();
+    });
+
+    it('should restore lead status to pending when a matching business-type exclusion is removed', async () => {
+      const created = await createTestBusiness({
+        name: `${TEST_BUSINESS_PREFIX} Tacos`,
+        businessTypes: ['restaurant'],
+      });
+
+      const exclusionId = await addBusinessTypeToExcludeList('restaurant', TEST_USER_ID);
+
+      await removeBusinessFromExcludeList(exclusionId);
+
+      const updated = await prisma.business.findUnique({
+        where: { id: created.id },
+      });
+
+      expect(updated?.leadStatus).toBe('pending');
+      expect(updated?.rejectedReason).toBeNull();
+      expect(updated?.rejectedByUserId).toBeNull();
+      expect(updated?.rejectedAt).toBeNull();
+    });
+
+    it('should keep lead rejected if another exclusion still matches', async () => {
+      const created = await createTestBusiness({
+        name: `${TEST_BUSINESS_PREFIX} Grill`,
+        businessTypes: ['restaurant'],
+      });
+
+      const nameExclusionId = await addBusinessToExcludeList(
+        `${TEST_BUSINESS_PREFIX} Grill`,
+        TEST_USER_ID
+      );
+      await addBusinessTypeToExcludeList('restaurant', TEST_USER_ID);
+
+      await removeBusinessFromExcludeList(nameExclusionId);
+
+      const updated = await prisma.business.findUnique({
+        where: { id: created.id },
+      });
+
+      expect(updated?.leadStatus).toBe('rejected');
+      expect(updated?.rejectedReason).toBe('Auto-rejected by exclusion list');
     });
   });
 

@@ -33,6 +33,7 @@ export default function ExclusionsPage() {
   const [newReason, setNewReason] = useState('');
   const [newExclusionMode, setNewExclusionMode] = useState<ExclusionMode>('business_name');
   const [adding, setAdding] = useState(false);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -133,8 +134,14 @@ export default function ExclusionsPage() {
     }
   };
 
-  const handleRemove = async (id: string) => {
-    if (!confirm('Remove this business from the exclude list?')) return;
+  const handleRemove = (id: string) => {
+    setConfirmRemoveId(id);
+  };
+
+  const handleConfirmedRemove = async () => {
+    if (!confirmRemoveId) return;
+    const id = confirmRemoveId;
+    setConfirmRemoveId(null);
 
     try {
       setError(null);
@@ -170,9 +177,43 @@ export default function ExclusionsPage() {
     return null;
   }
 
+  const confirmRemoveItem = excluded.find((e) => e.id === confirmRemoveId);
+
   return (
     <>
       <TopNav />
+      {confirmRemoveId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="theme-surface rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold mb-2">Remove Exclusion</h3>
+            <p className="theme-text-muted mb-6">
+              Remove{' '}
+              <span className="font-medium">
+                {confirmRemoveItem
+                  ? confirmRemoveItem.exclusionMode === 'business_type' && confirmRemoveItem.businessType
+                    ? formatGooglePlaceTypeLabel(confirmRemoveItem.businessType)
+                    : confirmRemoveItem.businessName
+                  : 'this entry'}
+              </span>{' '}
+              from the exclude list?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmRemoveId(null)}
+                className="px-4 py-2 rounded-md border theme-border theme-text-muted hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmedRemove}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Business Exclude List</h1>
         

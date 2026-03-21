@@ -17,6 +17,7 @@ export interface ExclusionCheckResult {
 }
 
 const BUSINESS_TYPE_PREFIX = 'type:';
+const AUTO_REJECTED_REASON = 'Auto-rejected by exclusion list';
 
 function normalizeBusinessType(businessType: string): string {
   return businessType.trim().toLowerCase();
@@ -32,6 +33,248 @@ function isBusinessTypeToken(value: string): boolean {
 
 function tokenToBusinessType(value: string): string {
   return value.slice(BUSINESS_TYPE_PREFIX.length);
+}
+
+function matchesNameExclusionRule(name: string, normalizedExcludedName: string): boolean {
+  const normalizedBusinessName = normalizeBusinessName(name);
+  const candidates = buildNormalizationCandidates(normalizedBusinessName);
+  return candidates.includes(normalizedExcludedName);
+}
+
+function matchesTypeExclusionRule(
+  businessTypes: string[],
+  normalizedExcludedType: string
+): boolean {
+  return businessTypes.some(
+    (businessType) => normalizeBusinessType(businessType) === normalizedExcludedType
+  );
+}
+
+async function getRemainingExclusionSets(): Promise<{
+  excludedBusinessNames: Set<string>;
+  excludedBusinessTypes: Set<string>;
+}> {
+  const remainingExclusions = await prisma.excludedBusiness.findMany({
+    select: {
+      businessNameNormalized: true,
+    },
+  });
+
+  const excludedBusinessNames = new Set<string>();
+  const excludedBusinessTypes = new Set<string>();
+
+  for (const exclusion of remainingExclusions) {
+    if (isBusinessTypeToken(exclusion.businessNameNormalized)) {
+      excludedBusinessTypes.add(tokenToBusinessType(exclusion.businessNameNormalized));
+      continue;
+    }
+
+    excludedBusinessNames.add(exclusion.businessNameNormalized);
+  }
+
+  return {
+    excludedBusinessNames,
+    excludedBusinessTypes,
+  };
+}
+
+function isBusinessStillExcluded(
+  business: { name: string; businessTypes: string[] },
+  excludedBusinessNames: Set<string>,
+  excludedBusinessTypes: Set<string>
+): boolean {
+  const normalizedBusinessName = normalizeBusinessName(business.name);
+  const nameCandidates = buildNormalizationCandidates(normalizedBusinessName);
+
+  for (const candidate of nameCandidates) {
+    if (excludedBusinessNames.has(candidate)) {
+      return true;
+    }
+  }
+
+  for (const businessType of business.businessTypes) {
+    if (excludedBusinessTypes.has(normalizeBusinessType(businessType))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function applyExclusionToMatchingBusinessesByName(
+  normalizedExcludedName: string,
+  userId: string
+): Promise<void> {
+  const businesses = await prisma.business.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  const matchingBusinessIds = businesses
+    .filter((business) => matchesNameExclusionRule(business.name, normalizedExcludedName))
+    .map((business) => business.id);
+
+  if (!matchingBusinessIds.length) {
+    return;
+  }
+
+  await prisma.business.updateMany({
+    where: {
+      id: { in: matchingBusinessIds },
+      leadStatus: {
+        not: 'rejected',
+      },
+    },
+    data: {
+      leadStatus: 'rejected',
+      rejectedAt: new Date(),
+      rejectedByUserId: userId,
+      rejectedReason: AUTO_REJECTED_REASON,
+    },
+  });
+}
+
+async function applyExclusionToMatchingBusinessesByType(
+  normalizedExcludedType: string,
+  userId: string
+): Promise<void> {
+  const businesses = await prisma.business.findMany({
+    select: {
+      id: true,
+      businessTypes: true,
+    },
+  });
+
+  const matchingBusinessIds = businesses
+    .filter((business) =>
+      matchesTypeExclusionRule(business.businessTypes, normalizedExcludedType)
+    )
+    .map((business) => business.id);
+
+  if (!matchingBusinessIds.length) {
+    return;
+  }
+
+  await prisma.business.updateMany({
+    where: {
+      id: { in: matchingBusinessIds },
+      leadStatus: {
+        not: 'rejected',
+      },
+    },
+    data: {
+      leadStatus: 'rejected',
+      rejectedAt: new Date(),
+      rejectedByUserId: userId,
+      rejectedReason: AUTO_REJECTED_REASON,
+    },
+  });
+}
+
+async function restorePendingForBusinessesNoLongerExcludedByName(
+  normalizedRemovedName: string
+): Promise<void> {
+  const candidateBusinesses = await prisma.business.findMany({
+    where: {
+      leadStatus: 'rejected',
+      rejectedReason: AUTO_REJECTED_REASON,
+    },
+    select: {
+      id: true,
+      name: true,
+      businessTypes: true,
+    },
+  });
+
+  const affectedBusinesses = candidateBusinesses.filter((business) =>
+    matchesNameExclusionRule(business.name, normalizedRemovedName)
+  );
+
+  if (!affectedBusinesses.length) {
+    return;
+  }
+
+  const { excludedBusinessNames, excludedBusinessTypes } =
+    await getRemainingExclusionSets();
+
+  const businessIdsToRestore = affectedBusinesses
+    .filter(
+      (business) =>
+        !isBusinessStillExcluded(business, excludedBusinessNames, excludedBusinessTypes)
+    )
+    .map((business) => business.id);
+
+  if (!businessIdsToRestore.length) {
+    return;
+  }
+
+  await prisma.business.updateMany({
+    where: {
+      id: {
+        in: businessIdsToRestore,
+      },
+    },
+    data: {
+      leadStatus: 'pending',
+      rejectedAt: null,
+      rejectedByUserId: null,
+      rejectedReason: null,
+    },
+  });
+}
+
+async function restorePendingForBusinessesNoLongerExcludedByType(
+  normalizedRemovedType: string
+): Promise<void> {
+  const candidateBusinesses = await prisma.business.findMany({
+    where: {
+      leadStatus: 'rejected',
+      rejectedReason: AUTO_REJECTED_REASON,
+    },
+    select: {
+      id: true,
+      name: true,
+      businessTypes: true,
+    },
+  });
+
+  const affectedBusinesses = candidateBusinesses.filter((business) =>
+    matchesTypeExclusionRule(business.businessTypes, normalizedRemovedType)
+  );
+
+  if (!affectedBusinesses.length) {
+    return;
+  }
+
+  const { excludedBusinessNames, excludedBusinessTypes } =
+    await getRemainingExclusionSets();
+
+  const businessIdsToRestore = affectedBusinesses
+    .filter(
+      (business) =>
+        !isBusinessStillExcluded(business, excludedBusinessNames, excludedBusinessTypes)
+    )
+    .map((business) => business.id);
+
+  if (!businessIdsToRestore.length) {
+    return;
+  }
+
+  await prisma.business.updateMany({
+    where: {
+      id: {
+        in: businessIdsToRestore,
+      },
+    },
+    data: {
+      leadStatus: 'pending',
+      rejectedAt: null,
+      rejectedByUserId: null,
+      rejectedReason: null,
+    },
+  });
 }
 
 export async function getExcludedBusinessTypes(): Promise<string[]> {
@@ -308,6 +551,7 @@ export async function addBusinessToExcludeList(
   });
   
   if (existing) {
+    await applyExclusionToMatchingBusinessesByName(normalized, userId);
     return existing.id;
   }
   
@@ -320,6 +564,8 @@ export async function addBusinessToExcludeList(
       addedByUserId: userId,
     },
   });
+
+  await applyExclusionToMatchingBusinessesByName(normalized, userId);
   
   return excludedBusiness.id;
 }
@@ -342,6 +588,7 @@ export async function addBusinessTypeToExcludeList(
   });
 
   if (existing) {
+    await applyExclusionToMatchingBusinessesByType(normalizedType, userId);
     return existing.id;
   }
 
@@ -354,6 +601,8 @@ export async function addBusinessTypeToExcludeList(
     },
   });
 
+  await applyExclusionToMatchingBusinessesByType(normalizedType, userId);
+
   return excludedBusiness.id;
 }
 
@@ -363,11 +612,22 @@ export async function addBusinessTypeToExcludeList(
 export async function removeBusinessFromExcludeList(
   excludedBusinessId: string
 ): Promise<void> {
-  await prisma.excludedBusiness.delete({
+  const deletedExclusion = await prisma.excludedBusiness.delete({
     where: {
       id: excludedBusinessId,
     },
   });
+
+  if (isBusinessTypeToken(deletedExclusion.businessNameNormalized)) {
+    await restorePendingForBusinessesNoLongerExcludedByType(
+      tokenToBusinessType(deletedExclusion.businessNameNormalized)
+    );
+    return;
+  }
+
+  await restorePendingForBusinessesNoLongerExcludedByName(
+    deletedExclusion.businessNameNormalized
+  );
 }
 
 /**
