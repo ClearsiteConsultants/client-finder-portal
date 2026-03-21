@@ -21,6 +21,12 @@ jest.mock('@/components/TopNav', () => {
   };
 });
 
+jest.mock('@/components/LeadCommentsThread', () => {
+  return function MockLeadCommentsThread() {
+    return <div data-testid="lead-comments-thread">Comments</div>;
+  };
+});
+
 global.fetch = jest.fn();
 
 describe('LeadDetailPage', () => {

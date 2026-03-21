@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
+import LeadCommentsThread from '@/components/LeadCommentsThread';
 import {
   GOOGLE_PLACES_BUSINESS_TYPES,
   formatGooglePlaceTypeLabel,
@@ -53,7 +54,7 @@ type Business = {
 };
 
 export default function LeadDetailPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams<{ id?: string | string[] }>();
   const leadId = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -63,7 +64,6 @@ export default function LeadDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [convertingToClient, setConvertingToClient] = useState(false);
-  const [notes, setNotes] = useState('');
   const [nextFollowupAt, setNextFollowupAt] = useState('');
   const [showLinkPlaceId, setShowLinkPlaceId] = useState(false);
   const [placeIdInput, setPlaceIdInput] = useState('');
@@ -142,7 +142,6 @@ export default function LeadDetailPage() {
       if (response.ok) {
         const data: Business = await response.json();
         setBusiness(data);
-        setNotes(data.notes || '');
         setNextFollowupAt(
           data.nextFollowupAt
             ? new Date(data.nextFollowupAt).toISOString().split('T')[0]
@@ -166,7 +165,6 @@ export default function LeadDetailPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          notes: notes || null,
           nextFollowupAt: nextFollowupAt || null,
         }),
       });
@@ -892,13 +890,9 @@ export default function LeadDetailPage() {
 
             {/* Notes Card */}
             <div className="theme-surface theme-border rounded-2xl border p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4">Notes</h2>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                rows={6}
-                placeholder="Add notes about this lead..."
+              <LeadCommentsThread
+                leadId={leadId}
+                currentUserId={session?.user?.id ?? null}
               />
             </div>
 

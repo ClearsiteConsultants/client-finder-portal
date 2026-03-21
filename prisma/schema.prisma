@@ -91,6 +91,7 @@ model User {
   rejectedBusinesses   Business[]         @relation("RejectedBy")
   doNotContactBusinesses Business[]       @relation("DoNotContactSetBy")
   convertedBusinesses  Business[]         @relation("ConvertedBy")
+  leadComments         LeadComment[]
   accounts             Account[]
   sessions             Session[]
 
@@ -203,6 +204,7 @@ model Business {
   outreachTracking        OutreachTracking[]
   optOuts                 OptOut[]
   validationJobs          ValidationJob[]
+  leadComments            LeadComment[]
 
   @@index([name])
   @@index([leadStatus, websiteStatus])
@@ -210,6 +212,27 @@ model Business {
   @@index([manualDedupeKey])
   @@index([cachedAt])
   @@map("businesses")
+}
+
+model LeadComment {
+  id              String        @id @default(uuid()) @db.Uuid
+  businessId      String        @map("business_id") @db.Uuid
+  authorUserId    String        @map("author_user_id") @db.Uuid
+  parentCommentId String?       @map("parent_comment_id") @db.Uuid
+  content         String        @db.Text
+  editedAt        DateTime?     @map("edited_at") @db.Timestamptz(6)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  authorUser      User          @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  parentComment   LeadComment?  @relation("LeadCommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         LeadComment[] @relation("LeadCommentReplies")
+
+  @@index([businessId, createdAt])
+  @@index([parentCommentId])
+  @@index([authorUserId])
+  @@map("lead_comments")
 }
 
 model ContactInfo {
