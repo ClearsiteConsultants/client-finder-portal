@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
+import LeadCommentsThread from '@/components/LeadCommentsThread';
 
 type Client = {
   id: string;
@@ -46,7 +47,7 @@ type ChecklistItem = {
 };
 
 export default function ClientDetailPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams<{ id?: string | string[] }>();
   const clientId = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -61,7 +62,6 @@ export default function ClientDetailPage() {
   const [subscriptionStatus, setSubscriptionStatus] = useState('');
   const [initialPaymentStatus, setInitialPaymentStatus] = useState('');
   const [nextPaymentDueDate, setNextPaymentDueDate] = useState('');
-  const [notes, setNotes] = useState('');
 
   // Checklist action
   const [showChecklistForm, setShowChecklistForm] = useState(false);
@@ -95,7 +95,6 @@ export default function ClientDetailPage() {
       setInitialPaymentStatus(data.client.initialPaymentStatus || '');
       setNextPaymentDueDate(data.client.nextPaymentDueDate ? 
         new Date(data.client.nextPaymentDueDate).toISOString().split('T')[0] : '');
-      setNotes(data.client.notes || '');
     } catch (error) {
       console.error('Error fetching client:', error);
     } finally {
@@ -126,7 +125,6 @@ export default function ClientDetailPage() {
           subscriptionStatus,
           initialPaymentStatus,
           nextPaymentDueDate: nextPaymentDueDate ? new Date(nextPaymentDueDate).toISOString() : null,
-          notes,
         }),
       });
 
@@ -310,19 +308,6 @@ export default function ClientDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <label className="theme-text-muted block text-sm font-medium mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
-                  className="theme-input w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="Internal notes about this client..."
-                />
-              </div>
-
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={handleSave}
@@ -334,6 +319,19 @@ export default function ClientDetailPage() {
               </div>
             </div>
 
+            {/* Notes */}
+            <div className="theme-surface theme-border border shadow rounded-lg p-6">
+              {clientId && (
+                <LeadCommentsThread
+                  leadId={clientId}
+                  currentUserId={session?.user?.id ?? null}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
             {/* Contact Info */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
@@ -406,10 +404,7 @@ export default function ClientDetailPage() {
                 <p className="theme-text-muted">No contact information available</p>
               )}
             </div>
-          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
             {/* Review Checklist */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">

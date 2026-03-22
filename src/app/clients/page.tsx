@@ -108,34 +108,34 @@ export default function ActiveClientsPage() {
   };
 
   const getStatusBadge = (status: string | null, type: 'subscription' | 'client' | 'payment') => {
-    if (!status) return <span className="text-gray-400">Unknown</span>;
+    if (!status) return <span className="theme-text-muted">Unknown</span>;
 
     const colors = {
       subscription: {
-        active: 'bg-green-100 text-green-800',
-        trial: 'bg-blue-100 text-blue-800',
-        past_due: 'bg-red-100 text-red-800',
-        canceled: 'bg-gray-100 text-gray-800',
-        payment_failed: 'bg-red-100 text-red-800',
-        unpaid: 'bg-orange-100 text-orange-800',
+        active: 'theme-badge-success',
+        trial: 'theme-badge-info',
+        past_due: 'theme-badge-critical',
+        canceled: 'theme-badge-warning',
+        payment_failed: 'theme-badge-critical',
+        unpaid: 'theme-badge-warning',
       },
       client: {
-        active: 'bg-green-100 text-green-800',
-        onboarding: 'bg-blue-100 text-blue-800',
-        needs_review: 'bg-yellow-100 text-yellow-800',
-        inactive: 'bg-gray-100 text-gray-800',
+        active: 'theme-badge-success',
+        onboarding: 'theme-badge-info',
+        needs_review: 'theme-badge-warning',
+        inactive: 'theme-badge-warning',
       },
       payment: {
-        confirmed: 'bg-green-100 text-green-800',
-        pending: 'bg-yellow-100 text-yellow-800',
-        failed: 'bg-red-100 text-red-800',
+        confirmed: 'theme-badge-success',
+        pending: 'theme-badge-warning',
+        failed: 'theme-badge-critical',
       },
     };
 
-    const colorClass = colors[type][status as keyof typeof colors[typeof type]] || 'bg-gray-100 text-gray-800';
+    const colorClass = colors[type][status as keyof typeof colors[typeof type]] || 'theme-badge-info';
 
     return (
-      <span className={`px-2 py-1 rounded text-xs ${colorClass}`}>
+      <span className={`inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium ${colorClass}`}>
         {status.replace(/_/g, ' ')}
       </span>
     );
@@ -283,7 +283,7 @@ export default function ActiveClientsPage() {
                               {client.name}
                             </div>
                             {client.needsAttention && (
-                              <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded">
+                              <span className="theme-badge-critical ml-2 inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium">
                                 ⚠️
                               </span>
                             )}
