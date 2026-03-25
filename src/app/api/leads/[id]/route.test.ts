@@ -237,6 +237,67 @@ describe('/api/leads/[id]', () => {
     );
   });
 
+  it('PATCH rejects explicit no_website when existing lead has a website URL', async () => {
+    const { PATCH } = await import('./route');
+
+    mockBusinessFindUnique.mockResolvedValueOnce({
+      website: 'https://existing-site.test',
+    });
+
+    const request = new NextRequest('http://localhost/api/leads/lead-123', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        websiteStatus: 'no_website',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'lead-123' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain('Cannot set websiteStatus to "no_website"');
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+
+  it('PATCH allows explicit no_website when website is cleared in same request', async () => {
+    const { PATCH } = await import('./route');
+
+    mockBusinessUpdate.mockResolvedValue({
+      id: 'lead-123',
+      website: null,
+      websiteStatus: 'no_website',
+      approvedByUser: null,
+      rejectedByUser: null,
+      contactInfo: [],
+    });
+
+    const request = new NextRequest('http://localhost/api/leads/lead-123', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        website: '   ',
+        websiteStatus: 'no_website',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'lead-123' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.website).toBeNull();
+    expect(data.websiteStatus).toBe('no_website');
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'lead-123' },
+        data: expect.objectContaining({
+          website: null,
+          websiteStatus: 'no_website',
+        }),
+      })
+    );
+  });
+
   it('PATCH rejects unknown websiteStatus override', async () => {
     const { PATCH } = await import('./route');
 

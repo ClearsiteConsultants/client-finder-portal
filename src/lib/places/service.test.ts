@@ -226,6 +226,39 @@ describe('PlacesService', () => {
       expect(business?.website).toBe('https://nearby-only-business.test');
     });
 
+    it('keeps non-no_website status when ingested lead has a website URL', async () => {
+      const mockResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_WEBSITE_STATUS_WITH_URL',
+          name: 'Website Status Lead',
+          formatted_address: '101 Status St',
+          website: 'https://status-lead.test',
+          user_ratings_total: 15,
+          types: ['store'],
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 40.7128, lng: -74.0060 });
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
+      mockClient.getPlaceDetails.mockResolvedValue(mockResults[0]);
+
+      const result = await service.search(
+        {
+          location: 'TEST_Website_Status_With_URL',
+          radius: 3000,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      const business = await prisma.business.findUnique({
+        where: { placeId: 'TEST_WEBSITE_STATUS_WITH_URL' },
+      });
+
+      expect(business?.website).toBe('https://status-lead.test');
+      expect(business?.websiteStatus).not.toBe('no_website');
+    });
+
     it('enriches all selected uncached businesses', async () => {
       const nearbyResults: GooglePlaceResult[] = [
         { place_id: 'TEST_LIMIT_1', name: 'Limit 1', vicinity: 'A' },
@@ -553,6 +586,39 @@ describe('PlacesService', () => {
 
       expect(result?.isNew).toBe(false);
       expect(result?.name).toBe('New Details');
+    });
+
+    it('preserves existing website and websiteStatus when Google details has no website', async () => {
+      await prisma.business.create({
+        data: {
+          placeId: 'TEST_PRESERVE_WEBSITE_DETAILS',
+          name: 'Existing Website Lead',
+          address: '200 Existing Site St',
+          website: 'https://existing-site.test',
+          websiteStatus: 'acceptable',
+          source: 'google_maps',
+        },
+      });
+
+      const mockPlace: GooglePlaceResult = {
+        place_id: 'TEST_PRESERVE_WEBSITE_DETAILS',
+        name: 'Existing Website Lead Updated',
+        formatted_address: '200 Existing Site St Updated',
+      };
+
+      mockClient.getPlaceDetails.mockResolvedValue(mockPlace);
+
+      const result = await service.getPlaceDetails('TEST_PRESERVE_WEBSITE_DETAILS');
+
+      expect(result?.isNew).toBe(false);
+      expect(result?.website).toBe('https://existing-site.test');
+
+      const business = await prisma.business.findUnique({
+        where: { placeId: 'TEST_PRESERVE_WEBSITE_DETAILS' },
+      });
+
+      expect(business?.website).toBe('https://existing-site.test');
+      expect(business?.websiteStatus).toBe('acceptable');
     });
 
     it('returns null on error', async () => {

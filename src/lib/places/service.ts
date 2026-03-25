@@ -184,7 +184,7 @@ export class PlacesService {
             data: {
               ...toPrismaCreateInput(norm, searchRun.id),
               smallBusinessScore: scoringResult.score,
-              websiteStatus: scoringResult.isVIP ? 'no_website' : norm.websiteStatus,
+              websiteStatus: scoringResult.isVIP && !norm.website ? 'no_website' : norm.websiteStatus,
               leadStatus,
               rejectedAt: exclusionCheck?.isExcluded ? new Date() : undefined,
               rejectedReason,
@@ -371,6 +371,16 @@ export class PlacesService {
 
       let business: Business;
       if (existing) {
+        // If the existing lead has a website but Google's result does not,
+        // preserve the stored website URL and status rather than overwriting
+        // with null / no_website.
+        const googleWouldClearWebsite = !normalized.website && !!existing.website;
+        const websiteForUpdate = googleWouldClearWebsite ? existing.website : normalized.website;
+        const websiteStatusForUpdate =
+          googleWouldClearWebsite || (normalized.websiteStatus === 'no_website' && !!existing.website)
+            ? existing.websiteStatus
+            : normalized.websiteStatus;
+
         business = await prisma.business.update({
           where: { id: existing.id },
           data: {
@@ -379,11 +389,11 @@ export class PlacesService {
             lat: normalized.lat,
             lng: normalized.lng,
             phone: normalized.phone,
-            website: normalized.website,
+            website: websiteForUpdate,
             businessTypes: normalized.businessTypes,
             rating: normalized.rating,
             reviewCount: normalized.reviewCount,
-            websiteStatus: normalized.websiteStatus,
+            websiteStatus: websiteStatusForUpdate,
             cachedAt: new Date(), // Update cache timestamp
           },
         });

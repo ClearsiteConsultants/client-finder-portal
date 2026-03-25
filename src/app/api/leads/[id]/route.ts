@@ -116,6 +116,33 @@ export async function PATCH(
     const contactFieldsProvided =
       email !== undefined || socialFieldsProvided;
 
+    if (websiteStatus === 'no_website') {
+      let effectiveWebsite = normalizedWebsite;
+
+      if (effectiveWebsite === undefined) {
+        const existingBusiness = await prisma.business.findUnique({
+          where: { id },
+          select: { website: true },
+        });
+
+        if (!existingBusiness) {
+          return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+        }
+
+        effectiveWebsite = existingBusiness.website;
+      }
+
+      if (effectiveWebsite) {
+        return NextResponse.json(
+          {
+            error:
+              'Cannot set websiteStatus to "no_website" while a website URL is present. Remove the website URL first.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (notes !== undefined) {
       updateData.notes = notes;
     }

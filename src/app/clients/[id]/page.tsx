@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import TopNav from '@/components/TopNav';
 import LeadCommentsThread from '@/components/LeadCommentsThread';
 
@@ -227,6 +228,14 @@ export default function ClientDetailPage() {
           >
             ← Back to Active Clients
           </button>
+          <div>
+            <Link
+              href={`/leads/${client.id}`}
+              className="text-blue-600 hover:text-blue-800 text-sm"
+            >
+              View Lead Details
+            </Link>
+          </div>
           <h1 className="text-3xl font-bold">{client.name}</h1>
           <p className="theme-text-muted">{client.address}</p>
           <p className="theme-text-muted text-sm mt-1">

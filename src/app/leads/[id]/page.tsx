@@ -77,6 +77,7 @@ export default function LeadDetailPage() {
   const [editedWebsite, setEditedWebsite] = useState('');
   const [editedWebsiteStatus, setEditedWebsiteStatus] = useState('no_website');
   const [websiteStatusManuallyEdited, setWebsiteStatusManuallyEdited] = useState(false);
+  const [showNoWebsiteBlockedPopup, setShowNoWebsiteBlockedPopup] = useState(false);
   const [editedLeadStatus, setEditedLeadStatus] = useState('');
   const [editedBusinessTypes, setEditedBusinessTypes] = useState<string[]>([]);
   const [editedRating, setEditedRating] = useState<number | null>(null);
@@ -563,6 +564,10 @@ export default function LeadDetailPage() {
                     <select
                       value={editedWebsiteStatus}
                       onChange={(e) => {
+                        if (e.target.value === 'no_website' && editedWebsite.trim()) {
+                          setShowNoWebsiteBlockedPopup(true);
+                          return;
+                        }
                         setEditedWebsiteStatus(e.target.value);
                         setWebsiteStatusManuallyEdited(true);
                       }}
@@ -1069,6 +1074,25 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </main>
+
+      {showNoWebsiteBlockedPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="theme-surface theme-border w-full max-w-md rounded-2xl border p-6 shadow-xl">
+            <h3 className="text-lg font-semibold">Cannot Set &ldquo;No Website&rdquo;</h3>
+            <p className="theme-text-muted mt-2 text-sm">
+              This lead has a website URL on record. Remove the website URL first before setting the status to &ldquo;No Website&rdquo;.
+            </p>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowNoWebsiteBlockedPopup(false)}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
