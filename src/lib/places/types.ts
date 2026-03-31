@@ -36,6 +36,7 @@ export interface BusinessResult {
   address: string;
   lat: number;
   lng: number;
+  email?: string;
   phone?: string;
   website?: string;
   businessTypes: string[];

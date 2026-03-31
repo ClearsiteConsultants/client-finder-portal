@@ -40,6 +40,8 @@ type PendingSearch = {
   filters: NormalizedSearchFilters;
 };
 
+type SearchByOption = "location" | "business_name";
+
 function normalizeSearchFilters(params: {
   location: string;
   radius: string;
@@ -85,6 +87,7 @@ function InfoTooltip({ label, text }: InfoTooltipProps) {
 }
 
 export default function SearchForm() {
+  const [searchBy, setSearchBy] = useState<SearchByOption>("location");
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState("5000");
   const [businessType, setBusinessType] = useState("");
@@ -99,6 +102,10 @@ export default function SearchForm() {
   const [lastSearchSnapshot, setLastSearchSnapshot] = useState<LastSearchSnapshot | null>(null);
   const [showRepeatWarning, setShowRepeatWarning] = useState(false);
   const [pendingSearch, setPendingSearch] = useState<PendingSearch | null>(null);
+
+  const locationLabel = searchBy === "location" ? "Location" : "Business Name";
+  const locationPlaceholder =
+    searchBy === "location" ? "City, ZIP code, or address" : "Business name";
 
   useEffect(() => {
     let isMounted = true;
@@ -184,6 +191,15 @@ export default function SearchForm() {
           data.reachedEndOfResults === true ||
           responseResults.length < normalizedFilters.maxBusinesses,
       });
+
+      // Fire-and-forget: kick off background validation/scraping for newly
+      // discovered leads so website status and emails are populated without
+      // blocking the search UI.
+      fetch("/api/jobs/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ maxJobs: 100 }),
+      }).catch(() => {});
 
       const metrics = data.metrics || {
         geocodeCalls: 0,
@@ -300,17 +316,36 @@ export default function SearchForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
+              htmlFor="searchBy"
+              className="theme-text-muted block text-sm font-medium"
+            >
+              Search By
+            </label>
+            <select
+              id="searchBy"
+              value={searchBy}
+              onChange={(e) => setSearchBy(e.target.value as SearchByOption)}
+              onKeyDown={handleSelectEnterKeyDown}
+              className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="location">Location</option>
+              <option value="business_name">Business Name</option>
+            </select>
+          </div>
+
+          <div>
+            <label
               htmlFor="location"
               className="theme-text-muted block text-sm font-medium"
             >
-              Location
+              {locationLabel}
             </label>
             <input
               type="text"
               id="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="City, ZIP code, or address"
+              placeholder={locationPlaceholder}
               required
               className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />

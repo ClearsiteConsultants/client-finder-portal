@@ -98,6 +98,8 @@ export function isValidEmail(email: string): boolean {
     return false;
   }
 
+  const [, domain = ''] = email.split('@');
+
   // Filter out common false positives
   const invalidPatterns = [
     /\.(png|jpg|jpeg|gif|svg|css|js|woff|ttf|eot)@/i, // File extensions before @
@@ -110,6 +112,11 @@ export function isValidEmail(email: string): boolean {
     if (pattern.test(email)) {
       return false;
     }
+  }
+
+  // Reject values that are usually image/font/script asset references, not real domains.
+  if (/\.(png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|ttf|eot)$/i.test(domain)) {
+    return false;
   }
 
   return true;
@@ -212,22 +219,35 @@ function extractContactLinks(html: string, baseUrl: string): string[] {
   const links: string[] = [];
   const linkRegex = /href=["']([^"']+)["']/gi;
   let match;
+  let baseOrigin = '';
+
+  try {
+    baseOrigin = new URL(baseUrl).origin;
+  } catch {
+    return links;
+  }
 
   while ((match = linkRegex.exec(html)) !== null) {
     const href = match[1];
     
-    // Skip external links, anchors, and javascript
-    if (href.startsWith('http') || href.startsWith('#') || href.startsWith('javascript:')) {
+    // Skip anchors and javascript pseudo-links.
+    if (href.startsWith('#') || href.startsWith('javascript:')) {
       continue;
     }
 
     try {
       const fullUrl = new URL(href, baseUrl).href;
-      const path = new URL(fullUrl).pathname.toLowerCase();
+      const parsed = new URL(fullUrl);
+      const path = parsed.pathname.toLowerCase();
+
+      // Keep only same-origin pages (ignore external domains).
+      if (parsed.origin !== baseOrigin) {
+        continue;
+      }
       
       // Check if path looks like a contact page
       if (CONTACT_PATHS.some(cp => path.includes(cp))) {
-        links.push(fullUrl);
+        links.push(parsed.href);
       }
     } catch {
       // Invalid URL, skip
@@ -294,7 +314,13 @@ export async function scrapeEmailsFromWebsite(
       }
 
       // Extract potential contact pages
-      const contactLinks = extractContactLinks(mainHtml, url);
+      const contactLinks = new Set(extractContactLinks(mainHtml, url));
+
+      // Also probe common contact paths even if not explicitly linked.
+      const baseOrigin = new URL(url).origin;
+      for (const path of CONTACT_PATHS) {
+        contactLinks.add(new URL(path, baseOrigin).href);
+      }
       
       // Visit contact pages (up to maxPages limit)
       for (const link of contactLinks) {

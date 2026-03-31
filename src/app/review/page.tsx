@@ -572,7 +572,18 @@ export default function ReviewQueuePage() {
                     <td className="px-4 py-3">{lead.smallBusinessScore || 'N/A'}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        {lead.hasEmail && <span className="theme-badge-info inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium">✉️</span>}
+                        {lead.hasEmail && (
+                          <span
+                            title="Has email"
+                            aria-label="Has email"
+                            className="theme-badge-info inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium"
+                          >
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5v-9Z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m3.5 7 8.1 6.05a.75.75 0 0 0 .9 0L20.5 7" />
+                            </svg>
+                          </span>
+                        )}
                         {lead.hasPhone && <span className="theme-badge-success inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium">📞</span>}
                         {lead.hasSocial && <span className="theme-badge-accent inline-flex items-center rounded-md border border-white/10 px-2 py-1 text-xs font-medium">📱</span>}
                       </div>

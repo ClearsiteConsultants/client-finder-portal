@@ -25,6 +25,7 @@ describe('Email Scraper', () => {
 
     it('should filter out common false positives', () => {
       expect(isValidEmail('image.png@server.com')).toBe(false);
+      expect(isValidEmail('badge_56_8@2x.png')).toBe(false);
       expect(isValidEmail('style.css@cdn.com')).toBe(false);
       expect(isValidEmail('demo@company.com')).toBe(false);
       expect(isValidEmail('test@test.com')).toBe(false);
@@ -119,6 +120,7 @@ describe('Email Scraper', () => {
         <html>
           <body>
             <a href="mailto:valid@company.com">Contact</a>
+            <p>Sprite: badge_56_8@2x.png</p>
             <p>Image: logo.png@cdn.example.com</p>
             <p>Demo: demo@company.com</p>
             <p>Valid: real.email@business.org</p>
@@ -131,6 +133,7 @@ describe('Email Scraper', () => {
       const emailAddresses = emails.map(e => e.email);
       expect(emailAddresses).toContain('valid@company.com');
       expect(emailAddresses).toContain('real.email@business.org');
+      expect(emailAddresses).not.toContain('badge_56_8@2x.png');
       expect(emailAddresses).not.toContain('logo.png@cdn.example.com');
       expect(emailAddresses).not.toContain('demo@company.com');
     });
@@ -228,6 +231,58 @@ describe('Email Scraper', () => {
   });
 
   describe('scrapeEmailsFromWebsite', () => {
+    it('should scrape email from absolute same-origin contact link', async () => {
+      const originalFetch = global.fetch;
+
+      const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString();
+
+        if (url === 'https://example.com/robots.txt') {
+          return {
+            ok: true,
+            text: async () => 'User-agent: *\nAllow: /',
+            headers: { get: () => 'text/plain' },
+          } as unknown as Response;
+        }
+
+        if (url === 'https://example.com') {
+          return {
+            ok: true,
+            text: async () => '<a href="https://example.com/contact">Contact</a>',
+            headers: { get: () => 'text/html; charset=utf-8' },
+          } as unknown as Response;
+        }
+
+        if (url === 'https://example.com/contact') {
+          return {
+            ok: true,
+            text: async () => '<p>Email: hello@example.com</p>',
+            headers: { get: () => 'text/html; charset=utf-8' },
+          } as unknown as Response;
+        }
+
+        return {
+          ok: false,
+          text: async () => '',
+          headers: { get: () => 'text/plain' },
+        } as unknown as Response;
+      });
+
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      try {
+        const result = await scrapeEmailsFromWebsite('https://example.com', {
+          maxPages: 5,
+          respectRobotsTxt: true,
+        });
+
+        const addresses = result.emails.map((e) => e.email);
+        expect(addresses).toContain('hello@example.com');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
     it('should return empty results for invalid URLs', async () => {
       const result = await scrapeEmailsFromWebsite('invalid-url');
       

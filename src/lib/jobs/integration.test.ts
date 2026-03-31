@@ -7,6 +7,7 @@ import { JobQueueService } from './queue-service';
 import { JobProcessor } from './processor';
 import { prisma } from '../prisma';
 import { ValidationJobType } from '@prisma/client';
+import { validateWebsite } from '../validation/website-validator';
 
 // Mock the validation and scraping functions
 jest.mock('../validation/website-validator', () => ({
@@ -229,5 +230,45 @@ describe('Job Queue Integration', () => {
 
     expect(jobIds).toHaveLength(3);
     expect(prisma.validationJob.create).toHaveBeenCalledTimes(3);
+  });
+
+  it('enqueues email scraping after validation for any website', async () => {
+    const mockBusiness = {
+      id: mockBusinessId,
+      name: 'Test Business',
+      website: 'https://example.com',
+      websiteStatus: 'technical_issues' as const,
+    };
+
+    (validateWebsite as jest.Mock).mockResolvedValueOnce({
+      status: 'broken',
+      responseCode: 500,
+      loadTimeMs: 2500,
+      hasSSL: true,
+      detectedIssues: ['server_error'],
+    });
+    (prisma.business.findUnique as jest.Mock).mockResolvedValue(mockBusiness);
+    (prisma.business.update as jest.Mock).mockResolvedValue({
+      ...mockBusiness,
+      websiteStatus: 'broken',
+    });
+    (prisma.validationJob.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.validationJob.create as jest.Mock).mockResolvedValue({
+      id: 'email-job-1',
+      businessId: mockBusinessId,
+      jobType: 'email_scraping',
+      status: 'queued',
+    });
+
+    const result = await processor.processJob(mockBusinessId, 'website_validation');
+
+    expect(result.success).toBe(true);
+    expect(prisma.validationJob.create).toHaveBeenCalledWith({
+      data: {
+        businessId: mockBusinessId,
+        jobType: 'email_scraping',
+        status: 'queued',
+      },
+    });
   });
 });

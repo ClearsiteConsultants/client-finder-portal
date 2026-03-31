@@ -205,10 +205,6 @@ export class PlacesService {
               });
               await this.jobQueue.enqueueJob({
                 businessId: business.id,
-                jobType: 'email_scraping',
-              });
-              await this.jobQueue.enqueueJob({
-                businessId: business.id,
                 jobType: 'social_scraping',
               });
             }

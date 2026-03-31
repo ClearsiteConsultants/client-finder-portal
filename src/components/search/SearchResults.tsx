@@ -55,6 +55,18 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                  {business.email && (
+                    <div className="theme-text-muted flex items-center gap-1.5">
+                      <span className="font-medium">Email:</span>
+                      <a
+                        href={`mailto:${business.email}`}
+                        className="text-[#be779e] hover:underline"
+                      >
+                        {business.email}
+                      </a>
+                    </div>
+                  )}
+
                   {business.phone && (
                     <div className="theme-text-muted flex items-center gap-1.5">
                       <span className="font-medium">Phone:</span>
@@ -146,7 +158,7 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
 
       <div className="theme-badge-info rounded-lg border border-white/10 p-4">
         <p className="text-sm">
-          <strong>Note:</strong> Results marked as "New Lead" have been automatically
+          <strong>Note:</strong> Results have been automatically
           added to your lead list with a status of "pending" for review.
         </p>
       </div>

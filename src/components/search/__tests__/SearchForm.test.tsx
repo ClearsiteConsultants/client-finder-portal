@@ -27,11 +27,25 @@ describe("SearchForm", () => {
   it("renders search form with all required inputs", async () => {
     await renderSearchForm();
 
+    expect(screen.getByLabelText(/search by/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/location/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/search radius/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/business type/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/max businesses per search/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /search businesses/i })).toBeInTheDocument();
+  });
+
+  it("switches the primary input label between Location and Business Name", async () => {
+    await renderSearchForm();
+
+    const searchBySelect = screen.getByLabelText(/search by/i);
+    expect(screen.getByLabelText(/^location$/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/city, zip code, or address/i)).toBeInTheDocument();
+
+    fireEvent.change(searchBySelect, { target: { value: "business_name" } });
+
+    expect(screen.getByLabelText(/business name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/business name/i)).toBeInTheDocument();
   });
 
   it("requires location to be filled", async () => {

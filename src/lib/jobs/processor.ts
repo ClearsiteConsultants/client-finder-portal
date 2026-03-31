@@ -8,6 +8,7 @@ import { validateWebsite } from '../validation/website-validator';
 import { getNonWebsiteStatus } from '../validation/website-status';
 import { scrapeEmailsFromWebsite } from '../scraping/email-scraper';
 import { scrapeSocialMediaFromWebsite } from '../scraping/social-media-scraper';
+import { JobQueueService } from './queue-service';
 
 export interface ProcessJobResult {
   success: boolean;
@@ -15,6 +16,12 @@ export interface ProcessJobResult {
 }
 
 export class JobProcessor {
+  private jobQueue: JobQueueService;
+
+  constructor() {
+    this.jobQueue = new JobQueueService();
+  }
+
   /**
    * Process a website validation job
    */
@@ -63,6 +70,11 @@ export class JobProcessor {
         data: {
           websiteStatus: result.status,
         },
+      });
+
+      await this.jobQueue.enqueueJob({
+        businessId,
+        jobType: 'email_scraping',
       });
 
       return { success: true };
