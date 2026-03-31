@@ -131,6 +131,82 @@ describe('PlacesService', () => {
         { lat: 40.7128, lng: -74.0060 },
         1000,
         undefined,
+        undefined,
+        undefined
+      );
+    });
+
+    it('uses nearby search keyword filtering for business_name mode with location and radius', async () => {
+      const mockResults: GooglePlaceResult[] = [
+        {
+          place_id: 'TEST_TEXT_1',
+          name: 'Acme Plumbing',
+          formatted_address: '123 Main St',
+        },
+      ];
+
+      mockClient.geocode.mockResolvedValue({ lat: 30.2672, lng: -97.7431 });
+      mockClient.nearbySearch.mockResolvedValue({ results: mockResults });
+      mockClient.getPlaceDetails.mockResolvedValue(mockResults[0]);
+
+      const result = await service.search(
+        {
+          searchBy: 'business_name',
+          businessName: 'Acme Plumbing',
+          location: 'Austin, TX',
+          radius: 5000,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.results).toHaveLength(1);
+      expect(mockClient.geocode).toHaveBeenCalledWith('Austin, TX');
+      expect(mockClient.nearbySearch).toHaveBeenCalledWith(
+        { lat: 30.2672, lng: -97.7431 },
+        5000,
+        undefined,
+        'Acme Plumbing',
+        undefined
+      );
+      expect(mockClient.textSearch).not.toHaveBeenCalled();
+    });
+
+    it('falls back to text search with location bias when nearby keyword search returns no results', async () => {
+      mockClient.geocode.mockResolvedValue({ lat: 30.2672, lng: -97.7431 });
+      mockClient.nearbySearch.mockResolvedValue({ results: [] });
+      mockClient.textSearch.mockResolvedValue({
+        results: [
+          {
+            place_id: 'TEST_TEXT_FALLBACK_1',
+            name: 'Acme Plumbing Co',
+            formatted_address: '200 Main St',
+          },
+        ],
+      });
+      mockClient.getPlaceDetails.mockResolvedValue({
+        place_id: 'TEST_TEXT_FALLBACK_1',
+        name: 'Acme Plumbing Co',
+        formatted_address: '200 Main St',
+      });
+
+      const result = await service.search(
+        {
+          searchBy: 'business_name',
+          businessName: 'Acme Plumbing',
+          location: 'Austin, TX',
+          radius: 5000,
+        },
+        testUserId
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.results).toHaveLength(1);
+      expect(mockClient.textSearch).toHaveBeenCalledWith(
+        'Acme Plumbing',
+        undefined,
+        { lat: 30.2672, lng: -97.7431 },
+        5000,
         undefined
       );
     });
@@ -737,6 +813,7 @@ describe('PlacesService', () => {
         { lat: 47.6062, lng: -122.3321 },
         5000,
         undefined,
+        undefined,
         'PAGE_2_TOKEN'
       );
     });
@@ -792,6 +869,7 @@ describe('PlacesService', () => {
         { lat: 47.6062, lng: -122.3321 },
         5000,
         undefined,
+        undefined,
         'TOKEN_2'
       );
       expect(mockClient.nearbySearch).toHaveBeenNthCalledWith(
@@ -799,12 +877,14 @@ describe('PlacesService', () => {
         { lat: 47.6062, lng: -122.3321 },
         5000,
         undefined,
+        undefined,
         'TOKEN_3'
       );
       expect(mockClient.nearbySearch).toHaveBeenNthCalledWith(
         4,
         { lat: 47.6062, lng: -122.3321 },
         5000,
+        undefined,
         undefined,
         'TOKEN_4'
       );

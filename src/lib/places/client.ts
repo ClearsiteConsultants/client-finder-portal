@@ -24,6 +24,7 @@ export class PlacesClient {
     location: { lat: number; lng: number },
     radius: number,
     type?: string,
+    keyword?: string,
     pageToken?: string
   ): Promise<NearbySearchResponse> {
     try {
@@ -32,6 +33,46 @@ export class PlacesClient {
           location,
           radius,
           ...(type ? { type } : {}),
+          ...(keyword ? { keyword } : {}),
+          ...(pageToken ? { pagetoken: pageToken } : {}),
+          key: this.apiKey,
+        },
+      });
+
+      if (response.data.status === 'OK' || response.data.status === 'ZERO_RESULTS') {
+        return {
+          results: (response.data.results || []) as GooglePlaceResult[],
+          nextPageToken: response.data.next_page_token,
+        };
+      }
+
+      throw this.createError(response.data.status, response.data.error_message);
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error) {
+        throw error as PlacesApiError;
+      }
+      throw this.createError('NETWORK_ERROR', String(error), error);
+    }
+  }
+
+  /**
+   * Search for places by free-text query (for business name mode)
+   */
+  async textSearch(
+    query: string,
+    type?: string,
+    locationBias?: { lat: number; lng: number },
+    radiusBias?: number,
+    pageToken?: string
+  ): Promise<NearbySearchResponse> {
+    try {
+      const effectiveQuery = type ? `${query} ${type}` : query;
+
+      const response = await this.client.textSearch({
+        params: {
+          query: effectiveQuery,
+          ...(locationBias ? { location: locationBias } : {}),
+          ...(radiusBias ? { radius: radiusBias } : {}),
           ...(pageToken ? { pagetoken: pageToken } : {}),
           key: this.apiKey,
         },

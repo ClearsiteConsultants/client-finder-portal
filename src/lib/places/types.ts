@@ -3,6 +3,8 @@
  */
 
 export interface SearchRequest {
+  searchBy?: 'location' | 'business_name'; // Controls backend query strategy
+  businessName?: string; // Required when searchBy is business_name
   location: string; // City/ZIP or "lat,lng"
   radius: number; // In meters
   businessType?: string; // Optional business type filter

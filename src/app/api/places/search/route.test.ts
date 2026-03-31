@@ -90,4 +90,84 @@ describe("POST /api/places/search", () => {
     expect(data.error).toBe('Business type "restaurant" is excluded and cannot be searched.');
     expect(mockSearch).not.toHaveBeenCalled();
   });
+
+  it("returns 400 when searchBy has an unsupported value", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "user-id" },
+    });
+    mockFindUnique.mockResolvedValueOnce({ id: "user-id" });
+
+    const request = new Request("http://localhost/api/places/search", {
+      method: "POST",
+      body: JSON.stringify({
+        searchBy: "unknown",
+        location: "84660",
+        radius: 1000,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('searchBy must be either "location" or "business_name"');
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when business_name search has empty query", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "user-id" },
+    });
+    mockFindUnique.mockResolvedValueOnce({ id: "user-id" });
+
+    const request = new Request("http://localhost/api/places/search", {
+      method: "POST",
+      body: JSON.stringify({
+        searchBy: "business_name",
+        businessName: "   ",
+        location: "Austin, TX",
+        radius: 1000,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("Business name is required");
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when business_name search has no location", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "user-id" },
+    });
+    mockFindUnique.mockResolvedValueOnce({ id: "user-id" });
+
+    const request = new Request("http://localhost/api/places/search", {
+      method: "POST",
+      body: JSON.stringify({
+        searchBy: "business_name",
+        businessName: "Acme Plumbing",
+        location: "   ",
+        radius: 1000,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("Location is required for business name searches");
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
 });

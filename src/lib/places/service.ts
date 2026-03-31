@@ -52,9 +52,10 @@ export class PlacesService {
     });
 
     try {
-      // Parse location - check if it's lat,lng or needs geocoding
-      let location: { lat: number; lng: number };
-      
+      const searchBy = request.searchBy || 'location';
+
+      // Resolve location to coordinates for both location and business_name modes.
+      let location: { lat: number; lng: number } | undefined;
       const latLngMatch = request.location.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
       if (latLngMatch) {
         location = {
@@ -62,7 +63,6 @@ export class PlacesService {
           lng: parseFloat(latLngMatch[2]),
         };
       } else {
-        // Geocode the location string (with rate limiting)
         await this.rateLimiter.throttle();
         location = await retryWithBackoff(() => this.client.geocode(request.location));
         metrics.geocodeCalls += 1;
@@ -75,10 +75,10 @@ export class PlacesService {
       const searchRun = await prisma.searchRun.create({
         data: {
           createdByUserId: userId,
-          queryText: request.businessType || null,
-          locationText: request.location,
-          lat: location.lat,
-          lng: location.lng,
+          queryText: searchBy === 'business_name' ? request.businessName || null : request.businessType || null,
+          locationText: searchBy === 'location' ? request.location : null,
+          lat: location?.lat,
+          lng: location?.lng,
           radiusMeters: request.radius,
           types: request.businessType ? [request.businessType] : [],
           status: 'started',
@@ -101,14 +101,17 @@ export class PlacesService {
           }
 
           await this.rateLimiter.throttle();
-          const nearbyResponse = await retryWithBackoff(() =>
-            this.client.nearbySearch(
-              location,
-              request.radius,
-              request.businessType,
-              nextPageToken
-            )
-          );
+          if (!location) {
+            throw new Error('Location coordinates are required for search.');
+          }
+
+          const nearbyResponse = await retryWithBackoff(() => this.client.nearbySearch(
+            location,
+            request.radius,
+            request.businessType,
+            searchBy === 'business_name' ? request.businessName : undefined,
+            nextPageToken
+          ));
           metrics.nearbySearchCalls += 1;
 
           for (const place of nearbyResponse.results) {
@@ -123,6 +126,40 @@ export class PlacesService {
 
           nextPageToken = nearbyResponse.nextPageToken;
           hasNextPage = !!nextPageToken;
+        }
+
+        if (searchBy === 'business_name' && places.length === 0) {
+          let textNextPageToken: string | undefined;
+          let hasTextNextPage = true;
+
+          while (hasTextNextPage) {
+            if (textNextPageToken) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+
+            await this.rateLimiter.throttle();
+            const textResponse = await retryWithBackoff(() => this.client.textSearch(
+              request.businessName || '',
+              request.businessType,
+              location,
+              request.radius,
+              textNextPageToken
+            ));
+            metrics.nearbySearchCalls += 1;
+
+            for (const place of textResponse.results) {
+              if (place.place_id) {
+                if (seenPlaceIds.has(place.place_id)) {
+                  continue;
+                }
+                seenPlaceIds.add(place.place_id);
+              }
+              places.push(place);
+            }
+
+            textNextPageToken = textResponse.nextPageToken;
+            hasTextNextPage = !!textNextPageToken;
+          }
         }
 
         const configuredMaxBusinesses = request.maxBusinesses;

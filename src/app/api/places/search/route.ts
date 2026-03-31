@@ -36,13 +36,35 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body: SearchRequest = await request.json();
+    const searchBy = body.searchBy || 'location';
+
+    if (searchBy !== 'location' && searchBy !== 'business_name') {
+      return NextResponse.json(
+        { error: 'searchBy must be either "location" or "business_name"' },
+        { status: 400 }
+      );
+    }
 
     // Get query parameters
     const searchParams = request.nextUrl?.searchParams ?? new URL(request.url).searchParams;
     const forceRefresh = searchParams.get('force_refresh') === 'true';
 
     // Validate required fields
-    if (!body.location) {
+    if (searchBy === 'business_name') {
+      if (!body.businessName || !body.businessName.trim()) {
+        return NextResponse.json(
+          { error: 'Business name is required' },
+          { status: 400 }
+        );
+      }
+
+      if (!body.location || !body.location.trim()) {
+        return NextResponse.json(
+          { error: 'Location is required for business name searches' },
+          { status: 400 }
+        );
+      }
+    } else if (!body.location || !body.location.trim()) {
       return NextResponse.json(
         { error: 'Location is required' },
         { status: 400 }

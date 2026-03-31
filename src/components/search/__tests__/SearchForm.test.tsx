@@ -45,6 +45,7 @@ describe("SearchForm", () => {
     fireEvent.change(searchBySelect, { target: { value: "business_name" } });
 
     expect(screen.getByLabelText(/business name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^location$/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/business name/i)).toBeInTheDocument();
   });
 
@@ -165,11 +166,63 @@ describe("SearchForm", () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            searchBy: "location",
             location: "New York, NY",
             radius: 10000,
             businessType: undefined,
             maxBusinesses: 20,
 
+          }),
+        })
+      );
+    });
+  });
+
+  it("submits business-name mode using searchBy=business_name", async () => {
+    const mockResponse = {
+      status: "success",
+      results: [],
+    };
+
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => mockResponse,
+      };
+    });
+
+    await renderSearchForm();
+
+    fireEvent.change(screen.getByLabelText(/search by/i), {
+      target: { value: "business_name" },
+    });
+    fireEvent.change(screen.getByLabelText(/business name/i), {
+      target: { value: "Acme Plumbing" },
+    });
+    fireEvent.change(screen.getByLabelText(/^location$/i), {
+      target: { value: "Austin, TX" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/places/search",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            searchBy: "business_name",
+            businessName: "Acme Plumbing",
+            location: "Austin, TX",
+            radius: 5000,
+            businessType: undefined,
+            maxBusinesses: 20,
           }),
         })
       );

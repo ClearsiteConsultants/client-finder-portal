@@ -24,6 +24,8 @@ type DebugRun = {
 };
 
 type NormalizedSearchFilters = {
+  searchBy: SearchByOption;
+  businessName: string;
   location: string;
   radius: number;
   businessType: string;
@@ -43,6 +45,8 @@ type PendingSearch = {
 type SearchByOption = "location" | "business_name";
 
 function normalizeSearchFilters(params: {
+  searchBy: SearchByOption;
+  businessName: string;
   location: string;
   radius: string;
   businessType: string;
@@ -54,6 +58,8 @@ function normalizeSearchFilters(params: {
     : 20;
 
   return {
+    searchBy: params.searchBy,
+    businessName: params.businessName.trim(),
     location: params.location.trim(),
     radius: parseInt(params.radius, 10),
     businessType: params.businessType,
@@ -63,6 +69,8 @@ function normalizeSearchFilters(params: {
 
 function hasSameSearchCriteria(a: NormalizedSearchFilters, b: NormalizedSearchFilters): boolean {
   return (
+    a.searchBy === b.searchBy &&
+    a.businessName === b.businessName &&
     a.location === b.location &&
     a.radius === b.radius &&
     a.businessType === b.businessType
@@ -88,6 +96,7 @@ function InfoTooltip({ label, text }: InfoTooltipProps) {
 
 export default function SearchForm() {
   const [searchBy, setSearchBy] = useState<SearchByOption>("location");
+  const [businessName, setBusinessName] = useState("");
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState("5000");
   const [businessType, setBusinessType] = useState("");
@@ -103,9 +112,10 @@ export default function SearchForm() {
   const [showRepeatWarning, setShowRepeatWarning] = useState(false);
   const [pendingSearch, setPendingSearch] = useState<PendingSearch | null>(null);
 
-  const locationLabel = searchBy === "location" ? "Location" : "Business Name";
-  const locationPlaceholder =
+  const primaryInputLabel = searchBy === "location" ? "Location" : "Business Name";
+  const primaryInputPlaceholder =
     searchBy === "location" ? "City, ZIP code, or address" : "Business name";
+  const primaryInputValue = searchBy === "location" ? location : businessName;
 
   useEffect(() => {
     let isMounted = true;
@@ -165,6 +175,10 @@ export default function SearchForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          searchBy: normalizedFilters.searchBy,
+          businessName: normalizedFilters.searchBy === "business_name"
+            ? normalizedFilters.businessName
+            : undefined,
           location: normalizedFilters.location,
           radius: normalizedFilters.radius,
           businessType: normalizedFilters.businessType || undefined,
@@ -234,6 +248,8 @@ export default function SearchForm() {
     e.preventDefault();
 
     const normalizedFilters = normalizeSearchFilters({
+      searchBy,
+      businessName,
       location,
       radius,
       businessType,
@@ -335,21 +351,47 @@ export default function SearchForm() {
 
           <div>
             <label
-              htmlFor="location"
+              htmlFor="primarySearchInput"
               className="theme-text-muted block text-sm font-medium"
             >
-              {locationLabel}
+              {primaryInputLabel}
             </label>
             <input
               type="text"
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder={locationPlaceholder}
+              id="primarySearchInput"
+              value={primaryInputValue}
+              onChange={(e) => {
+                if (searchBy === "location") {
+                  setLocation(e.target.value);
+                  return;
+                }
+                setBusinessName(e.target.value);
+              }}
+              placeholder={primaryInputPlaceholder}
               required
               className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
+
+          {searchBy === "business_name" && (
+            <div>
+              <label
+                htmlFor="location"
+                className="theme-text-muted block text-sm font-medium"
+              >
+                Location
+              </label>
+              <input
+                type="text"
+                id="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="City, ZIP code, or address"
+                required
+                className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           <div>
             <label

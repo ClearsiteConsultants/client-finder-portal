@@ -12,18 +12,26 @@ export const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 /**
  * Generate a unique cache key for a search request
  */
-export function generateCacheKey(request: SearchRequest, location: { lat: number; lng: number }): string {
+export function generateCacheKey(
+  request: SearchRequest,
+  location?: { lat: number; lng: number }
+): string {
   // Normalize inputs for consistent cache keys
-  const lat = location.lat.toFixed(6); // ~11cm precision
-  const lng = location.lng.toFixed(6);
+  const searchBy = request.searchBy || 'location';
+  const lat = location ? location.lat.toFixed(6) : '';
+  const lng = location ? location.lng.toFixed(6) : '';
   const radius = request.radius;
+  const query = (searchBy === 'business_name'
+    ? request.businessName || ''
+    : request.location
+  ).toLowerCase().trim();
   const type = (request.businessType || '').toLowerCase().trim();
   const maxBusinesses = Number.isInteger(request.maxBusinesses)
     ? Math.max(1, Math.min(20, request.maxBusinesses as number))
     : 20;
   
   // Create deterministic hash
-  const key = `${lat}:${lng}:${radius}:${type}:${maxBusinesses}`;
+  const key = `${searchBy}:${query}:${lat}:${lng}:${radius}:${type}:${maxBusinesses}`;
   return crypto.createHash('sha256').update(key).digest('hex');
 }
 

@@ -10,7 +10,7 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+const mockAuth = auth as unknown as jest.Mock;
 
 describe('Exclusions API', () => {
   const mockUserId = '11111111-1111-1111-1111-111111111111';
