@@ -44,6 +44,21 @@ type PendingSearch = {
 
 type SearchByOption = "location" | "business_name";
 
+const SEARCH_REQUEST_TIMEOUT_MS = 45000;
+
+type SearchDebugSnapshot = {
+  payload: {
+    searchBy: SearchByOption;
+    businessName: string | undefined;
+    location: string;
+    radius: number;
+    businessTypes: string[] | undefined;
+    maxBusinesses: number;
+  };
+  durationMs: number;
+  outcome: "success" | "error";
+};
+
 function normalizeSearchFilters(params: {
   searchBy: SearchByOption;
   businessName: string;
@@ -109,12 +124,14 @@ export default function SearchForm() {
   const [hasSearched, setHasSearched] = useState(false);
   const [latestMetrics, setLatestMetrics] = useState<SearchMetrics | null>(null);
   const [debugHistory, setDebugHistory] = useState<DebugRun[]>([]);
+  const [lastSearchDebugSnapshot, setLastSearchDebugSnapshot] = useState<SearchDebugSnapshot | null>(null);
   const [lastSearchSnapshot, setLastSearchSnapshot] = useState<LastSearchSnapshot | null>(null);
   const [showRepeatWarning, setShowRepeatWarning] = useState(false);
   const [pendingSearch, setPendingSearch] = useState<PendingSearch | null>(null);
   const [isBusinessTypeDropdownOpen, setIsBusinessTypeDropdownOpen] = useState(false);
   const hasInitializedBusinessTypesFromOptions = useRef(false);
   const businessTypeDropdownRef = useRef<HTMLDivElement | null>(null);
+  const businessTypeToggleButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const primaryInputLabel = searchBy === "location" ? "Location" : "Business Name";
   const primaryInputPlaceholder =
@@ -203,25 +220,41 @@ export default function SearchForm() {
     setIsSearching(true);
     setHasSearched(true);
 
+    const searchPayload = {
+      searchBy: normalizedFilters.searchBy,
+      businessName: normalizedFilters.searchBy === "business_name"
+        ? normalizedFilters.businessName
+        : undefined,
+      location: normalizedFilters.location,
+      radius: normalizedFilters.radius,
+      businessTypes: normalizedFilters.businessTypes.length > 0
+        ? normalizedFilters.businessTypes
+        : undefined,
+      maxBusinesses: normalizedFilters.maxBusinesses,
+    };
+    const requestStartMs =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+
     try {
-      const response = await fetch("/api/places/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          searchBy: normalizedFilters.searchBy,
-          businessName: normalizedFilters.searchBy === "business_name"
-            ? normalizedFilters.businessName
-            : undefined,
-          location: normalizedFilters.location,
-          radius: normalizedFilters.radius,
-          businessTypes: normalizedFilters.businessTypes.length > 0
-            ? normalizedFilters.businessTypes
-            : undefined,
-          maxBusinesses: normalizedFilters.maxBusinesses,
-        }),
-      });
+      const searchAbortController = new AbortController();
+      const searchTimeoutId = window.setTimeout(() => {
+        searchAbortController.abort();
+      }, SEARCH_REQUEST_TIMEOUT_MS);
+
+      const response = await (async () => {
+        try {
+          return await fetch("/api/places/search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: searchAbortController.signal,
+            body: JSON.stringify(searchPayload),
+          });
+        } finally {
+          window.clearTimeout(searchTimeoutId);
+        }
+      })();
 
       const data: SearchResponse = await response.json();
 
@@ -263,6 +296,12 @@ export default function SearchForm() {
       };
 
       if (process.env.NODE_ENV !== 'production') {
+        setLastSearchDebugSnapshot({
+          payload: searchPayload,
+          durationMs: Math.round(performance.now() - requestStartMs),
+          outcome: "success",
+        });
+
         setLatestMetrics(metrics);
         setDebugHistory((prev) => [
           {
@@ -274,6 +313,32 @@ export default function SearchForm() {
         ].slice(0, 10));
       }
     } catch (err) {
+      const requestEndMs =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      const durationMs = Math.max(0, Math.round(requestEndMs - requestStartMs));
+
+      if (err instanceof DOMException && err.name === "AbortError") {
+        if (process.env.NODE_ENV !== 'production') {
+          setLastSearchDebugSnapshot({
+            payload: searchPayload,
+            durationMs,
+            outcome: "error",
+          });
+        }
+
+        setError("Search timed out. Please narrow the filters and try again.");
+        setResults([]);
+        return;
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        setLastSearchDebugSnapshot({
+          payload: searchPayload,
+          durationMs,
+          outcome: "error",
+        });
+      }
+
       setError(err instanceof Error ? err.message : "An error occurred");
       setResults([]);
     } finally {
@@ -284,12 +349,16 @@ export default function SearchForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const businessTypesForSearch = allBusinessTypesChecked
+      ? []
+      : businessTypes;
+
     const normalizedFilters = normalizeSearchFilters({
       searchBy,
       businessName,
       location,
       radius,
-      businessTypes,
+      businessTypes: businessTypesForSearch,
       maxBusinesses,
     });
 
@@ -344,6 +413,43 @@ export default function SearchForm() {
     selectElement.click();
   };
 
+  const handleBusinessTypeCheckboxEnterKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+
+      const inputs = Array.from(
+        businessTypeDropdownRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') || []
+      );
+      const currentIndex = inputs.indexOf(event.currentTarget);
+      if (currentIndex === -1 || inputs.length === 0) {
+        return;
+      }
+
+      const nextIndex = event.key === "ArrowDown"
+        ? (currentIndex + 1) % inputs.length
+        : (currentIndex - 1 + inputs.length) % inputs.length;
+      inputs[nextIndex]?.focus();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsBusinessTypeDropdownOpen(false);
+      businessTypeToggleButtonRef.current?.focus();
+      return;
+    }
+
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    // Keep Enter scoped to toggling the focused option instead of submitting the form.
+    event.preventDefault();
+    event.currentTarget.click();
+  };
+
   useEffect(() => {
     if (!showRepeatWarning) {
       return;
@@ -380,8 +486,19 @@ export default function SearchForm() {
 
     document.addEventListener("mousedown", handlePointerDown);
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsBusinessTypeDropdownOpen(false);
+        businessTypeToggleButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isBusinessTypeDropdownOpen]);
 
@@ -485,6 +602,7 @@ export default function SearchForm() {
                   type="button"
                   aria-label="Business Type"
                   aria-expanded={isBusinessTypeDropdownOpen}
+                  ref={businessTypeToggleButtonRef}
                   onClick={() => setIsBusinessTypeDropdownOpen((open) => !open)}
                   className="theme-input flex w-full max-w-full items-center justify-between overflow-hidden rounded-lg border px-3 py-2 text-left focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
@@ -502,6 +620,7 @@ export default function SearchForm() {
                       <input
                         type="checkbox"
                         checked={allBusinessTypesSelected}
+                        onKeyDown={handleBusinessTypeCheckboxEnterKeyDown}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setAllBusinessTypesChecked(true);
@@ -521,6 +640,7 @@ export default function SearchForm() {
                             <input
                               type="checkbox"
                               checked={checked}
+                              onKeyDown={handleBusinessTypeCheckboxEnterKeyDown}
                               onChange={(e) => {
                                 if (e.target.checked) {
                                   setBusinessTypes((currentTypes) => {
@@ -610,6 +730,20 @@ export default function SearchForm() {
                 <div className="theme-text-muted">Place Details</div>
                 <div className="font-semibold">{latestMetrics.placeDetailsCalls}</div>
               </div>
+            </div>
+          )}
+
+          {lastSearchDebugSnapshot && (
+            <div className="theme-surface theme-border mt-4 rounded border p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h4 className="text-xs font-semibold">Last Search Request</h4>
+                <span className="theme-text-muted text-xs">
+                  {lastSearchDebugSnapshot.outcome} in {lastSearchDebugSnapshot.durationMs}ms
+                </span>
+              </div>
+              <pre className="theme-text-muted overflow-x-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed">
+                {JSON.stringify(lastSearchDebugSnapshot.payload, null, 2)}
+              </pre>
             </div>
           )}
 
