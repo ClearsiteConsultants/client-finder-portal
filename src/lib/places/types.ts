@@ -8,6 +8,7 @@ export interface SearchRequest {
   location: string; // City/ZIP or "lat,lng"
   radius: number; // In meters
   businessType?: string; // Optional business type filter
+  businessTypes?: string[]; // Optional multi-select business type filters
   maxBusinesses?: number; // Max number of businesses to process per search
 }
 

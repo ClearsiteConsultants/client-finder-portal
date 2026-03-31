@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SearchResults } from "./SearchResults";
 import type { BusinessResult, SearchMetrics, SearchResponse } from "@/lib/places/types";
 import {
@@ -28,7 +28,7 @@ type NormalizedSearchFilters = {
   businessName: string;
   location: string;
   radius: number;
-  businessType: string;
+  businessTypes: string[];
   maxBusinesses: number;
 };
 
@@ -49,7 +49,7 @@ function normalizeSearchFilters(params: {
   businessName: string;
   location: string;
   radius: string;
-  businessType: string;
+  businessTypes: string[];
   maxBusinesses: string;
 }): NormalizedSearchFilters {
   const parsedMaxBusinesses = Number.parseInt(params.maxBusinesses, 10);
@@ -62,7 +62,7 @@ function normalizeSearchFilters(params: {
     businessName: params.businessName.trim(),
     location: params.location.trim(),
     radius: parseInt(params.radius, 10),
-    businessType: params.businessType,
+    businessTypes: params.businessTypes,
     maxBusinesses: safeMaxBusinesses,
   };
 }
@@ -73,7 +73,7 @@ function hasSameSearchCriteria(a: NormalizedSearchFilters, b: NormalizedSearchFi
     a.businessName === b.businessName &&
     a.location === b.location &&
     a.radius === b.radius &&
-    a.businessType === b.businessType
+    [...a.businessTypes].sort().join(',') === [...b.businessTypes].sort().join(',')
   );
 }
 
@@ -99,7 +99,8 @@ export default function SearchForm() {
   const [businessName, setBusinessName] = useState("");
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState("5000");
-  const [businessType, setBusinessType] = useState("");
+  const [businessTypes, setBusinessTypes] = useState<string[]>([]);
+  const [allBusinessTypesChecked, setAllBusinessTypesChecked] = useState(true);
   const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>(GOOGLE_PLACES_BUSINESS_TYPES);
   const [maxBusinesses, setMaxBusinesses] = useState("20");
   const [isSearching, setIsSearching] = useState(false);
@@ -111,11 +112,28 @@ export default function SearchForm() {
   const [lastSearchSnapshot, setLastSearchSnapshot] = useState<LastSearchSnapshot | null>(null);
   const [showRepeatWarning, setShowRepeatWarning] = useState(false);
   const [pendingSearch, setPendingSearch] = useState<PendingSearch | null>(null);
+  const [isBusinessTypeDropdownOpen, setIsBusinessTypeDropdownOpen] = useState(false);
+  const hasInitializedBusinessTypesFromOptions = useRef(false);
+  const businessTypeDropdownRef = useRef<HTMLDivElement | null>(null);
 
   const primaryInputLabel = searchBy === "location" ? "Location" : "Business Name";
   const primaryInputPlaceholder =
     searchBy === "location" ? "City, ZIP code, or address" : "Business name";
   const primaryInputValue = searchBy === "location" ? location : businessName;
+  const selectedBusinessTypes = businessTypeOptions
+    .filter((type) => businessTypes.includes(type));
+  const allBusinessTypesSelected = allBusinessTypesChecked;
+  const selectedBusinessTypeLabels = selectedBusinessTypes
+    .map((type) => formatGooglePlaceTypeLabel(type));
+  const businessTypeSummary = allBusinessTypesSelected
+    ? "All"
+    : selectedBusinessTypeLabels.length > 0
+      ? selectedBusinessTypeLabels.join(", ")
+      : "None selected";
+  const businessTypeSummaryDisplay =
+    businessTypeSummary.length > 72
+      ? `${businessTypeSummary.slice(0, 69)}...`
+      : businessTypeSummary;
 
   useEffect(() => {
     let isMounted = true;
@@ -131,10 +149,16 @@ export default function SearchForm() {
 
         const data: { businessTypes?: string[] } = await response.json();
         if (isMounted && Array.isArray(data.businessTypes)) {
-          setBusinessTypeOptions(data.businessTypes);
-          setBusinessType((currentValue) => (
-            currentValue && !data.businessTypes?.includes(currentValue) ? "" : currentValue
-          ));
+          const loadedBusinessTypes = data.businessTypes;
+          setBusinessTypeOptions(loadedBusinessTypes);
+          setBusinessTypes((currentValues) => {
+            if (!hasInitializedBusinessTypesFromOptions.current) {
+              hasInitializedBusinessTypesFromOptions.current = true;
+              return [...loadedBusinessTypes];
+            }
+
+            return currentValues.filter((type) => loadedBusinessTypes.includes(type));
+          });
         }
       } catch {
         // Keep static defaults when dynamic loading fails.
@@ -163,6 +187,17 @@ export default function SearchForm() {
     };
   }, []);
 
+  useEffect(() => {
+    if (allBusinessTypesChecked) {
+      setBusinessTypes([...businessTypeOptions]);
+      return;
+    }
+
+    setBusinessTypes((currentValues) =>
+      currentValues.filter((type) => businessTypeOptions.includes(type))
+    );
+  }, [allBusinessTypesChecked, businessTypeOptions]);
+
   const executeSearch = async (normalizedFilters: NormalizedSearchFilters) => {
     setError(null);
     setIsSearching(true);
@@ -181,7 +216,9 @@ export default function SearchForm() {
             : undefined,
           location: normalizedFilters.location,
           radius: normalizedFilters.radius,
-          businessType: normalizedFilters.businessType || undefined,
+          businessTypes: normalizedFilters.businessTypes.length > 0
+            ? normalizedFilters.businessTypes
+            : undefined,
           maxBusinesses: normalizedFilters.maxBusinesses,
         }),
       });
@@ -252,7 +289,7 @@ export default function SearchForm() {
       businessName,
       location,
       radius,
-      businessType,
+      businessTypes,
       maxBusinesses,
     });
 
@@ -325,6 +362,28 @@ export default function SearchForm() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [showRepeatWarning]);
+
+  useEffect(() => {
+    if (!isBusinessTypeDropdownOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!businessTypeDropdownRef.current) {
+        return;
+      }
+
+      if (!businessTypeDropdownRef.current.contains(event.target as Node)) {
+        setIsBusinessTypeDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [isBusinessTypeDropdownOpen]);
 
   return (
     <div className="space-y-8">
@@ -417,26 +476,76 @@ export default function SearchForm() {
           </div>
 
           <div>
-            <label
-              htmlFor="businessType"
-              className="theme-text-muted block text-sm font-medium"
-            >
-              Business Type
-            </label>
-            <select
-              id="businessType"
-              value={businessType}
-              onChange={(e) => setBusinessType(e.target.value)}
-              onKeyDown={handleSelectEnterKeyDown}
-              className="theme-input mt-1 block w-full rounded-lg border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">All Business Types</option>
-              {businessTypeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {formatGooglePlaceTypeLabel(type)}
-                </option>
-              ))}
-            </select>
+            <fieldset>
+              <legend className="theme-text-muted block text-sm font-medium">
+                Business Type
+              </legend>
+              <div className="mt-1" ref={businessTypeDropdownRef}>
+                <button
+                  type="button"
+                  aria-label="Business Type"
+                  aria-expanded={isBusinessTypeDropdownOpen}
+                  onClick={() => setIsBusinessTypeDropdownOpen((open) => !open)}
+                  className="theme-input flex w-full max-w-full items-center justify-between overflow-hidden rounded-lg border px-3 py-2 text-left focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <span className="min-w-0 flex-1 truncate" title={businessTypeSummary}>
+                    {businessTypeSummaryDisplay}
+                  </span>
+                  <span className="theme-text-muted ml-2 shrink-0 text-xs">
+                    {isBusinessTypeDropdownOpen ? "▲" : "▼"}
+                  </span>
+                </button>
+
+                {isBusinessTypeDropdownOpen && (
+                  <div className="theme-input mt-0 max-w-full space-y-1 overflow-x-hidden rounded-lg border px-3 py-2">
+                    <label className="flex items-center gap-2 font-medium">
+                      <input
+                        type="checkbox"
+                        checked={allBusinessTypesSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAllBusinessTypesChecked(true);
+                            return;
+                          }
+                          setAllBusinessTypesChecked(false);
+                          setBusinessTypes([]);
+                        }}
+                      />
+                      <span>All</span>
+                    </label>
+                    <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                      {businessTypeOptions.map((type) => {
+                        const checked = businessTypes.includes(type);
+                        return (
+                          <label key={type} className="flex min-w-0 items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setBusinessTypes((currentTypes) => {
+                                    const nextTypes = Array.from(new Set([...currentTypes, type]));
+                                    setAllBusinessTypesChecked(nextTypes.length === businessTypeOptions.length);
+                                    return nextTypes;
+                                  });
+                                  return;
+                                }
+
+                                setAllBusinessTypesChecked(false);
+                                setBusinessTypes((currentTypes) =>
+                                  currentTypes.filter((currentType) => currentType !== type)
+                                );
+                              }}
+                            />
+                            <span className="min-w-0 break-words">{formatGooglePlaceTypeLabel(type)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </fieldset>
           </div>
 
           <div>

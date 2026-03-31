@@ -25,7 +25,13 @@ export function generateCacheKey(
     ? request.businessName || ''
     : request.location
   ).toLowerCase().trim();
-  const type = (request.businessType || '').toLowerCase().trim();
+  const normalizedTypes = Array.from(new Set([
+    ...(Array.isArray(request.businessTypes) ? request.businessTypes : []),
+    ...(request.businessType ? [request.businessType] : []),
+  ]
+    .map((type) => type.toLowerCase().trim())
+    .filter((type) => type.length > 0))).sort();
+  const type = normalizedTypes.join(',');
   const maxBusinesses = Number.isInteger(request.maxBusinesses)
     ? Math.max(1, Math.min(20, request.maxBusinesses as number))
     : 20;

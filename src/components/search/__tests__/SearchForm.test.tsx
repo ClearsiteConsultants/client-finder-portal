@@ -10,8 +10,18 @@ async function renderSearchForm() {
 
   // Wait for async business-type bootstrap to settle to avoid act warnings.
   await waitFor(() => {
-    const businessTypeSelect = screen.getByLabelText(/business type/i) as HTMLSelectElement;
-    expect(businessTypeSelect.options.length).toBeLessThan(20);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/places/business-types?forSearch=true",
+      expect.objectContaining({ cache: "no-store" })
+    );
+  });
+}
+
+async function openBusinessTypeDropdown() {
+  const toggleButton = screen.getByRole("button", { name: /business type/i });
+  fireEvent.click(toggleButton);
+  await waitFor(() => {
+    expect(toggleButton).toHaveAttribute("aria-expanded", "true");
   });
 }
 
@@ -30,7 +40,8 @@ describe("SearchForm", () => {
     expect(screen.getByLabelText(/search by/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/location/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/search radius/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/business type/i)).toBeInTheDocument();
+    expect(screen.getByText(/^business type$/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /business type/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/max businesses per search/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /search businesses/i })).toBeInTheDocument();
   });
@@ -85,20 +96,17 @@ describe("SearchForm", () => {
     clickSpy.mockRestore();
   });
 
-  it("opens business type dropdown on Enter without submitting", async () => {
+  it("toggles business type checkbox without submitting", async () => {
     await renderSearchForm();
+    await openBusinessTypeDropdown();
 
-    const businessTypeSelect = screen.getByLabelText(/business type/i) as HTMLSelectElement;
-    const clickSpy = jest.spyOn(businessTypeSelect, "click").mockImplementation(() => undefined);
+    (global.fetch as jest.Mock).mockClear();
+    const selectAllCheckbox = screen.getByLabelText(/^all$/i) as HTMLInputElement;
+    fireEvent.click(selectAllCheckbox);
 
-    fireEvent.keyDown(businessTypeSelect, { key: "Enter" });
-
-    expect(clickSpy).toHaveBeenCalledTimes(1);
     const fetchCalls = (global.fetch as jest.Mock).mock.calls;
     const searchCall = fetchCalls.find(([url]) => url === "/api/places/search");
     expect(searchCall).toBeUndefined();
-
-    clickSpy.mockRestore();
   });
 
   it("rejects invalid location (empty string)", async () => {
@@ -169,7 +177,7 @@ describe("SearchForm", () => {
             searchBy: "location",
             location: "New York, NY",
             radius: 10000,
-            businessType: undefined,
+            businessTypes: undefined,
             maxBusinesses: 20,
 
           }),
@@ -221,7 +229,7 @@ describe("SearchForm", () => {
             businessName: "Acme Plumbing",
             location: "Austin, TX",
             radius: 5000,
-            businessType: undefined,
+            businessTypes: undefined,
             maxBusinesses: 20,
           }),
         })
@@ -335,14 +343,15 @@ describe("SearchForm", () => {
     });
 
     await renderSearchForm();
+    await openBusinessTypeDropdown();
 
     await waitFor(() => {
-      expect(screen.getByRole("option", { name: "Doctor" })).toBeInTheDocument();
-      expect(screen.queryByRole("option", { name: "Restaurant" })).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Doctor")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Restaurant")).not.toBeInTheDocument();
     });
   });
 
-  it("refreshes the search dropdown when business type exclusions are updated", async () => {
+  it("refreshes the business type checkboxes when exclusions are updated", async () => {
     let businessTypeFetchCount = 0;
 
     (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
@@ -366,23 +375,113 @@ describe("SearchForm", () => {
     });
 
     await renderSearchForm();
-
-    const businessTypeSelect = screen.getByLabelText(/business type/i) as HTMLSelectElement;
+    await openBusinessTypeDropdown();
 
     await waitFor(() => {
-      expect(screen.getByRole("option", { name: "Restaurant" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Restaurant")).toBeInTheDocument();
     });
 
-    fireEvent.change(businessTypeSelect, { target: { value: "restaurant" } });
-    expect(businessTypeSelect.value).toBe("restaurant");
+    const restaurantCheckbox = screen.getByLabelText("Restaurant") as HTMLInputElement;
+    expect(restaurantCheckbox.checked).toBe(true);
 
     window.dispatchEvent(new CustomEvent(BUSINESS_TYPE_OPTIONS_UPDATED_EVENT));
 
     await waitFor(() => {
-      expect(businessTypeSelect.value).toBe("");
-      expect(screen.queryByRole("option", { name: "Restaurant" })).not.toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "Doctor" })).toBeInTheDocument();
+      expect(screen.queryByLabelText("Restaurant")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Doctor")).toBeInTheDocument();
     });
+  });
+
+  it("submits multiple selected business types", async () => {
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: ["doctor", "restaurant", "plumber"] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ status: "success", results: [] }),
+      };
+    });
+
+    await renderSearchForm();
+    await openBusinessTypeDropdown();
+
+    fireEvent.change(screen.getByLabelText(/location/i), { target: { value: "Seattle" } });
+    fireEvent.click(screen.getByLabelText(/^all$/i));
+    fireEvent.click(screen.getByLabelText("Doctor"));
+    fireEvent.click(screen.getByLabelText("Restaurant"));
+
+    fireEvent.click(screen.getByRole("button", { name: /search businesses/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/places/search",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            searchBy: "location",
+            businessName: undefined,
+            location: "Seattle",
+            radius: 5000,
+            businessTypes: ["doctor", "restaurant"],
+            maxBusinesses: 20,
+          }),
+        })
+      );
+    });
+  });
+
+  it("selects all business types when the select-all checkbox is checked", async () => {
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: ["doctor", "restaurant"] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ status: "success", results: [] }),
+      };
+    });
+
+    await renderSearchForm();
+    await openBusinessTypeDropdown();
+
+    const selectAllCheckbox = screen.getByLabelText(/^all$/i) as HTMLInputElement;
+    fireEvent.click(selectAllCheckbox);
+    expect(selectAllCheckbox.checked).toBe(false);
+
+    fireEvent.click(selectAllCheckbox);
+
+    expect((screen.getByLabelText("Doctor") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Restaurant") as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("shows selected business types summary when dropdown is collapsed", async () => {
+    (global.fetch as jest.Mock).mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).startsWith("/api/places/business-types")) {
+        return {
+          ok: true,
+          json: async () => ({ businessTypes: ["doctor", "restaurant"] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ status: "success", results: [] }),
+      };
+    });
+
+    await renderSearchForm();
+    const toggleButton = screen.getByRole("button", { name: /business type/i });
+
+    expect(toggleButton).toHaveTextContent("All");
   });
 
   it("shows Google Places API debug metrics after a successful search", async () => {

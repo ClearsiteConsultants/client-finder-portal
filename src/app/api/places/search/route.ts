@@ -37,6 +37,12 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body: SearchRequest = await request.json();
     const searchBy = body.searchBy || 'location';
+    const normalizedBusinessTypes = Array.from(new Set([
+      ...(Array.isArray(body.businessTypes) ? body.businessTypes : []),
+      ...(body.businessType ? [body.businessType] : []),
+    ]
+      .map((type) => type.trim())
+      .filter((type) => type.length > 0)));
 
     if (searchBy !== 'location' && searchBy !== 'business_name') {
       return NextResponse.json(
@@ -95,18 +101,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (body.businessType) {
-      const exclusion = await checkBusinessTypeExclusion([body.businessType]);
+    for (const selectedType of normalizedBusinessTypes) {
+      const exclusion = await checkBusinessTypeExclusion([selectedType]);
       if (exclusion.isExcluded) {
         return NextResponse.json(
           {
-            error: `Business type "${body.businessType}" is excluded and cannot be searched.`,
+            error: `Business type "${selectedType}" is excluded and cannot be searched.`,
             status: 'error',
           },
           { status: 400 }
         );
       }
     }
+
+    body.businessTypes = normalizedBusinessTypes;
+    body.businessType = normalizedBusinessTypes[0];
 
     // Create service and execute search
     const service = new PlacesService();

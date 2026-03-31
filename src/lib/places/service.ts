@@ -53,6 +53,15 @@ export class PlacesService {
 
     try {
       const searchBy = request.searchBy || 'location';
+      const selectedTypes = Array.from(new Set([
+        ...(Array.isArray(request.businessTypes) ? request.businessTypes : []),
+        ...(request.businessType ? [request.businessType] : []),
+      ]
+        .map((type) => type.trim())
+        .filter((type) => type.length > 0)));
+      const typeFilters: Array<string | undefined> = selectedTypes.length > 0
+        ? selectedTypes
+        : [undefined];
 
       // Resolve location to coordinates for both location and business_name modes.
       let location: { lat: number; lng: number } | undefined;
@@ -75,12 +84,16 @@ export class PlacesService {
       const searchRun = await prisma.searchRun.create({
         data: {
           createdByUserId: userId,
-          queryText: searchBy === 'business_name' ? request.businessName || null : request.businessType || null,
+          queryText: searchBy === 'business_name'
+            ? request.businessName || null
+            : selectedTypes.length > 0
+              ? selectedTypes.join(',')
+              : null,
           locationText: searchBy === 'location' ? request.location : null,
           lat: location?.lat,
           lng: location?.lng,
           radiusMeters: request.radius,
-          types: request.businessType ? [request.businessType] : [],
+          types: selectedTypes,
           status: 'started',
           cacheKey,
           usedCachedResults: false,
@@ -91,63 +104,31 @@ export class PlacesService {
         // Search for places with pagination so repeated searches can still find uncached leads.
         const places: GooglePlaceResult[] = [];
         const seenPlaceIds = new Set<string>();
-        let nextPageToken: string | undefined;
-        let hasNextPage = true;
-
-        while (hasNextPage) {
-          if (nextPageToken) {
-            // Google next_page_token can require a short delay before becoming valid.
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-          }
-
-          await this.rateLimiter.throttle();
-          if (!location) {
-            throw new Error('Location coordinates are required for search.');
-          }
-
-          const nearbyResponse = await retryWithBackoff(() => this.client.nearbySearch(
-            location,
-            request.radius,
-            request.businessType,
-            searchBy === 'business_name' ? request.businessName : undefined,
-            nextPageToken
-          ));
-          metrics.nearbySearchCalls += 1;
-
-          for (const place of nearbyResponse.results) {
-            if (place.place_id) {
-              if (seenPlaceIds.has(place.place_id)) {
-                continue;
-              }
-              seenPlaceIds.add(place.place_id);
-            }
-            places.push(place);
-          }
-
-          nextPageToken = nearbyResponse.nextPageToken;
-          hasNextPage = !!nextPageToken;
+        if (!location) {
+          throw new Error('Location coordinates are required for search.');
         }
 
-        if (searchBy === 'business_name' && places.length === 0) {
-          let textNextPageToken: string | undefined;
-          let hasTextNextPage = true;
+        for (const typeFilter of typeFilters) {
+          let nextPageToken: string | undefined;
+          let hasNextPage = true;
 
-          while (hasTextNextPage) {
-            if (textNextPageToken) {
+          while (hasNextPage) {
+            if (nextPageToken) {
+              // Google next_page_token can require a short delay before becoming valid.
               await new Promise((resolve) => setTimeout(resolve, 2000));
             }
 
             await this.rateLimiter.throttle();
-            const textResponse = await retryWithBackoff(() => this.client.textSearch(
-              request.businessName || '',
-              request.businessType,
+            const nearbyResponse = await retryWithBackoff(() => this.client.nearbySearch(
               location,
               request.radius,
-              textNextPageToken
+              typeFilter,
+              searchBy === 'business_name' ? request.businessName : undefined,
+              nextPageToken
             ));
             metrics.nearbySearchCalls += 1;
 
-            for (const place of textResponse.results) {
+            for (const place of nearbyResponse.results) {
               if (place.place_id) {
                 if (seenPlaceIds.has(place.place_id)) {
                   continue;
@@ -157,8 +138,44 @@ export class PlacesService {
               places.push(place);
             }
 
-            textNextPageToken = textResponse.nextPageToken;
-            hasTextNextPage = !!textNextPageToken;
+            nextPageToken = nearbyResponse.nextPageToken;
+            hasNextPage = !!nextPageToken;
+          }
+        }
+
+        if (searchBy === 'business_name' && places.length === 0) {
+          for (const typeFilter of typeFilters) {
+            let textNextPageToken: string | undefined;
+            let hasTextNextPage = true;
+
+            while (hasTextNextPage) {
+              if (textNextPageToken) {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+              }
+
+              await this.rateLimiter.throttle();
+              const textResponse = await retryWithBackoff(() => this.client.textSearch(
+                request.businessName || '',
+                typeFilter,
+                location,
+                request.radius,
+                textNextPageToken
+              ));
+              metrics.nearbySearchCalls += 1;
+
+              for (const place of textResponse.results) {
+                if (place.place_id) {
+                  if (seenPlaceIds.has(place.place_id)) {
+                    continue;
+                  }
+                  seenPlaceIds.add(place.place_id);
+                }
+                places.push(place);
+              }
+
+              textNextPageToken = textResponse.nextPageToken;
+              hasTextNextPage = !!textNextPageToken;
+            }
           }
         }
 
