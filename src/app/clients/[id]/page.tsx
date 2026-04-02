@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -47,6 +47,8 @@ type ChecklistItem = {
   createdByUser: { name: string | null; email: string | null } | null;
 };
 
+const CHECKLIST_NOTES_MAX_LENGTH = 120;
+
 export default function ClientDetailPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -57,6 +59,11 @@ export default function ClientDetailPage() {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [navHeight, setNavHeight] = useState(0);
+  const [successBannerVisible, setSuccessBannerVisible] = useState(false);
+  const [successBannerMessage, setSuccessBannerMessage] = useState('');
+  const hideBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const removeBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form states
   const [clientStatus, setClientStatus] = useState('');
@@ -81,6 +88,60 @@ export default function ClientDetailPage() {
       fetchChecklist();
     }
   }, [status, clientId]);
+
+  useEffect(() => {
+    return () => {
+      if (hideBannerTimeoutRef.current) {
+        clearTimeout(hideBannerTimeoutRef.current);
+      }
+      if (removeBannerTimeoutRef.current) {
+        clearTimeout(removeBannerTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const navElement = document.querySelector('header');
+    if (!navElement) return;
+
+    const updateNavHeight = () => {
+      setNavHeight(navElement.getBoundingClientRect().height);
+    };
+
+    updateNavHeight();
+    window.addEventListener('resize', updateNavHeight);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateNavHeight);
+      resizeObserver.observe(navElement);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateNavHeight);
+      resizeObserver?.disconnect();
+    };
+  }, []);
+
+  const showSuccessBanner = (message: string) => {
+    if (hideBannerTimeoutRef.current) {
+      clearTimeout(hideBannerTimeoutRef.current);
+    }
+    if (removeBannerTimeoutRef.current) {
+      clearTimeout(removeBannerTimeoutRef.current);
+    }
+
+    setSuccessBannerMessage(message);
+    setSuccessBannerVisible(true);
+
+    hideBannerTimeoutRef.current = setTimeout(() => {
+      setSuccessBannerVisible(false);
+    }, 2200);
+
+    removeBannerTimeoutRef.current = setTimeout(() => {
+      setSuccessBannerVisible(false);
+    }, 2800);
+  };
 
   const fetchClient = async () => {
     try {
@@ -133,7 +194,7 @@ export default function ClientDetailPage() {
 
       const data = await response.json();
       setClient(data.client);
-      alert('Client updated successfully');
+      showSuccessBanner('Client updated successfully');
     } catch (error) {
       console.error('Error updating client:', error);
       alert('Failed to update client');
@@ -162,7 +223,7 @@ export default function ClientDetailPage() {
       setShowChecklistForm(false);
       setChecklistAction('');
       setChecklistNotes('');
-      alert('Checklist action recorded');
+      showSuccessBanner('Checklist action recorded');
     } catch (error) {
       console.error('Error recording checklist action:', error);
       alert('Failed to record checklist action');
@@ -173,6 +234,15 @@ export default function ClientDetailPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const formatChecklistOutcome = (outcome: string | null) => {
+    if (!outcome) return 'Checklist Action';
+
+    return outcome
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   if (status === 'loading' || loading) {
@@ -215,10 +285,28 @@ export default function ClientDetailPage() {
     hasSocialLinks ||
     googlePlacesUrl
   );
+  const outreachTracking = client.outreachTracking ?? [];
 
   return (
     <div className="min-h-screen">
       <TopNav />
+      <div
+        className="fixed inset-x-0 z-50 pointer-events-none"
+        style={{ top: navHeight }}
+      >
+        <div className="w-full">
+          <div
+            aria-live="polite"
+            className={`transition-opacity duration-500 ease-out ${successBannerVisible ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <div className="w-full bg-green-600 border border-green-600 text-white shadow-sm">
+              <div className="px-4 sm:px-6 lg:px-8 py-3 text-center">
+                {successBannerMessage}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
@@ -444,10 +532,14 @@ export default function ClientDetailPage() {
                   <textarea
                     value={checklistNotes}
                     onChange={(e) => setChecklistNotes(e.target.value)}
+                    maxLength={CHECKLIST_NOTES_MAX_LENGTH}
                     rows={2}
                     placeholder="Optional notes..."
                     className="theme-input w-full mb-2 rounded-md border px-3 py-2"
                   />
+                  <div className="theme-text-muted text-xs text-right mb-2">
+                    {checklistNotes.length}/{CHECKLIST_NOTES_MAX_LENGTH}
+                  </div>
                   <div className="flex space-x-2">
                     <button
                       onClick={handleChecklistAction}
@@ -462,7 +554,7 @@ export default function ClientDetailPage() {
                         setChecklistAction('');
                         setChecklistNotes('');
                       }}
-                      className="theme-text-muted px-3 py-1 bg-gray-200 text-sm rounded-md hover:bg-gray-300"
+                      className="theme-surface-muted theme-border border px-3 py-1 text-sm rounded-md hover:opacity-90"
                     >
                       Cancel
                     </button>
@@ -470,47 +562,51 @@ export default function ClientDetailPage() {
                 </div>
               )}
 
-              {checklist.length > 0 ? (
-                <ul className="space-y-2">
-                  {checklist.map((item) => (
-                    <li key={item.id} className="text-sm border-l-4 border-green-500 pl-3 py-2">
-                      <div className="font-medium">
-                        {item.outcome?.replace(/_/g, ' ')}
-                      </div>
-                      {item.notes && (
-                        <div className="theme-text-muted text-xs">{item.notes}</div>
-                      )}
-                      <div className="theme-text-muted text-xs mt-1">
-                        {formatDate(item.occurredAt)}
-                        {item.createdByUser && ` by ${item.createdByUser.name}`}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="theme-text-muted text-sm">No checklist items yet</p>
-              )}
+              <div className="max-h-72 overflow-y-auto pr-1">
+                {checklist.length > 0 ? (
+                  <ul className="space-y-2">
+                    {checklist.map((item) => (
+                      <li key={item.id} className="text-sm border-l-4 border-green-500 pl-3 py-2">
+                        <div className="font-medium">
+                          {formatChecklistOutcome(item.outcome)}
+                        </div>
+                        {item.notes && (
+                          <div className="theme-text-muted text-xs">{item.notes}</div>
+                        )}
+                        <div className="theme-text-muted text-xs mt-1">
+                          {formatDate(item.occurredAt)}
+                          {item.createdByUser && ` by ${item.createdByUser.name}`}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="theme-text-muted text-sm">No checklist items yet</p>
+                )}
+              </div>
             </div>
 
             {/* Recent Activity */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-              {client.outreachTracking.length > 0 ? (
-                <ul className="space-y-2">
-                  {client.outreachTracking.slice(0, 5).map((activity) => (
-                    <li key={activity.id} className="text-sm border-l-2 border-gray-300 pl-3 py-1">
-                      <div>
-                        {activity.channel} - {activity.outcome || 'Contact'}
-                      </div>
-                      <div className="theme-text-muted text-xs">
-                        {formatDate(activity.occurredAt)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="theme-text-muted text-sm">No activity recorded</p>
-              )}
+              <div className="max-h-72 overflow-y-auto pr-1">
+                {outreachTracking.length > 0 ? (
+                  <ul className="space-y-2">
+                    {outreachTracking.map((activity) => (
+                      <li key={activity.id} className="text-sm border-l-2 border-gray-300 pl-3 py-1">
+                        <div>
+                          {activity.channel} - {formatChecklistOutcome(activity.outcome || 'contact')}
+                        </div>
+                        <div className="theme-text-muted text-xs">
+                          {formatDate(activity.occurredAt)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="theme-text-muted text-sm">No activity recorded</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

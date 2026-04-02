@@ -156,6 +156,19 @@ export async function PATCH(
           },
         },
         contactInfo: true,
+        outreachTracking: {
+          orderBy: { occurredAt: 'desc' },
+          take: 20,
+          include: {
+            createdByUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
 
