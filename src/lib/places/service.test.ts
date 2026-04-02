@@ -16,6 +16,7 @@ jest.mock('../jobs/queue-service', () => ({
   JobQueueService: jest.fn().mockImplementation(() => ({
     enqueueJob: jest.fn().mockResolvedValue('mock-job-id'),
     enqueueJobsBatch: jest.fn().mockResolvedValue([]),
+    markJobSuccess: jest.fn().mockResolvedValue(undefined),
   })),
 }));
 

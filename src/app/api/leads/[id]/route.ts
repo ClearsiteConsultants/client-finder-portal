@@ -3,6 +3,41 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma, LeadStatus, BusinessSource, WebsiteStatus } from '@prisma/client';
 import { deriveWebsiteStatus } from '@/lib/validation/website-status';
+import { JobProcessor } from '@/lib/jobs/processor';
+
+const LEAD_DETAIL_INCLUDE = {
+  convertedByUser: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+  approvedByUser: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+  rejectedByUser: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+  contactInfo: {
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      facebookUrl: true,
+      instagramUrl: true,
+      linkedinUrl: true,
+    },
+  },
+} as const;
 
 export async function GET(
   request: NextRequest,
@@ -16,45 +51,30 @@ export async function GET(
   }
 
   try {
-    const business = await prisma.business.findUnique({
+    let business = await prisma.business.findUnique({
       where: { id },
-      include: {
-        convertedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        approvedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        rejectedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        contactInfo: {
-          select: {
-            id: true,
-            email: true,
-            phone: true,
-            facebookUrl: true,
-            instagramUrl: true,
-            linkedinUrl: true,
-          },
-        },
-      },
+      include: LEAD_DETAIL_INCLUDE,
     });
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    const hasStoredEmail = business.contactInfo.some((contact) => !!contact.email?.trim());
+    if (business.website && !hasStoredEmail) {
+      const processor = new JobProcessor();
+      const scrapeResult = await processor.processJob(id, 'email_scraping');
+
+      if (scrapeResult.success) {
+        const refreshed = await prisma.business.findUnique({
+          where: { id },
+          include: LEAD_DETAIL_INCLUDE,
+        });
+
+        if (refreshed) {
+          business = refreshed;
+        }
+      }
     }
 
     return NextResponse.json(business);
@@ -229,39 +249,7 @@ export async function PATCH(
     const business = await prisma.business.update({
       where: { id },
       data: updateData,
-      include: {
-        convertedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        approvedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        rejectedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        contactInfo: {
-          select: {
-            id: true,
-            email: true,
-            phone: true,
-            facebookUrl: true,
-            instagramUrl: true,
-            linkedinUrl: true,
-          },
-        },
-      },
+      include: LEAD_DETAIL_INCLUDE,
     });
 
     // Handle social media updates in ContactInfo
@@ -298,39 +286,7 @@ export async function PATCH(
       // Refetch business with updated contactInfo
       const updatedBusiness = await prisma.business.findUnique({
         where: { id },
-        include: {
-          convertedByUser: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          approvedByUser: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          rejectedByUser: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          contactInfo: {
-            select: {
-              id: true,
-              email: true,
-              phone: true,
-              facebookUrl: true,
-              instagramUrl: true,
-              linkedinUrl: true,
-            },
-          },
-        },
+        include: LEAD_DETAIL_INCLUDE,
       });
       
       return NextResponse.json(updatedBusiness);

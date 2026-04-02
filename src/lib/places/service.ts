@@ -14,17 +14,20 @@ import { RateLimiter, retryWithBackoff } from './rate-limiter';
 import { calculateScore, checkBusinessExclusionBatchWithTypes } from '../scoring';
 import { getExcludedBusinessTypes } from '../scoring/exclusions';
 import { JobQueueService } from '../jobs/queue-service';
+import { JobProcessor } from '../jobs/processor';
 
 export class PlacesService {
   private client: PlacesClient;
   private rateLimiter: RateLimiter;
   private jobQueue: JobQueueService;
+  private jobProcessor: JobProcessor;
 
   constructor(apiKey?: string) {
     this.client = new PlacesClient(apiKey);
     // Conservative rate limiting: 100ms between calls, max 50 per minute
     this.rateLimiter = new RateLimiter(100, 50);
     this.jobQueue = new JobQueueService();
+    this.jobProcessor = new JobProcessor();
   }
 
   /**
@@ -257,10 +260,27 @@ export class PlacesService {
                 businessId: business.id,
                 jobType: 'website_validation',
               });
+              const emailScrapingJobId = await this.jobQueue.enqueueJob({
+                businessId: business.id,
+                jobType: 'email_scraping',
+              });
               await this.jobQueue.enqueueJob({
                 businessId: business.id,
                 jobType: 'social_scraping',
               });
+
+              // Start email scraping immediately, but do not block the search
+              // response. The queued job remains a fallback for reliability.
+              void this.jobProcessor
+                .processJob(business.id, 'email_scraping')
+                .then(async (emailScrapingResult) => {
+                  if (emailScrapingResult.success) {
+                    await this.jobQueue.markJobSuccess(emailScrapingJobId);
+                  }
+                })
+                .catch(() => {
+                  // Keep queued job untouched so background processing can retry.
+                });
             }
           }
 

@@ -98,7 +98,7 @@ export function isValidEmail(email: string): boolean {
     return false;
   }
 
-  const [, domain = ''] = email.split('@');
+  const [localPart = '', domain = ''] = email.split('@');
 
   // Filter out common false positives
   const invalidPatterns = [
@@ -112,6 +112,17 @@ export function isValidEmail(email: string): boolean {
     if (pattern.test(email)) {
       return false;
     }
+  }
+
+  // Filter out telemetry/service addresses that commonly appear in page source
+  // but are not contact emails (e.g., Wix Sentry ingestion endpoints).
+  if (/sentry-next\.wixpress\.com$/i.test(domain)) {
+    return false;
+  }
+
+  // Reject likely machine-generated hash local-parts on telemetry domains.
+  if (/^[a-f0-9]{24,}$/i.test(localPart) && /sentry|monitor|telemetry/i.test(domain)) {
+    return false;
   }
 
   // Reject values that are usually image/font/script asset references, not real domains.
@@ -155,16 +166,31 @@ export async function checkRobotsTxt(
     
     for (const line of lines) {
       const trimmedLine = line.trim();
+      if (!trimmedLine || trimmedLine.startsWith('#')) {
+        continue;
+      }
       
       // Check if this section applies to our user agent
       if (trimmedLine.toLowerCase().startsWith('user-agent:')) {
-        const agent = trimmedLine.substring(11).trim();
+        const agent = trimmedLine.substring(11).trim().toLowerCase();
         relevantSection = agent === '*' || agent.toLowerCase().includes('clientfinderbot');
       }
       
       // Check for Disallow rules in relevant section
       if (relevantSection && trimmedLine.toLowerCase().startsWith('disallow:')) {
-        const disallowedPath = trimmedLine.substring(9).trim();
+        const disallowedPathRaw = trimmedLine.substring(9).trim();
+        const disallowedPath = disallowedPathRaw.split('#')[0].trim();
+
+        // Empty Disallow means allow all for this user-agent section.
+        if (!disallowedPath) {
+          continue;
+        }
+
+        // Minimal wildcard handling for common robots patterns.
+        if (disallowedPath === '*' || disallowedPath === '/*') {
+          return false;
+        }
+
         if (disallowedPath === '/' || path.startsWith(disallowedPath)) {
           return false;
         }

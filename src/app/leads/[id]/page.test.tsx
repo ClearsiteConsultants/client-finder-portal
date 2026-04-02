@@ -149,6 +149,46 @@ describe('LeadDetailPage', () => {
     });
   });
 
+  it('should prefer website-domain email when multiple emails exist', async () => {
+    const businessWithTelemetryAndDomainEmail = {
+      ...mockBusiness,
+      website: 'https://www.eventsatmagnolia.com/',
+      contactInfo: [
+        {
+          id: 'contact-telemetry',
+          email: '605a7baede844d278b89dc95ae0a9123@sentry-next.wixpress.com',
+          phone: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          linkedinUrl: null,
+        },
+        {
+          id: 'contact-domain',
+          email: 'info@eventsatmagnolia.com',
+          phone: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          linkedinUrl: null,
+        },
+      ],
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => businessWithTelemetryAndDomainEmail,
+    });
+
+    render(<LeadDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Email')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'info@eventsatmagnolia.com' })).toHaveAttribute(
+        'href',
+        'mailto:info@eventsatmagnolia.com',
+      );
+    });
+  });
+
   it('should show edit form when pencil icon is clicked', async () => {
     render(<LeadDetailPage />);
 

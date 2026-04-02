@@ -32,6 +32,12 @@ describe('Email Scraper', () => {
       expect(isValidEmail('noreply@company.com')).toBe(false);
       expect(isValidEmail('no-reply@company.com')).toBe(false);
       expect(isValidEmail('user@localhost.com')).toBe(false);
+      expect(isValidEmail('605a7baede844d278b89dc95ae0a9123@sentry-next.wixpress.com')).toBe(false);
+    });
+
+    it('should keep real business emails when telemetry emails are also present', () => {
+      expect(isValidEmail('info@eventsatmagnolia.com')).toBe(true);
+      expect(isValidEmail('605a7baede844d278b89dc95ae0a9123@sentry-next.wixpress.com')).toBe(false);
     });
 
     it('should reject emails that are too short or too long', () => {
@@ -227,6 +233,50 @@ describe('Email Scraper', () => {
       
       // Should default to true on error
       expect(result).toBe(true);
+    });
+
+    it('should allow scraping when robots.txt has empty Disallow', async () => {
+      const originalFetch = global.fetch;
+      const fetchMock = jest.fn(async () => ({
+        ok: true,
+        text: async () => 'User-agent: *\nDisallow:\n',
+      })) as unknown as typeof fetch;
+
+      global.fetch = fetchMock;
+
+      try {
+        const result = await checkRobotsTxt(
+          'https://example.com',
+          '/contact',
+          'ClientFinderBot/1.0'
+        );
+
+        expect(result).toBe(true);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('should block scraping when robots.txt disallows all paths', async () => {
+      const originalFetch = global.fetch;
+      const fetchMock = jest.fn(async () => ({
+        ok: true,
+        text: async () => 'User-agent: *\nDisallow: /\n',
+      })) as unknown as typeof fetch;
+
+      global.fetch = fetchMock;
+
+      try {
+        const result = await checkRobotsTxt(
+          'https://example.com',
+          '/contact',
+          'ClientFinderBot/1.0'
+        );
+
+        expect(result).toBe(false);
+      } finally {
+        global.fetch = originalFetch;
+      }
     });
   });
 

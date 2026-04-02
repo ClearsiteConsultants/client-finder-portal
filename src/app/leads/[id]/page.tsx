@@ -53,6 +53,41 @@ type Business = {
   }>;
 };
 
+function getWebsiteDomain(website: string | null | undefined): string | null {
+  if (!website) {
+    return null;
+  }
+
+  try {
+    const hostname = new URL(website).hostname.toLowerCase();
+    return hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+function getPreferredContactEmail(business: Business): string | undefined {
+  const emails = (business.contactInfo || [])
+    .map((contact) => contact.email?.trim().toLowerCase())
+    .filter((email): email is string => !!email);
+
+  if (emails.length === 0) {
+    return undefined;
+  }
+
+  const websiteDomain = getWebsiteDomain(business.website);
+  if (!websiteDomain) {
+    return emails[0];
+  }
+
+  const sameDomainEmail = emails.find((email) => {
+    const emailDomain = email.split('@')[1]?.toLowerCase();
+    return emailDomain === websiteDomain;
+  });
+
+  return sameDomainEmail || emails[0];
+}
+
 export default function LeadDetailPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -216,7 +251,7 @@ export default function LeadDetailPage() {
 
   const enterBusinessInfoEditMode = () => {
     if (!business) return;
-    const contactEmail = business.contactInfo?.find((contact) => contact.email)?.email || '';
+    const contactEmail = getPreferredContactEmail(business) || '';
     setEditedAddress(business.address);
     setEditedPhone(business.phone || '');
     setEditedEmail(contactEmail);
@@ -459,7 +494,7 @@ export default function LeadDetailPage() {
   const selectedBusinessTypeLabel = editedBusinessTypes.length > 0
     ? editedBusinessTypes.map(formatGooglePlaceTypeLabel).join(', ')
     : 'Select business types';
-  const primaryContactEmail = business.contactInfo?.find((contact) => contact.email)?.email;
+  const primaryContactEmail = getPreferredContactEmail(business);
 
   return (
     <div className="min-h-screen">

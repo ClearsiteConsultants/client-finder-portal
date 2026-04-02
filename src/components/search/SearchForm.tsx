@@ -59,6 +59,10 @@ type SearchDebugSnapshot = {
   outcome: "success" | "error";
 };
 
+type SearchEmailLookupResponse = {
+  emailsByPlaceId?: Record<string, string>;
+};
+
 function normalizeSearchFilters(params: {
   searchBy: SearchByOption;
   businessName: string;
@@ -132,6 +136,49 @@ export default function SearchForm() {
   const hasInitializedBusinessTypesFromOptions = useRef(false);
   const businessTypeDropdownRef = useRef<HTMLDivElement | null>(null);
   const businessTypeToggleButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const hydrateResultEmails = async (resultItems: BusinessResult[]) => {
+    const placeIds = resultItems
+      .filter((item) => !item.email && item.placeId)
+      .map((item) => item.placeId);
+
+    if (placeIds.length === 0) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/places/search/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ placeIds }),
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as SearchEmailLookupResponse;
+      const emailsByPlaceId = payload.emailsByPlaceId || {};
+
+      setResults((currentResults) =>
+        currentResults.map((result) => {
+          const resolvedEmail = emailsByPlaceId[result.placeId];
+          if (!resolvedEmail || result.email) {
+            return result;
+          }
+
+          return {
+            ...result,
+            email: resolvedEmail,
+          };
+        })
+      );
+    } catch {
+      // Ignore hydration errors to keep search UX smooth.
+    }
+  };
 
   const primaryInputLabel = searchBy === "location" ? "Location" : "Business Name";
   const primaryInputPlaceholder =
@@ -268,6 +315,7 @@ export default function SearchForm() {
 
       const responseResults = data.results || [];
       setResults(responseResults);
+      void hydrateResultEmails(responseResults);
       setLastSearchSnapshot({
         filters: normalizedFilters,
         resultCount: responseResults.length,
@@ -283,7 +331,9 @@ export default function SearchForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ maxJobs: 100 }),
-      }).catch(() => {});
+      })
+        .then(() => hydrateResultEmails(responseResults))
+        .catch(() => {});
 
       const metrics = data.metrics || {
         geocodeCalls: 0,
