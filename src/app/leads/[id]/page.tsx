@@ -11,6 +11,7 @@ import {
   mergeBusinessTypes,
 } from '@/lib/places/business-types';
 import { googleMapsPlaceUrl } from '@/lib/places/maps';
+import { MAX_STORED_WEBSITE_LENGTH } from '@/lib/validation/website-storage';
 
 type Business = {
   id: string;
@@ -585,6 +586,7 @@ export default function LeadDetailPage() {
                       type="text"
                       value={editedWebsite}
                       onChange={(e) => setEditedWebsite(e.target.value)}
+                      maxLength={MAX_STORED_WEBSITE_LENGTH}
                       className="theme-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                     {businessInfoErrors.website && (
@@ -814,12 +816,12 @@ export default function LeadDetailPage() {
                   {business.website && (
                     <div>
                       <dt className="theme-text-muted text-sm font-medium">Website</dt>
-                      <dd className="mt-1 text-sm">
+                      <dd className="mt-1 min-w-0 text-sm">
                         <a
                           href={business.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline dark:text-blue-400"
+                          className="block max-w-full overflow-hidden break-all text-blue-600 hover:underline [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] dark:text-blue-400"
                         >
                           {business.website}
                         </a>

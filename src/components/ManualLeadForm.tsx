@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { MAX_STORED_WEBSITE_LENGTH } from '@/lib/validation/website-storage';
 
 type ManualLeadFormData = {
   name: string;
@@ -266,6 +267,7 @@ export default function ManualLeadForm({ onClose, onSuccess }: ManualLeadFormPro
                 type="url"
                 value={formData.website}
                 onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                maxLength={MAX_STORED_WEBSITE_LENGTH}
                 className={`theme-input w-full rounded-lg border ${errors.website ? 'border-red-500' : 'theme-border'} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30`}
                 placeholder="https://example.com"
               />

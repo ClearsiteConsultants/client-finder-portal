@@ -4,6 +4,7 @@
 
 import { normalizeGooglePlace, normalizeGooglePlaces, toPrismaCreateInput } from './normalizer';
 import type { GooglePlaceResult } from './types';
+import { MAX_STORED_WEBSITE_LENGTH } from '../validation/website-storage';
 
 describe('normalizeGooglePlace', () => {
   it('normalizes a complete Google Place result', () => {
@@ -124,6 +125,21 @@ describe('normalizeGooglePlace', () => {
 
     const normalized = normalizeGooglePlace(googlePlace);
     expect(normalized.address).toBe('333 Vicinity Ave');
+  });
+
+  it('truncates oversized website values during normalization', () => {
+    const oversizedWebsite = `https://place.test/${'a'.repeat(MAX_STORED_WEBSITE_LENGTH + 25)}`;
+    const googlePlace: GooglePlaceResult = {
+      place_id: 'ChIJ666666666',
+      name: 'Oversized Website Business',
+      formatted_address: '444 Test Ave',
+      website: oversizedWebsite,
+    };
+
+    const normalized = normalizeGooglePlace(googlePlace);
+
+    expect(normalized.website).toBe(oversizedWebsite.slice(0, MAX_STORED_WEBSITE_LENGTH));
+    expect(normalized.websiteStatus).toBe('technical_issues');
   });
 });
 

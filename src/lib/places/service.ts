@@ -15,6 +15,7 @@ import { calculateScore, checkBusinessExclusionBatchWithTypes } from '../scoring
 import { getExcludedBusinessTypes } from '../scoring/exclusions';
 import { JobQueueService } from '../jobs/queue-service';
 import { JobProcessor } from '../jobs/processor';
+import { normalizeStoredWebsite } from '../validation/website-storage';
 
 export class PlacesService {
   private client: PlacesClient;
@@ -445,7 +446,9 @@ export class PlacesService {
         // preserve the stored website URL and status rather than overwriting
         // with null / no_website.
         const googleWouldClearWebsite = !normalized.website && !!existing.website;
-        const websiteForUpdate = googleWouldClearWebsite ? existing.website : normalized.website;
+        const websiteForUpdate = normalizeStoredWebsite(
+          googleWouldClearWebsite ? existing.website : normalized.website
+        ) ?? null;
         const websiteStatusForUpdate =
           googleWouldClearWebsite || (normalized.websiteStatus === 'no_website' && !!existing.website)
             ? existing.websiteStatus

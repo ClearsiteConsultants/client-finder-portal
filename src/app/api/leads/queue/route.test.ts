@@ -65,7 +65,7 @@ describe('GET /api/leads/queue', () => {
     await disconnectPrisma();
   });
 
-  it('filters queue by businessType query param', async () => {
+  it('filters queue by a single businessType query param', async () => {
     const request = new Request(`http://localhost/api/leads/queue?businessType=${matchingBusinessType}&page=1&pageSize=50`);
 
     const response = await GET(request as any);
@@ -75,6 +75,18 @@ describe('GET /api/leads/queue', () => {
     expect(data.total).toBe(1);
     expect(data.leads).toHaveLength(1);
     expect(data.leads[0].name).toBe(businessNames.matching);
+  });
+
+  it('filters queue by multiple businessType query params', async () => {
+    const request = new Request(`http://localhost/api/leads/queue?businessType=${matchingBusinessType}&businessType=${otherBusinessType}&page=1&pageSize=50`);
+
+    const response = await GET(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.total).toBe(2);
+    const names = data.leads.map((lead: { name: string }) => lead.name);
+    expect(names).toEqual(expect.arrayContaining([businessNames.matching, businessNames.other]));
   });
 
   it('returns all matching queue records when businessType is not provided (All)', async () => {

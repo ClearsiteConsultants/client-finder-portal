@@ -4,6 +4,7 @@
 
 import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
+import { MAX_STORED_WEBSITE_LENGTH } from '@/lib/validation/website-storage';
 
 const mockAuth = jest.fn();
 const mockBusinessUpdate = jest.fn();
@@ -158,6 +159,89 @@ describe('/api/leads/[id]', () => {
         data: expect.objectContaining({
           website: 'https://example.com',
           websiteStatus: 'technical_issues',
+        }),
+      })
+    );
+  });
+
+  it('PATCH truncates oversized website values before persisting', async () => {
+    const { PATCH } = await import('./route');
+    const oversizedWebsite = `https://example.com/${'a'.repeat(MAX_STORED_WEBSITE_LENGTH + 50)}`;
+    const truncatedWebsite = oversizedWebsite.slice(0, MAX_STORED_WEBSITE_LENGTH);
+
+    mockBusinessUpdate.mockResolvedValue({
+      id: 'lead-123',
+      website: truncatedWebsite,
+      websiteStatus: 'technical_issues',
+      approvedByUser: null,
+      rejectedByUser: null,
+      contactInfo: [],
+    });
+
+    const request = new NextRequest('http://localhost/api/leads/lead-123', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        website: oversizedWebsite,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'lead-123' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.website).toBe(truncatedWebsite);
+    expect(mockDeriveWebsiteStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        website: truncatedWebsite,
+      })
+    );
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'lead-123' },
+        data: expect.objectContaining({
+          website: truncatedWebsite,
+        }),
+      })
+    );
+  });
+
+  it('PATCH strips Google Maps tracking query parameters before persisting', async () => {
+    const { PATCH } = await import('./route');
+    const trackedWebsite = 'https://www.bigotires.com/location/ut/south-jordan/10227-s-redwood-rd-84095/044245?utm_source=google&utm_medium=maps&utm_campaign=google+maps&y_source=1_ODY2OTU3My03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D';
+    const cleanedWebsite = 'https://www.bigotires.com/location/ut/south-jordan/10227-s-redwood-rd-84095/044245';
+
+    mockBusinessUpdate.mockResolvedValue({
+      id: 'lead-123',
+      website: cleanedWebsite,
+      websiteStatus: 'technical_issues',
+      approvedByUser: null,
+      rejectedByUser: null,
+      contactInfo: [],
+    });
+
+    const request = new NextRequest('http://localhost/api/leads/lead-123', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        website: trackedWebsite,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'lead-123' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.website).toBe(cleanedWebsite);
+    expect(mockDeriveWebsiteStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        website: cleanedWebsite,
+      })
+    );
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          website: cleanedWebsite,
         }),
       })
     );

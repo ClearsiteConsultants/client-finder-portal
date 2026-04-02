@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'asc';
     const statusFilter = searchParams.get('status') as LeadStatus | null;
     const websiteStatusFilter = searchParams.get('websiteStatus') as WebsiteStatus | null;
-    const businessTypeFilter = searchParams.get('businessType');
+    const businessTypeFilters = searchParams
+      .getAll('businessType')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
 
     const skip = (page - 1) * pageSize;
 
@@ -32,9 +35,9 @@ export async function GET(request: NextRequest) {
       where.websiteStatus = websiteStatusFilter;
     }
 
-    if (businessTypeFilter) {
+    if (businessTypeFilters.length > 0) {
       where.businessTypes = {
-        has: businessTypeFilter,
+        hasSome: businessTypeFilters,
       };
     }
 

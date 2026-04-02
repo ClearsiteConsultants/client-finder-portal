@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma, LeadStatus, BusinessSource, WebsiteStatus } from '@prisma/client';
 import { deriveWebsiteStatus } from '@/lib/validation/website-status';
+import { normalizeStoredWebsite } from '@/lib/validation/website-storage';
 import { JobProcessor } from '@/lib/jobs/processor';
 
 const LEAD_DETAIL_INCLUDE = {
@@ -126,7 +127,7 @@ export async function PATCH(
     }
 
     const updateData: Prisma.BusinessUpdateInput = {};
-    const normalizedWebsite = website !== undefined ? website?.trim() || null : undefined;
+    const normalizedWebsite = normalizeStoredWebsite(website);
     const normalizedEmail = email !== undefined ? email?.trim() || null : undefined;
     const normalizedFacebookUrl = facebookUrl !== undefined ? facebookUrl?.trim() || null : undefined;
     const normalizedInstagramUrl = instagramUrl !== undefined ? instagramUrl?.trim() || null : undefined;

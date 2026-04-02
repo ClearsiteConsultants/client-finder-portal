@@ -647,7 +647,7 @@ export default function SearchForm() {
               <legend className="theme-text-muted block text-sm font-medium">
                 Business Type
               </legend>
-              <div className="mt-1" ref={businessTypeDropdownRef}>
+              <div className="relative mt-1" ref={businessTypeDropdownRef}>
                 <button
                   type="button"
                   aria-label="Business Type"
@@ -665,7 +665,7 @@ export default function SearchForm() {
                 </button>
 
                 {isBusinessTypeDropdownOpen && (
-                  <div className="theme-input mt-0 max-w-full space-y-1 overflow-x-hidden rounded-lg border px-3 py-2">
+                  <div className="theme-input absolute left-0 right-0 z-20 mt-1 max-w-full space-y-1 overflow-x-hidden rounded-lg border px-3 py-2 shadow-lg">
                     <label className="flex items-center gap-2 font-medium">
                       <input
                         type="checkbox"

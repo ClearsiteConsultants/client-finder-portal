@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { deriveWebsiteStatus } from '@/lib/validation/website-status';
+import { normalizeStoredWebsite } from '@/lib/validation/website-storage';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const normalizedWebsite = website?.trim() || null;
+    const normalizedWebsite = normalizeStoredWebsite(website) ?? null;
     const normalizedFacebook = facebook?.trim() || null;
     const normalizedInstagram = instagram?.trim() || null;
     const normalizedLinkedin = linkedin?.trim() || null;

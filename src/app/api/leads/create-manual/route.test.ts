@@ -3,6 +3,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { MAX_STORED_WEBSITE_LENGTH } from '@/lib/validation/website-storage';
 
 const mockAuth = jest.fn();
 const mockPrismaCreate = jest.fn();
@@ -201,6 +202,102 @@ describe('POST /api/leads/create-manual', () => {
         instagramUrl: null,
         linkedinUrl: null,
       },
+    });
+  });
+
+  it('truncates oversized website values before creating a manual lead', async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: 'user-123', email: 'test@example.com' },
+      expires: '2024-12-31',
+    });
+
+    const oversizedWebsite = `https://manual.test/${'a'.repeat(MAX_STORED_WEBSITE_LENGTH + 40)}`;
+    const truncatedWebsite = oversizedWebsite.slice(0, MAX_STORED_WEBSITE_LENGTH);
+
+    mockPrismaCreate.mockResolvedValueOnce({
+      id: 'business-123',
+      name: 'Manual Lead',
+      address: '123 Main St',
+      website: truncatedWebsite,
+      source: 'manual',
+      businessTypes: [],
+      websiteStatus: 'technical_issues',
+    });
+
+    const req = new NextRequest('http://localhost/api/leads/create-manual', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Manual Lead',
+        address: '123 Main St',
+        website: oversizedWebsite,
+      }),
+    });
+
+    const response = await POST(req);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.business.website).toBe(truncatedWebsite);
+    expect(mockDeriveWebsiteStatus).toHaveBeenCalledWith({
+      website: truncatedWebsite,
+      socialProfiles: {
+        facebookUrl: null,
+        instagramUrl: null,
+        linkedinUrl: null,
+      },
+    });
+    expect(mockPrismaCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        website: truncatedWebsite,
+      }),
+    });
+  });
+
+  it('strips Google Maps tracking query parameters before creating a manual lead', async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: 'user-123', email: 'test@example.com' },
+      expires: '2024-12-31',
+    });
+
+    const trackedWebsite = 'https://www.bigotires.com/location/ut/south-jordan/10227-s-redwood-rd-84095/044245?utm_source=google&utm_medium=maps&utm_campaign=google+maps&y_source=1_ODY2OTU3My03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D';
+    const cleanedWebsite = 'https://www.bigotires.com/location/ut/south-jordan/10227-s-redwood-rd-84095/044245';
+
+    mockPrismaCreate.mockResolvedValueOnce({
+      id: 'business-123',
+      name: 'Manual Lead',
+      address: '123 Main St',
+      website: cleanedWebsite,
+      source: 'manual',
+      businessTypes: [],
+      websiteStatus: 'technical_issues',
+    });
+
+    const req = new NextRequest('http://localhost/api/leads/create-manual', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Manual Lead',
+        address: '123 Main St',
+        website: trackedWebsite,
+      }),
+    });
+
+    const response = await POST(req);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.business.website).toBe(cleanedWebsite);
+    expect(mockDeriveWebsiteStatus).toHaveBeenCalledWith({
+      website: cleanedWebsite,
+      socialProfiles: {
+        facebookUrl: null,
+        instagramUrl: null,
+        linkedinUrl: null,
+      },
+    });
+    expect(mockPrismaCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        website: cleanedWebsite,
+      }),
     });
   });
 });

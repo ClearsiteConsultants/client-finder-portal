@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import LeadDetailPage from './page';
+import { MAX_STORED_WEBSITE_LENGTH } from '@/lib/validation/website-storage';
 
 // Mock next-auth
 jest.mock('next-auth/react', () => ({
@@ -251,6 +252,39 @@ describe('LeadDetailPage', () => {
       expect(screen.getByLabelText('E-commerce')).toBeChecked();
       expect(screen.getByLabelText('Store')).not.toBeChecked();
     });
+  });
+
+  it('keeps long website text contained inside the Business Information card', async () => {
+    const longWebsite = `https://testbusiness.com/${'path/'.repeat(30)}`;
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ...mockBusiness,
+        website: longWebsite,
+      }),
+    });
+
+    render(<LeadDetailPage />);
+
+    const websiteLink = await screen.findByRole('link', { name: longWebsite });
+
+    expect(websiteLink.className).toContain('overflow-hidden');
+    expect(websiteLink.className).toContain('break-all');
+    expect(websiteLink.className).toContain('[-webkit-line-clamp:2]');
+  });
+
+  it('caps website input length while editing business information', async () => {
+    render(<LeadDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Business Inc')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle('Edit Business Information'));
+
+    const websiteInput = await screen.findByDisplayValue('https://testbusiness.com');
+    expect(websiteInput).toHaveAttribute('maxLength', String(MAX_STORED_WEBSITE_LENGTH));
   });
 
   it('should populate lead status select correctly', async () => {

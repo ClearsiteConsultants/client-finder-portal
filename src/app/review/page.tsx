@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
@@ -46,12 +46,16 @@ export default function ReviewQueuePage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [statusFilter, setStatusFilter] = useState('pending');
   const [websiteStatusFilter, setWebsiteStatusFilter] = useState('');
-  const [businessTypeFilter, setBusinessTypeFilter] = useState('');
+  const [businessTypeFilters, setBusinessTypeFilters] = useState<string[]>([]);
   const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>([]);
+  const [allBusinessTypesChecked, setAllBusinessTypesChecked] = useState(true);
+  const [isBusinessTypeDropdownOpen, setIsBusinessTypeDropdownOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState<'approve' | 'reject' | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showManualForm, setShowManualForm] = useState(false);
   const [pageInput, setPageInput] = useState('1');
+  const businessTypeDropdownRef = useRef<HTMLDivElement | null>(null);
+  const businessTypeToggleButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -63,7 +67,7 @@ export default function ReviewQueuePage() {
     if (status === 'authenticated') {
       fetchLeads();
     }
-  }, [status, page, sortBy, sortOrder, statusFilter, websiteStatusFilter, businessTypeFilter]);
+  }, [status, page, sortBy, sortOrder, statusFilter, websiteStatusFilter, businessTypeFilters]);
 
   useEffect(() => {
     if (status !== 'authenticated') {
@@ -84,9 +88,9 @@ export default function ReviewQueuePage() {
         const data: { businessTypes?: string[] } = await response.json();
         if (isMounted && Array.isArray(data.businessTypes)) {
           setBusinessTypeOptions(data.businessTypes);
-          setBusinessTypeFilter((currentValue) => (
-            currentValue && !data.businessTypes?.includes(currentValue) ? '' : currentValue
-          ));
+          setBusinessTypeFilters((currentValues) =>
+            currentValues.filter((value) => data.businessTypes?.includes(value))
+          );
         }
       } catch {
         // Keep empty options when dynamic loading fails.
@@ -100,6 +104,63 @@ export default function ReviewQueuePage() {
     };
   }, [status]);
 
+  useEffect(() => {
+    if (allBusinessTypesChecked) {
+      setBusinessTypeFilters([...businessTypeOptions]);
+      return;
+    }
+
+    setBusinessTypeFilters((currentValues) =>
+      currentValues.filter((type) => businessTypeOptions.includes(type))
+    );
+  }, [allBusinessTypesChecked, businessTypeOptions]);
+
+  useEffect(() => {
+    if (!isBusinessTypeDropdownOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!businessTypeDropdownRef.current) {
+        return;
+      }
+
+      if (!businessTypeDropdownRef.current.contains(event.target as Node)) {
+        setIsBusinessTypeDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsBusinessTypeDropdownOpen(false);
+        businessTypeToggleButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isBusinessTypeDropdownOpen]);
+
+  const selectedBusinessTypeLabels = businessTypeOptions
+    .filter((type) => businessTypeFilters.includes(type))
+    .map((type) => formatGooglePlaceTypeLabel(type));
+  const businessTypeSummary = allBusinessTypesChecked
+    ? 'All'
+    : selectedBusinessTypeLabels.length > 0
+      ? selectedBusinessTypeLabels.join(', ')
+      : 'None selected';
+  const businessTypeSummaryDisplay =
+    businessTypeSummary.length > 72
+      ? `${businessTypeSummary.slice(0, 69)}...`
+      : businessTypeSummary;
+
   const fetchLeads = async () => {
     setLoading(true);
     try {
@@ -112,7 +173,11 @@ export default function ReviewQueuePage() {
       
       if (statusFilter) params.append('status', statusFilter);
       if (websiteStatusFilter) params.append('websiteStatus', websiteStatusFilter);
-      if (businessTypeFilter) params.append('businessType', businessTypeFilter);
+      if (!allBusinessTypesChecked) {
+        businessTypeFilters.forEach((businessType) => {
+          params.append('businessType', businessType);
+        });
+      }
 
       const response = await fetch(`/api/leads/queue?${params}`);
       if (response.ok) {
@@ -125,6 +190,43 @@ export default function ReviewQueuePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBusinessTypeCheckboxEnterKeyDown = (
+    event: ReactKeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+
+      const inputs = Array.from(
+        businessTypeDropdownRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') || []
+      );
+      const currentIndex = inputs.indexOf(event.currentTarget);
+      if (currentIndex === -1 || inputs.length === 0) {
+        return;
+      }
+
+      const nextIndex = event.key === 'ArrowDown'
+        ? (currentIndex + 1) % inputs.length
+        : (currentIndex - 1 + inputs.length) % inputs.length;
+      inputs[nextIndex]?.focus();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setIsBusinessTypeDropdownOpen(false);
+      businessTypeToggleButtonRef.current?.focus();
+      return;
+    }
+
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    // Keep Enter scoped to toggling the focused option instead of submitting form.
+    event.preventDefault();
+    event.currentTarget.click();
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -376,21 +478,78 @@ export default function ReviewQueuePage() {
 
         <div>
           <label className="theme-text-muted block text-sm font-medium mb-1">Business Type</label>
-          <select
-            value={businessTypeFilter}
-            onChange={(e) => {
-              setBusinessTypeFilter(e.target.value);
-              setPage(1);
-            }}
-            className="theme-input rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-          >
-            <option value="">All</option>
-            {businessTypeOptions.map((businessType) => (
-              <option key={businessType} value={businessType}>
-                {formatGooglePlaceTypeLabel(businessType)}
-              </option>
-            ))}
-          </select>
+          <div className="relative w-72 max-w-full" ref={businessTypeDropdownRef}>
+            <button
+              type="button"
+              aria-label="Business Type"
+              aria-expanded={isBusinessTypeDropdownOpen}
+              ref={businessTypeToggleButtonRef}
+              onClick={() => setIsBusinessTypeDropdownOpen((open) => !open)}
+              className="theme-input flex w-full max-w-full items-center justify-between overflow-hidden rounded-lg border px-3 py-2 text-left text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            >
+              <span className="min-w-0 flex-1 truncate" title={businessTypeSummary}>
+                {businessTypeSummaryDisplay}
+              </span>
+              <span className="theme-text-muted ml-2 shrink-0 text-xs">
+                {isBusinessTypeDropdownOpen ? '▲' : '▼'}
+              </span>
+            </button>
+
+            {isBusinessTypeDropdownOpen && (
+              <div className="theme-input absolute left-0 right-0 z-20 mt-1 max-w-full space-y-1 overflow-x-hidden rounded-lg border px-3 py-2 shadow-lg">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={allBusinessTypesChecked}
+                    onKeyDown={handleBusinessTypeCheckboxEnterKeyDown}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setAllBusinessTypesChecked(true);
+                        setPage(1);
+                        return;
+                      }
+                      setAllBusinessTypesChecked(false);
+                      setBusinessTypeFilters([]);
+                      setPage(1);
+                    }}
+                  />
+                  <span>All</span>
+                </label>
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                  {businessTypeOptions.map((type) => {
+                    const checked = businessTypeFilters.includes(type);
+                    return (
+                      <label key={type} className="flex min-w-0 items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onKeyDown={handleBusinessTypeCheckboxEnterKeyDown}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setBusinessTypeFilters((currentTypes) => {
+                                const nextTypes = Array.from(new Set([...currentTypes, type]));
+                                setAllBusinessTypesChecked(nextTypes.length === businessTypeOptions.length);
+                                return nextTypes;
+                              });
+                              setPage(1);
+                              return;
+                            }
+
+                            setAllBusinessTypesChecked(false);
+                            setBusinessTypeFilters((currentTypes) =>
+                              currentTypes.filter((currentType) => currentType !== type)
+                            );
+                            setPage(1);
+                          }}
+                        />
+                        <span className="min-w-0 break-words">{formatGooglePlaceTypeLabel(type)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div>

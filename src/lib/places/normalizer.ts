@@ -5,6 +5,7 @@
 import type { GooglePlaceResult } from './types';
 import type { Prisma } from '@prisma/client';
 import { getInitialGoogleMapsStatus } from '../validation/website-status';
+import { normalizeStoredWebsite } from '../validation/website-storage';
 
 export interface NormalizedBusiness {
   placeId: string;
@@ -25,7 +26,8 @@ export interface NormalizedBusiness {
  * Normalizes a Google Place result to our Business model structure
  */
 export function normalizeGooglePlace(place: GooglePlaceResult): NormalizedBusiness {
-  const hasWebsite = !!place.website;
+  const normalizedWebsite = normalizeStoredWebsite(place.website) ?? null;
+  const hasWebsite = !!normalizedWebsite;
   
   return {
     placeId: place.place_id,
@@ -35,7 +37,7 @@ export function normalizeGooglePlace(place: GooglePlaceResult): NormalizedBusine
     lat: place.geometry?.location?.lat ?? null,
     lng: place.geometry?.location?.lng ?? null,
     phone: place.formatted_phone_number || place.international_phone_number || null,
-    website: place.website || null,
+    website: normalizedWebsite,
     businessTypes: place.types || [],
     rating: place.rating ?? null,
     reviewCount: place.user_ratings_total ?? null,
