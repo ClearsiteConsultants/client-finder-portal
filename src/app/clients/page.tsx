@@ -236,7 +236,7 @@ export default function ActiveClientsPage() {
                   }}
                   className="theme-border rounded border text-red-600 focus:ring-red-500"
                 />
-                <span className="theme-text-muted text-sm font-medium">Needs Review</span>
+                <span className="theme-text-muted text-sm font-medium">Needs Attention</span>
               </label>
             </div>
           </div>
@@ -275,7 +275,7 @@ export default function ActiveClientsPage() {
                 </thead>
                 <tbody className="theme-surface theme-border divide-y">
                   {clients.map((client) => (
-                    <tr key={client.id} className={client.needsAttention ? 'bg-red-50' : ''}>
+                    <tr key={client.id} className={client.needsAttention ? 'bg-red-50 dark:bg-red-900/20' : ''}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="flex items-center">
