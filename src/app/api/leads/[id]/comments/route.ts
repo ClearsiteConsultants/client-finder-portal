@@ -93,10 +93,10 @@ export async function GET(
     return NextResponse.json({ comments: commentsWithAuthor });
   } catch (error) {
     console.error('Error fetching lead comments:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+
+    // Be resilient for legacy production records: return an empty thread rather than
+    // failing the entire notes card when a historic data inconsistency is encountered.
+    return NextResponse.json({ comments: [] });
   }
 }
 
