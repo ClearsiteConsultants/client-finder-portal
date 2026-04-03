@@ -191,3 +191,53 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+
+    const client = await prisma.business.findUnique({
+      where: { id, isClient: true },
+    });
+
+    if (!client) {
+      return NextResponse.json(
+        { error: 'Client not found' },
+        { status: 404 }
+      );
+    }
+
+    // Revert to lead: clear client flags/fields, reset lead status to pending for re-review
+    await prisma.business.update({
+      where: { id },
+      data: {
+        isClient: false,
+        clientStatus: null,
+        subscriptionStatus: null,
+        initialPaymentStatus: null,
+        nextPaymentDueDate: null,
+        leadStatus: 'pending',
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error('Error removing client:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

@@ -57,6 +57,8 @@ export default function ClientDetailPage() {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [navHeight, setNavHeight] = useState(0);
   const [successBannerVisible, setSuccessBannerVisible] = useState(false);
   const [successBannerMessage, setSuccessBannerMessage] = useState('');
@@ -197,6 +199,21 @@ export default function ClientDetailPage() {
     }
   };
 
+  const handleRemoveFromClients = async () => {
+    setRemoving(true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to remove client');
+      router.push('/clients');
+    } catch (error) {
+      console.error('Error removing client:', error);
+      alert('Failed to remove client');
+    } finally {
+      setRemoving(false);
+      setShowRemoveConfirm(false);
+    }
+  };
+
   const handleChecklistToggle = async (taskKey: string, checked: boolean) => {
     setSaving(true);
     try {
@@ -332,12 +349,43 @@ export default function ClientDetailPage() {
               View Lead Details
             </Link>
           </div>
-          <h1 className="text-3xl font-bold">{client.name}</h1>
-          <p className="theme-text-muted">{client.address}</p>
-          <p className="theme-text-muted text-sm mt-1">
-            Converted on {formatDate(client.convertedAt)}
-            {client.convertedByUser && ` by ${client.convertedByUser.name || client.convertedByUser.email}`}
-          </p>
+          <div className="flex items-start justify-between mt-2">
+            <div>
+              <h1 className="text-3xl font-bold">{client.name}</h1>
+              <p className="theme-text-muted">{client.address}</p>
+              <p className="theme-text-muted text-sm mt-1">
+                Converted on {formatDate(client.convertedAt)}
+                {client.convertedByUser && ` by ${client.convertedByUser.name || client.convertedByUser.email}`}
+              </p>
+            </div>
+            <div className="flex-shrink-0 ml-4">
+              {!showRemoveConfirm ? (
+                <button
+                  onClick={() => setShowRemoveConfirm(true)}
+                  className="px-3 py-2 text-sm border border-red-300 text-red-600 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  Remove from Active Clients
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 border border-red-300 rounded-md px-3 py-2 bg-red-50 dark:bg-red-900/20">
+                  <span className="text-sm text-red-700 dark:text-red-300">Remove and return to review queue?</span>
+                  <button
+                    onClick={handleRemoveFromClients}
+                    disabled={removing}
+                    className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {removing ? 'Removing...' : 'Confirm'}
+                  </button>
+                  <button
+                    onClick={() => setShowRemoveConfirm(false)}
+                    className="px-3 py-1 text-sm border rounded hover:opacity-80"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
