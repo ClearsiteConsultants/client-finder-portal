@@ -265,7 +265,7 @@ export default function LeadCommentsThread({ leadId, currentUserId }: LeadCommen
                     type="button"
                     onClick={() => saveEdit(comment.id)}
                     disabled={savingEdit || !editDraft.trim()}
-                    className="rounded-md bg-[#be779e] px-3 py-1.5 text-xs font-semibold text-[#0a0a0a] hover:bg-[#cf8ab1] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {savingEdit ? 'Saving...' : 'Save changes'}
                   </button>

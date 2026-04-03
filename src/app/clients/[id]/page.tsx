@@ -35,19 +35,17 @@ type Client = {
     occurredAt: string;
     outcome: string | null;
     notes: string | null;
-    createdByUser: { name: string | null } | null;
+    createdByUser: { name: string | null; email: string | null } | null;
   }>;
 };
 
 type ChecklistItem = {
-  id: string;
-  occurredAt: string;
-  outcome: string | null;
-  notes: string | null;
+  taskKey: string;
+  label: string;
+  checked: boolean;
+  occurredAt: string | null;
   createdByUser: { name: string | null; email: string | null } | null;
 };
-
-const CHECKLIST_NOTES_MAX_LENGTH = 120;
 
 export default function ClientDetailPage() {
   const { data: session, status } = useSession();
@@ -65,16 +63,10 @@ export default function ClientDetailPage() {
   const hideBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const removeBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Form states
   const [clientStatus, setClientStatus] = useState('');
   const [subscriptionStatus, setSubscriptionStatus] = useState('');
   const [initialPaymentStatus, setInitialPaymentStatus] = useState('');
   const [nextPaymentDueDate, setNextPaymentDueDate] = useState('');
-
-  // Checklist action
-  const [showChecklistForm, setShowChecklistForm] = useState(false);
-  const [checklistAction, setChecklistAction] = useState('');
-  const [checklistNotes, setChecklistNotes] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -147,16 +139,18 @@ export default function ClientDetailPage() {
     try {
       const response = await fetch(`/api/clients/${clientId}`);
       if (!response.ok) throw new Error('Failed to fetch client');
-      
+
       const data = await response.json();
       setClient(data.client);
-      
-      // Initialize form fields
+
       setClientStatus(data.client.clientStatus || '');
       setSubscriptionStatus(data.client.subscriptionStatus || '');
       setInitialPaymentStatus(data.client.initialPaymentStatus || '');
-      setNextPaymentDueDate(data.client.nextPaymentDueDate ? 
-        new Date(data.client.nextPaymentDueDate).toISOString().split('T')[0] : '');
+      setNextPaymentDueDate(
+        data.client.nextPaymentDueDate
+          ? new Date(data.client.nextPaymentDueDate).toISOString().split('T')[0]
+          : ''
+      );
     } catch (error) {
       console.error('Error fetching client:', error);
     } finally {
@@ -168,9 +162,9 @@ export default function ClientDetailPage() {
     try {
       const response = await fetch(`/api/clients/${clientId}/checklist`);
       if (!response.ok) throw new Error('Failed to fetch checklist');
-      
+
       const data = await response.json();
-      setChecklist(data.checklistEntries);
+      setChecklist(data.tasks ?? []);
     } catch (error) {
       console.error('Error fetching checklist:', error);
     }
@@ -203,30 +197,23 @@ export default function ClientDetailPage() {
     }
   };
 
-  const handleChecklistAction = async () => {
-    if (!checklistAction) return;
-
+  const handleChecklistToggle = async (taskKey: string, checked: boolean) => {
     setSaving(true);
     try {
       const response = await fetch(`/api/clients/${clientId}/checklist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: checklistAction,
-          notes: checklistNotes,
-        }),
+        body: JSON.stringify({ taskKey, checked }),
       });
 
-      if (!response.ok) throw new Error('Failed to record checklist action');
+      if (!response.ok) throw new Error('Failed to update onboarding checklist item');
 
       await fetchChecklist();
-      setShowChecklistForm(false);
-      setChecklistAction('');
-      setChecklistNotes('');
-      showSuccessBanner('Checklist action recorded');
+      await fetchClient();
+      showSuccessBanner(`Onboarding task ${checked ? 'checked' : 'unchecked'}`);
     } catch (error) {
-      console.error('Error recording checklist action:', error);
-      alert('Failed to record checklist action');
+      console.error('Error updating onboarding checklist:', error);
+      alert('Failed to update onboarding checklist item');
     } finally {
       setSaving(false);
     }
@@ -237,12 +224,30 @@ export default function ClientDetailPage() {
   };
 
   const formatChecklistOutcome = (outcome: string | null) => {
-    if (!outcome) return 'Checklist Action';
+    if (!outcome) return 'Contact';
 
     return outcome
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  };
+
+  const parseOnboardingActivity = (outcome: string | null) => {
+    if (!outcome?.startsWith('onboarding_')) {
+      return null;
+    }
+
+    const [eventType, taskKey] = outcome.split(':');
+    if (!taskKey) {
+      return null;
+    }
+
+    const task = checklist.find((item) => item.taskKey === taskKey);
+
+    return {
+      label: task?.label ?? formatChecklistOutcome(taskKey),
+      actionText: eventType === 'onboarding_unchecked' ? 'Unchecked' : 'Checked',
+    };
   };
 
   if (status === 'loading' || loading) {
@@ -286,6 +291,9 @@ export default function ClientDetailPage() {
     googlePlacesUrl
   );
   const outreachTracking = client.outreachTracking ?? [];
+  const onboardingActivities = outreachTracking.filter((activity) =>
+    activity.outcome?.startsWith('onboarding_')
+  );
 
   return (
     <div className="min-h-screen">
@@ -307,14 +315,14 @@ export default function ClientDetailPage() {
           </div>
         </div>
       </div>
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <button
             onClick={() => router.push('/clients')}
             className="text-blue-600 hover:text-blue-800 mb-2"
           >
-            ← Back to Active Clients
+            {'<- Back to Active Clients'}
           </button>
           <div>
             <Link
@@ -333,12 +341,10 @@ export default function ClientDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Client Details Form */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Client Information</h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="theme-text-muted block text-sm font-medium mb-1">
@@ -416,7 +422,6 @@ export default function ClientDetailPage() {
               </div>
             </div>
 
-            {/* Notes */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
               {clientId && (
                 <LeadCommentsThread
@@ -427,9 +432,7 @@ export default function ClientDetailPage() {
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Contact Info */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
               {hasContactDetails ? (
@@ -437,10 +440,7 @@ export default function ClientDetailPage() {
                   {contactEmail && (
                     <p>
                       <strong>Email:</strong>{' '}
-                      <a
-                        href={`mailto:${contactEmail}`}
-                        className="text-blue-600 hover:underline"
-                      >
+                      <a href={`mailto:${contactEmail}`} className="text-blue-600 hover:underline">
                         {contactEmail}
                       </a>
                     </p>
@@ -448,10 +448,7 @@ export default function ClientDetailPage() {
                   {contactPhone && (
                     <p>
                       <strong>Phone:</strong>{' '}
-                      <a
-                        href={`tel:${contactPhone}`}
-                        className="text-blue-600 hover:underline"
-                      >
+                      <a href={`tel:${contactPhone}`} className="text-blue-600 hover:underline">
                         {contactPhone}
                       </a>
                     </p>
@@ -502,106 +499,65 @@ export default function ClientDetailPage() {
               )}
             </div>
 
-            {/* Review Checklist */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Review Checklist</h2>
-                <button
-                  onClick={() => setShowChecklistForm(!showChecklistForm)}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  + Add
-                </button>
-              </div>
-
-              {showChecklistForm && (
-                <div className="theme-surface-muted mb-4 p-4 rounded-md">
-                  <select
-                    value={checklistAction}
-                    onChange={(e) => setChecklistAction(e.target.value)}
-                    className="theme-input w-full mb-2 rounded-md border px-3 py-2"
-                  >
-                    <option value="">Select action</option>
-                    <option value="subscription_verified">Subscription Verified</option>
-                    <option value="initial_payment_confirmed">Initial Payment Confirmed</option>
-                    <option value="onboarding_complete">Onboarding Complete</option>
-                    <option value="payment_method_updated">Payment Method Updated</option>
-                    <option value="billing_issue_resolved">Billing Issue Resolved</option>
-                    <option value="client_contacted">Client Contacted</option>
-                  </select>
-                  <textarea
-                    value={checklistNotes}
-                    onChange={(e) => setChecklistNotes(e.target.value)}
-                    maxLength={CHECKLIST_NOTES_MAX_LENGTH}
-                    rows={2}
-                    placeholder="Optional notes..."
-                    className="theme-input w-full mb-2 rounded-md border px-3 py-2"
-                  />
-                  <div className="theme-text-muted text-xs text-right mb-2">
-                    {checklistNotes.length}/{CHECKLIST_NOTES_MAX_LENGTH}
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={handleChecklistAction}
-                      disabled={!checklistAction || saving}
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowChecklistForm(false);
-                        setChecklistAction('');
-                        setChecklistNotes('');
-                      }}
-                      className="theme-surface-muted theme-border border px-3 py-1 text-sm rounded-md hover:opacity-90"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
+              <h2 className="text-xl font-semibold mb-4">Onboarding Checklist</h2>
               <div className="max-h-72 overflow-y-auto pr-1">
                 {checklist.length > 0 ? (
                   <ul className="space-y-2">
                     {checklist.map((item) => (
-                      <li key={item.id} className="text-sm border-l-4 border-green-500 pl-3 py-2">
-                        <div className="font-medium">
-                          {formatChecklistOutcome(item.outcome)}
-                        </div>
-                        {item.notes && (
-                          <div className="theme-text-muted text-xs">{item.notes}</div>
-                        )}
-                        <div className="theme-text-muted text-xs mt-1">
-                          {formatDate(item.occurredAt)}
-                          {item.createdByUser && ` by ${item.createdByUser.name}`}
-                        </div>
+                      <li key={item.taskKey} className="theme-surface-muted theme-border border rounded-md px-3 py-2">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={item.checked}
+                            disabled={saving}
+                            onChange={(e) => handleChecklistToggle(item.taskKey, e.target.checked)}
+                            className="mt-0.5 h-4 w-4"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className={`font-medium text-sm ${item.checked ? 'line-through theme-text-muted' : ''}`}>
+                              {item.label}
+                            </div>
+                            {item.occurredAt && (
+                              <div className="theme-text-muted text-xs mt-1">
+                                {formatDate(item.occurredAt)}
+                                {item.createdByUser && ` by ${item.createdByUser.name || item.createdByUser.email}`}
+                              </div>
+                            )}
+                          </div>
+                        </label>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="theme-text-muted text-sm">No checklist items yet</p>
+                  <p className="theme-text-muted text-sm">No onboarding tasks configured</p>
                 )}
               </div>
             </div>
 
-            {/* Recent Activity */}
             <div className="theme-surface theme-border border shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
               <div className="max-h-72 overflow-y-auto pr-1">
-                {outreachTracking.length > 0 ? (
+                {onboardingActivities.length > 0 ? (
                   <ul className="space-y-2">
-                    {outreachTracking.map((activity) => (
-                      <li key={activity.id} className="text-sm border-l-2 border-gray-300 pl-3 py-1">
-                        <div>
-                          {activity.channel} - {formatChecklistOutcome(activity.outcome || 'contact')}
-                        </div>
-                        <div className="theme-text-muted text-xs">
-                          {formatDate(activity.occurredAt)}
-                        </div>
-                      </li>
-                    ))}
+                    {onboardingActivities.map((activity) => {
+                      const onboardingActivity = parseOnboardingActivity(activity.outcome);
+
+                      if (!onboardingActivity) {
+                        return null;
+                      }
+
+                      return (
+                        <li key={activity.id} className="text-sm border-l-2 border-gray-300 pl-3 py-1">
+                          <div>Onboarding - {onboardingActivity.label}</div>
+                          <div className="theme-text-muted text-xs">
+                            {onboardingActivity.actionText}
+                            {activity.createdByUser?.name ? ` by ${activity.createdByUser.name}` : ''}
+                          </div>
+                          <div className="theme-text-muted text-xs">{formatDate(activity.occurredAt)}</div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="theme-text-muted text-sm">No activity recorded</p>
