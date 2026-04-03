@@ -46,11 +46,51 @@ export async function GET(
   try {
     const comments = await prisma.leadComment.findMany({
       where: { businessId: id },
-      include: commentInclude,
+      select: {
+        id: true,
+        businessId: true,
+        parentCommentId: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+        editedAt: true,
+        authorUserId: true,
+      },
       orderBy: { createdAt: 'asc' },
     });
 
-    return NextResponse.json({ comments });
+    const authorUserIds = Array.from(new Set(comments.map((comment) => comment.authorUserId)));
+
+    const authors = authorUserIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: authorUserIds } },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        })
+      : [];
+
+    const authorsById = new Map(authors.map((author) => [author.id, author]));
+
+    const commentsWithAuthor = comments.map((comment) => ({
+      id: comment.id,
+      businessId: comment.businessId,
+      parentCommentId: comment.parentCommentId,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      editedAt: comment.editedAt,
+      authorUser:
+        authorsById.get(comment.authorUserId) ?? {
+          id: comment.authorUserId,
+          name: null,
+          email: null,
+        },
+    }));
+
+    return NextResponse.json({ comments: commentsWithAuthor });
   } catch (error) {
     console.error('Error fetching lead comments:', error);
     return NextResponse.json(

@@ -236,7 +236,7 @@ export default function ActiveClientsPage() {
                   }}
                   className="theme-border rounded border text-red-600 focus:ring-red-500"
                 />
-                <span className="theme-text-muted text-sm font-medium">Needs Attention</span>
+                <span className="theme-text-muted text-sm font-medium">Needs Review</span>
               </label>
             </div>
           </div>
