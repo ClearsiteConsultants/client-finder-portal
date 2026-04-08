@@ -8,6 +8,24 @@ import { googleMapsPlaceUrl } from '@/lib/places/maps';
 import ManualLeadForm from '@/components/ManualLeadForm';
 import { formatGooglePlaceTypeLabel } from '@/lib/places/business-types';
 
+const WEBSITE_STATUS_OPTIONS = [
+  'no_website',
+  'social_only',
+  'broken',
+  'technical_issues',
+  'outdated',
+  'acceptable',
+] as const;
+
+const WEBSITE_STATUS_LABELS: Record<(typeof WEBSITE_STATUS_OPTIONS)[number], string> = {
+  no_website: 'No Website',
+  social_only: 'Social Only',
+  broken: 'Broken',
+  technical_issues: 'Technical Issues',
+  outdated: 'Outdated',
+  acceptable: 'Acceptable',
+};
+
 type Lead = {
   id: string;
   placeId: string | null;
@@ -45,7 +63,9 @@ export default function ReviewQueuePage() {
   const [sortBy, setSortBy] = useState('priority');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [statusFilter, setStatusFilter] = useState('pending');
-  const [websiteStatusFilter, setWebsiteStatusFilter] = useState('');
+  const [websiteStatusFilters, setWebsiteStatusFilters] = useState<string[]>([]);
+  const [allWebsiteStatusesChecked, setAllWebsiteStatusesChecked] = useState(true);
+  const [isWebsiteStatusDropdownOpen, setIsWebsiteStatusDropdownOpen] = useState(false);
   const [businessTypeFilters, setBusinessTypeFilters] = useState<string[]>([]);
   const [businessTypeOptions, setBusinessTypeOptions] = useState<string[]>([]);
   const [allBusinessTypesChecked, setAllBusinessTypesChecked] = useState(true);
@@ -54,6 +74,8 @@ export default function ReviewQueuePage() {
   const [rejectReason, setRejectReason] = useState('');
   const [showManualForm, setShowManualForm] = useState(false);
   const [pageInput, setPageInput] = useState('1');
+  const websiteStatusDropdownRef = useRef<HTMLDivElement | null>(null);
+  const websiteStatusToggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const businessTypeDropdownRef = useRef<HTMLDivElement | null>(null);
   const businessTypeToggleButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -67,7 +89,18 @@ export default function ReviewQueuePage() {
     if (status === 'authenticated') {
       fetchLeads();
     }
-  }, [status, page, sortBy, sortOrder, statusFilter, websiteStatusFilter, businessTypeFilters]);
+  }, [status, page, sortBy, sortOrder, statusFilter, websiteStatusFilters, businessTypeFilters]);
+
+  useEffect(() => {
+    if (allWebsiteStatusesChecked) {
+      setWebsiteStatusFilters([...WEBSITE_STATUS_OPTIONS]);
+      return;
+    }
+
+    setWebsiteStatusFilters((currentValues) =>
+      currentValues.filter((status) => WEBSITE_STATUS_OPTIONS.includes(status as (typeof WEBSITE_STATUS_OPTIONS)[number]))
+    );
+  }, [allWebsiteStatusesChecked]);
 
   useEffect(() => {
     if (status !== 'authenticated') {
@@ -116,17 +149,25 @@ export default function ReviewQueuePage() {
   }, [allBusinessTypesChecked, businessTypeOptions]);
 
   useEffect(() => {
-    if (!isBusinessTypeDropdownOpen) {
+    if (!isBusinessTypeDropdownOpen && !isWebsiteStatusDropdownOpen) {
       return;
     }
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!businessTypeDropdownRef.current) {
-        return;
+      if (
+        isBusinessTypeDropdownOpen &&
+        businessTypeDropdownRef.current &&
+        !businessTypeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsBusinessTypeDropdownOpen(false);
       }
 
-      if (!businessTypeDropdownRef.current.contains(event.target as Node)) {
-        setIsBusinessTypeDropdownOpen(false);
+      if (
+        isWebsiteStatusDropdownOpen &&
+        websiteStatusDropdownRef.current &&
+        !websiteStatusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsWebsiteStatusDropdownOpen(false);
       }
     };
 
@@ -135,8 +176,16 @@ export default function ReviewQueuePage() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        setIsBusinessTypeDropdownOpen(false);
-        businessTypeToggleButtonRef.current?.focus();
+        if (isBusinessTypeDropdownOpen) {
+          setIsBusinessTypeDropdownOpen(false);
+          businessTypeToggleButtonRef.current?.focus();
+          return;
+        }
+
+        if (isWebsiteStatusDropdownOpen) {
+          setIsWebsiteStatusDropdownOpen(false);
+          websiteStatusToggleButtonRef.current?.focus();
+        }
       }
     };
 
@@ -146,7 +195,20 @@ export default function ReviewQueuePage() {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isBusinessTypeDropdownOpen]);
+  }, [isBusinessTypeDropdownOpen, isWebsiteStatusDropdownOpen]);
+
+  const selectedWebsiteStatusLabels = WEBSITE_STATUS_OPTIONS
+    .filter((status) => websiteStatusFilters.includes(status))
+    .map((status) => WEBSITE_STATUS_LABELS[status]);
+  const websiteStatusSummary = allWebsiteStatusesChecked
+    ? 'All'
+    : selectedWebsiteStatusLabels.length > 0
+      ? selectedWebsiteStatusLabels.join(', ')
+      : 'None selected';
+  const websiteStatusSummaryDisplay =
+    websiteStatusSummary.length > 72
+      ? `${websiteStatusSummary.slice(0, 69)}...`
+      : websiteStatusSummary;
 
   const selectedBusinessTypeLabels = businessTypeOptions
     .filter((type) => businessTypeFilters.includes(type))
@@ -172,7 +234,11 @@ export default function ReviewQueuePage() {
       });
       
       if (statusFilter) params.append('status', statusFilter);
-      if (websiteStatusFilter) params.append('websiteStatus', websiteStatusFilter);
+      if (!allWebsiteStatusesChecked) {
+        websiteStatusFilters.forEach((websiteStatus) => {
+          params.append('websiteStatus', websiteStatus);
+        });
+      }
       if (!allBusinessTypesChecked) {
         businessTypeFilters.forEach((businessType) => {
           params.append('businessType', businessType);
@@ -217,6 +283,43 @@ export default function ReviewQueuePage() {
       event.preventDefault();
       setIsBusinessTypeDropdownOpen(false);
       businessTypeToggleButtonRef.current?.focus();
+      return;
+    }
+
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    // Keep Enter scoped to toggling the focused option instead of submitting form.
+    event.preventDefault();
+    event.currentTarget.click();
+  };
+
+  const handleWebsiteStatusCheckboxEnterKeyDown = (
+    event: ReactKeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+
+      const inputs = Array.from(
+        websiteStatusDropdownRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') || []
+      );
+      const currentIndex = inputs.indexOf(event.currentTarget);
+      if (currentIndex === -1 || inputs.length === 0) {
+        return;
+      }
+
+      const nextIndex = event.key === 'ArrowDown'
+        ? (currentIndex + 1) % inputs.length
+        : (currentIndex - 1 + inputs.length) % inputs.length;
+      inputs[nextIndex]?.focus();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setIsWebsiteStatusDropdownOpen(false);
+      websiteStatusToggleButtonRef.current?.focus();
       return;
     }
 
@@ -458,22 +561,78 @@ export default function ReviewQueuePage() {
 
         <div>
           <label className="theme-text-muted block text-sm font-medium mb-1">Website Status</label>
-          <select
-            value={websiteStatusFilter}
-            onChange={(e) => {
-              setWebsiteStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="theme-input rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-          >
-            <option value="">All</option>
-            <option value="no_website">No Website</option>
-            <option value="social_only">Social Only</option>
-            <option value="broken">Broken</option>
-            <option value="technical_issues">Technical Issues</option>
-            <option value="outdated">Outdated</option>
-            <option value="acceptable">Acceptable</option>
-          </select>
+          <div className="relative w-72 max-w-full" ref={websiteStatusDropdownRef}>
+            <button
+              type="button"
+              aria-label="Website Status"
+              aria-expanded={isWebsiteStatusDropdownOpen}
+              ref={websiteStatusToggleButtonRef}
+              onClick={() => setIsWebsiteStatusDropdownOpen((open) => !open)}
+              className="theme-input flex w-full max-w-full items-center justify-between overflow-hidden rounded-lg border px-3 py-2 text-left text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            >
+              <span className="min-w-0 flex-1 truncate" title={websiteStatusSummary}>
+                {websiteStatusSummaryDisplay}
+              </span>
+              <span className="theme-text-muted ml-2 shrink-0 text-xs">
+                {isWebsiteStatusDropdownOpen ? '▲' : '▼'}
+              </span>
+            </button>
+
+            {isWebsiteStatusDropdownOpen && (
+              <div className="theme-input absolute left-0 right-0 z-20 mt-1 max-w-full space-y-1 overflow-x-hidden rounded-lg border px-3 py-2 shadow-lg">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={allWebsiteStatusesChecked}
+                    onKeyDown={handleWebsiteStatusCheckboxEnterKeyDown}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setAllWebsiteStatusesChecked(true);
+                        setPage(1);
+                        return;
+                      }
+                      setAllWebsiteStatusesChecked(false);
+                      setWebsiteStatusFilters([]);
+                      setPage(1);
+                    }}
+                  />
+                  <span>All</span>
+                </label>
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                  {WEBSITE_STATUS_OPTIONS.map((status) => {
+                    const checked = websiteStatusFilters.includes(status);
+                    return (
+                      <label key={status} className="flex min-w-0 items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onKeyDown={handleWebsiteStatusCheckboxEnterKeyDown}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setWebsiteStatusFilters((currentStatuses) => {
+                                const nextStatuses = Array.from(new Set([...currentStatuses, status]));
+                                setAllWebsiteStatusesChecked(nextStatuses.length === WEBSITE_STATUS_OPTIONS.length);
+                                return nextStatuses;
+                              });
+                              setPage(1);
+                              return;
+                            }
+
+                            setAllWebsiteStatusesChecked(false);
+                            setWebsiteStatusFilters((currentStatuses) =>
+                              currentStatuses.filter((currentStatus) => currentStatus !== status)
+                            );
+                            setPage(1);
+                          }}
+                        />
+                        <span className="min-w-0 break-words">{WEBSITE_STATUS_LABELS[status]}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div>

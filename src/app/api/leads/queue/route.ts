@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'priority';
     const sortOrder = searchParams.get('sortOrder') || 'asc';
     const statusFilter = searchParams.get('status') as LeadStatus | null;
-    const websiteStatusFilter = searchParams.get('websiteStatus') as WebsiteStatus | null;
+    const websiteStatusFilters = searchParams
+      .getAll('websiteStatus')
+      .map((value) => value.trim())
+      .filter((value): value is WebsiteStatus =>
+        value.length > 0 && Object.values(WebsiteStatus).includes(value as WebsiteStatus)
+      );
     const businessTypeFilters = searchParams
       .getAll('businessType')
       .map((value) => value.trim())
@@ -31,8 +36,10 @@ export async function GET(request: NextRequest) {
       where.leadStatus = statusFilter;
     }
 
-    if (websiteStatusFilter) {
-      where.websiteStatus = websiteStatusFilter;
+    if (websiteStatusFilters.length > 0) {
+      where.websiteStatus = {
+        in: websiteStatusFilters,
+      };
     }
 
     if (businessTypeFilters.length > 0) {

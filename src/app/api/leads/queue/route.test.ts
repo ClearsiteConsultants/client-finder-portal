@@ -89,7 +89,44 @@ describe('GET /api/leads/queue', () => {
     expect(names).toEqual(expect.arrayContaining([businessNames.matching, businessNames.other]));
   });
 
+  it('filters queue by a single websiteStatus query param', async () => {
+    const request = new Request('http://localhost/api/leads/queue?websiteStatus=no_website&page=1&pageSize=50');
+
+    const response = await GET(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.total).toBeGreaterThanOrEqual(2);
+    expect(data.leads.length).toBeGreaterThanOrEqual(2);
+    expect(data.leads.every((lead: { websiteStatus: string }) => lead.websiteStatus === 'no_website')).toBe(true);
+    const names = data.leads.map((lead: { name: string }) => lead.name);
+    expect(names).toEqual(expect.arrayContaining([businessNames.matching, businessNames.other]));
+  });
+
+  it('filters queue by multiple websiteStatus query params', async () => {
+    const request = new Request('http://localhost/api/leads/queue?websiteStatus=no_website&websiteStatus=acceptable&page=1&pageSize=50');
+
+    const response = await GET(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.total).toBeGreaterThanOrEqual(2);
+    const names = data.leads.map((lead: { name: string }) => lead.name);
+    expect(names).toEqual(expect.arrayContaining([businessNames.matching, businessNames.other]));
+  });
+
   it('returns all matching queue records when businessType is not provided (All)', async () => {
+    const request = new Request('http://localhost/api/leads/queue?page=1&pageSize=200');
+
+    const response = await GET(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    const names = data.leads.map((lead: { name: string }) => lead.name);
+    expect(names).toEqual(expect.arrayContaining([businessNames.matching, businessNames.other]));
+  });
+
+  it('returns all matching queue records when websiteStatus is not provided (All)', async () => {
     const request = new Request('http://localhost/api/leads/queue?page=1&pageSize=200');
 
     const response = await GET(request as any);

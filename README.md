@@ -76,6 +76,18 @@ The panel also keeps a comparison table of the last 10 searches so you can tune 
 - `npm run dev` — debug panel is visible in the search form
 - `npm run build` — panel is fully removed at build time; no runtime overhead in production
 
+## Client List Filtering
+
+### "Needs Attention" filter behavior
+
+In `/clients`, enabling the **Needs Attention** filter includes any client record (`isClient = true`) that matches at least one of these conditions:
+
+- `subscriptionStatus` is `payment_failed`, `past_due`, or `unpaid`
+- `clientStatus` is `needs_review`
+- `nextPaymentDueDate` is within the next 7 days
+
+An **active** client can still appear in this view because `clientStatus = active` does not exclude billing or upcoming-payment risk flags. In other words, "active" and "needs attention" are not mutually exclusive.
+
 ## Deployment
 
 This application is optimized for deployment on [Vercel](https://vercel.com).
