@@ -3,7 +3,7 @@
 import { config } from 'dotenv';
 import { hash } from 'bcryptjs';
 
-config({ path: '.env.local', override: true });
+config({ path: '.env.local', override: false });
 
 const email = process.argv[2] || 'admin@quizmaster.com';
 const newPassword = process.argv[3] || 'admin123';

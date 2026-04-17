@@ -34,6 +34,64 @@ npm run dev
 
 Visit [http://localhost:3000](http://localhost:3000) to see the application.
 
+## User Management
+
+The auth utility scripts now prefer an existing shell `DATABASE_URL` and fall back to `.env.local` only when one is not already set. That means you can safely target Neon preview or production from your terminal without renaming local env files.
+
+### Create a user
+
+Local database from `.env.local`:
+
+```bash
+node -r tsx/cjs scripts/create-user.ts user@example.com StrongPassword123! "Full Name"
+```
+
+PowerShell against Neon production or preview:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-...neon.tech/neondb?sslmode=require"
+node -r tsx/cjs scripts/create-user.ts "user@example.com" "StrongPassword123!" "Full Name"
+Remove-Item Env:DATABASE_URL
+```
+
+Bash/zsh against Neon production or preview:
+
+```bash
+DATABASE_URL="postgresql://user:pass@ep-...neon.tech/neondb?sslmode=require" \
+node -r tsx/cjs scripts/create-user.ts user@example.com 'StrongPassword123!' "Full Name"
+```
+
+### Reset a password
+
+Local database from `.env.local`:
+
+```bash
+node -r tsx/cjs scripts/reset-user-password.ts user@example.com NewStrongPassword456!
+```
+
+PowerShell against Neon production or preview:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-...neon.tech/neondb?sslmode=require"
+node -r tsx/cjs scripts/reset-user-password.ts "user@example.com" "NewStrongPassword456!"
+Remove-Item Env:DATABASE_URL
+```
+
+Bash/zsh against Neon production or preview:
+
+```bash
+DATABASE_URL="postgresql://user:pass@ep-...neon.tech/neondb?sslmode=require" \
+node -r tsx/cjs scripts/reset-user-password.ts user@example.com 'NewStrongPassword456!'
+```
+
+### Production checklist
+
+1. Copy the production `DATABASE_URL` from Vercel or Neon.
+2. Run `npx prisma migrate deploy` against production before creating the user if migrations are pending.
+3. Run the create or reset command with a strong password.
+4. Remove the temporary `DATABASE_URL` from your shell.
+5. Sign in on the deployed app to verify the credentials.
+
 ## Available Scripts
 
 ### Development

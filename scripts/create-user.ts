@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 import { config } from "dotenv";
-config({ path: ".env.local", override: true });
+config({ path: ".env.local", override: false });
 
 const email = process.argv[2] || "admin@quizmaster.com";
 const password = process.argv[3] || "admin123";

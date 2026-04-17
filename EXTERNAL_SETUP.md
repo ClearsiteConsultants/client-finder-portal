@@ -477,29 +477,40 @@ The repository includes `scripts/create-user.ts` for creating users. The script:
 - Creates users directly in the database
 - Validates input parameters
 
+The repository also includes `scripts/reset-user-password.ts` for resetting passwords on existing users.
+
+Both scripts prefer an existing shell `DATABASE_URL` and fall back to `.env.local` only when one is not already set.
+
 **Script signature:**
 ```bash
 node -r tsx/cjs scripts/create-user.ts <email> <password> <name>
+```
+
+**Reset password signature:**
+```bash
+node -r tsx/cjs scripts/reset-user-password.ts <email> <newPassword>
 ```
 
 ### Local Environment
 
 **Step 1: Ensure local database is ready**
 ```bash
-# Check that .env.local has DATABASE_URL
-cat .env.local | grep DATABASE_URL
-
 # Run migrations if not already done
 npx prisma migrate deploy
 ```
 
 **Step 2: Create user**
 ```bash
-# The script will automatically use DATABASE_URL from .env.local
+# The script will use DATABASE_URL from .env.local when one is not set in the shell
 node -r tsx/cjs scripts/create-user.ts admin@example.com SecurePass123 "Admin User"
 ```
 
-**Step 3: Verify**
+**Step 3: Reset a password if needed**
+```bash
+node -r tsx/cjs scripts/reset-user-password.ts admin@example.com NewSecurePass456!
+```
+
+**Step 4: Verify**
 ```bash
 # Start dev server
 npm run dev
@@ -529,12 +540,41 @@ Option B - From Vercel Dashboard:
 DATABASE_URL="postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb" npx prisma migrate status
 ```
 
+PowerShell equivalent:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb?sslmode=require"
+npx prisma migrate status
+Remove-Item Env:DATABASE_URL
+```
+
 **Step 3: Create user against preview database**
 ```bash
 DATABASE_URL="postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb" node -r tsx/cjs scripts/create-user.ts admin@preview.example.com PreviewPass123 "Preview Admin"
 ```
 
-**Step 4: Verify**
+PowerShell equivalent:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb?sslmode=require"
+node -r tsx/cjs scripts/create-user.ts "admin@preview.example.com" "PreviewPass123" "Preview Admin"
+Remove-Item Env:DATABASE_URL
+```
+
+**Step 4: Reset a preview password if needed**
+```bash
+DATABASE_URL="postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb" node -r tsx/cjs scripts/reset-user-password.ts admin@preview.example.com NewPreviewPass456!
+```
+
+PowerShell equivalent:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-preview-123.us-east-2.aws.neon.tech/neondb?sslmode=require"
+node -r tsx/cjs scripts/reset-user-password.ts "admin@preview.example.com" "NewPreviewPass456!"
+Remove-Item Env:DATABASE_URL
+```
+
+**Step 5: Verify**
 1. Find your preview deployment URL (from Vercel or GitHub PR checks)
 2. Visit the preview URL (e.g., `https://your-app-git-branch-username.vercel.app`)
 3. Log in with the credentials you just created
@@ -560,6 +600,14 @@ From Neon Dashboard:
 DATABASE_URL="postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb" npx prisma migrate status
 ```
 
+PowerShell equivalent:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb?sslmode=require"
+npx prisma migrate status
+Remove-Item Env:DATABASE_URL
+```
+
 Expected output: "Database schema is up to date!"
 
 **Step 3: Create production user**
@@ -568,7 +616,28 @@ Expected output: "Database schema is up to date!"
 DATABASE_URL="postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb" node -r tsx/cjs scripts/create-user.ts admin@yourdomain.com StrongPassword456! "Production Admin"
 ```
 
-**Step 4: Verify**
+PowerShell equivalent:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb?sslmode=require"
+node -r tsx/cjs scripts/create-user.ts "admin@yourdomain.com" "StrongPassword456!" "Production Admin"
+Remove-Item Env:DATABASE_URL
+```
+
+**Step 4: Reset a production password if needed**
+```bash
+DATABASE_URL="postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb" node -r tsx/cjs scripts/reset-user-password.ts admin@yourdomain.com NewStrongPassword789!
+```
+
+PowerShell equivalent:
+
+```powershell
+$env:DATABASE_URL = "postgresql://user:pass@ep-prod-456.us-east-2.aws.neon.tech/neondb?sslmode=require"
+node -r tsx/cjs scripts/reset-user-password.ts "admin@yourdomain.com" "NewStrongPassword789!"
+Remove-Item Env:DATABASE_URL
+```
+
+**Step 5: Verify**
 1. Visit your production domain (e.g., `https://yourdomain.com`)
 2. Log in with the credentials you just created
 3. Verify access to protected areas
@@ -644,6 +713,11 @@ DATABASE_URL="<url>" node -r tsx/cjs scripts/create-user.ts dev@company.com Pass
 DATABASE_URL="<url>" node -r tsx/cjs scripts/create-user.ts sales@company.com Pass456 "Sales User"
 ```
 
+**Reset a user's password:**
+```bash
+DATABASE_URL="<url>" node -r tsx/cjs scripts/reset-user-password.ts sales@company.com NewPass789
+```
+
 **List all users (using Prisma Studio):**
 ```bash
 DATABASE_URL="<url>" npx prisma studio
@@ -671,6 +745,11 @@ DATABASE_URL="<preview-url>" node -r tsx/cjs scripts/create-user.ts user@example
 **Create production user:**
 ```bash
 DATABASE_URL="<production-url>" node -r tsx/cjs scripts/create-user.ts user@example.com password "Name"
+```
+
+**Reset preview or production password:**
+```bash
+DATABASE_URL="<url>" node -r tsx/cjs scripts/reset-user-password.ts user@example.com newpassword
 ```
 
 **Check migration status:**
