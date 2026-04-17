@@ -1,4 +1,4 @@
-# QuizMaster Pro
+# Client Finder Portal
 
 Lead generation and outreach management platform for quiz creation businesses.
 

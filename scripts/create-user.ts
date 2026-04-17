@@ -1,7 +1,13 @@
 #!/usr/bin/env tsx
 
 import { config } from "dotenv";
+const externalDatabaseUrl = process.env.DATABASE_URL;
 config({ path: ".env.local", override: false });
+
+if (externalDatabaseUrl) {
+  process.env.DATABASE_URL = externalDatabaseUrl;
+  process.env.NODE_ENV = "production";
+}
 
 const email = process.argv[2] || "admin@quizmaster.com";
 const password = process.argv[3] || "admin123";
