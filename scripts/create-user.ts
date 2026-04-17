@@ -6,7 +6,7 @@ config({ path: ".env.local", override: false });
 
 if (externalDatabaseUrl) {
   process.env.DATABASE_URL = externalDatabaseUrl;
-  process.env.NODE_ENV = "production";
+  process.env.CFP_FORCE_DATABASE_URL = "1";
 }
 
 const email = process.argv[2] || "admin@quizmaster.com";

@@ -39,6 +39,10 @@ export function getDatabaseConnectionString(
   nodeEnv: string | undefined,
   rawLocalValue: string | undefined = readRawDatabaseUrlFromLocalEnv(),
 ): string | undefined {
+  if (process.env.CFP_FORCE_DATABASE_URL === '1') {
+    return currentValue;
+  }
+
   if (nodeEnv === 'production') {
     return currentValue;
   }
