@@ -10,6 +10,47 @@ import { prisma } from '@/lib/prisma';
 import type { SearchRequest } from '@/lib/places/types';
 import { checkBusinessTypeExclusion } from '@/lib/scoring/exclusions';
 
+function toReadableErrorMessage(error: unknown, fallback = 'Unknown error'): string {
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object') {
+    if ('message' in error) {
+      const nestedMessage = (error as { message?: unknown }).message;
+      if (typeof nestedMessage === 'string' && nestedMessage.trim().length > 0) {
+        return nestedMessage;
+      }
+
+      if (nestedMessage !== undefined) {
+        try {
+          const serializedNestedMessage = JSON.stringify(nestedMessage);
+          if (serializedNestedMessage && serializedNestedMessage !== '{}') {
+            return serializedNestedMessage;
+          }
+        } catch {
+          // Ignore and continue to object serialization.
+        }
+      }
+    }
+
+    try {
+      const serializedError = JSON.stringify(error);
+      if (serializedError && serializedError !== '{}') {
+        return serializedError;
+      }
+    } catch {
+      // Fall through to fallback.
+    }
+  }
+
+  return fallback;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
@@ -124,13 +165,21 @@ export async function POST(request: NextRequest) {
     if (response.status === 'error') {
       // Return appropriate status code based on error type
       let statusCode = 500;
-      const errorMessage = response.error || 'Unknown error';
+      const errorMessage = toReadableErrorMessage(response.error, 'Unknown error');
+      const normalizedError = errorMessage.toLowerCase();
 
-      if (errorMessage.includes('quota') || errorMessage.includes('QUOTA')) {
+      if (normalizedError.includes('quota')) {
         statusCode = 429; // Too Many Requests
-      } else if (errorMessage.includes('invalid') || errorMessage.includes('INVALID')) {
+      } else if (normalizedError.includes('invalid')) {
         statusCode = 400; // Bad Request
-      } else if (errorMessage.includes('denied') || errorMessage.includes('DENIED')) {
+      } else if (
+        normalizedError.includes('denied') ||
+        normalizedError.includes('not authorized') ||
+        normalizedError.includes('not activated') ||
+        normalizedError.includes('billing') ||
+        normalizedError.includes('payment') ||
+        normalizedError.includes('trial')
+      ) {
         statusCode = 403; // Forbidden
       }
 
@@ -148,7 +197,7 @@ export async function POST(request: NextRequest) {
     console.error('Error in places search API:', error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: toReadableErrorMessage(error, 'Internal server error'),
         status: 'error',
       },
       { status: 500 }

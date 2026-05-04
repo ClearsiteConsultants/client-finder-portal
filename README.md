@@ -1,6 +1,6 @@
 # Client Finder Portal
 
-Lead generation and outreach management platform for quiz creation businesses.
+Lead generation and outreach management platform for Clearsite Consultants.
 
 ## Quick Start
 

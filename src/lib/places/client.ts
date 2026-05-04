@@ -9,6 +9,119 @@ export class PlacesClient {
   private client: Client;
   private apiKey: string;
 
+  private toReadableErrorMessage(error: unknown, fallback = 'Unknown error occurred'): string {
+    if (typeof error === 'string' && error.trim().length > 0) {
+      return error;
+    }
+
+    if (error instanceof Error && typeof error.message === 'string' && error.message.trim().length > 0) {
+      return error.message;
+    }
+
+    if (error && typeof error === 'object') {
+      const candidateFields = [
+        'error',
+        'error_message',
+        'message',
+        'detail',
+        'details',
+        'reason',
+        'statusText',
+      ] as const;
+
+      for (const field of candidateFields) {
+        if (!(field in error)) {
+          continue;
+        }
+
+        const fieldValue = (error as Record<string, unknown>)[field];
+        if (typeof fieldValue === 'string' && fieldValue.trim().length > 0) {
+          return fieldValue;
+        }
+
+        if (fieldValue && typeof fieldValue === 'object') {
+          try {
+            const serializedField = JSON.stringify(fieldValue);
+            if (serializedField && serializedField !== '{}') {
+              return serializedField;
+            }
+          } catch {
+            // Ignore and continue.
+          }
+        }
+      }
+
+      try {
+        const serializedError = JSON.stringify(error);
+        if (serializedError && serializedError !== '{}') {
+          return serializedError;
+        }
+      } catch {
+        // Ignore and return fallback below.
+      }
+    }
+
+    return fallback;
+  }
+
+  private isPlacesApiError(error: unknown): error is PlacesApiError {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const code = (error as { code?: unknown }).code;
+    return (
+      code === 'QUOTA_EXCEEDED' ||
+      code === 'INVALID_KEY' ||
+      code === 'NETWORK_ERROR' ||
+      code === 'INVALID_REQUEST' ||
+      code === 'UNKNOWN'
+    );
+  }
+
+  private parseGoogleHttpError(error: unknown): PlacesApiError | null {
+    if (!error || typeof error !== 'object') {
+      return null;
+    }
+
+    const errorWithResponse = error as {
+      message?: string;
+      response?: {
+        status?: number;
+        data?: {
+          status?: string;
+          error_message?: string;
+        };
+      };
+    };
+
+    const httpStatus = errorWithResponse.response?.status;
+    const googleStatus = errorWithResponse.response?.data?.status;
+    const googleErrorMessage = errorWithResponse.response?.data?.error_message;
+    const fallbackMessage =
+      typeof errorWithResponse.message === 'string' && errorWithResponse.message.trim().length > 0
+        ? errorWithResponse.message
+        : undefined;
+
+    if (googleStatus === 'REQUEST_DENIED' || httpStatus === 403) {
+      return this.createError('REQUEST_DENIED', googleErrorMessage || fallbackMessage, error);
+    }
+
+    if (googleStatus === 'OVER_QUERY_LIMIT' || googleStatus === 'OVER_DAILY_LIMIT' || httpStatus === 429) {
+      return this.createError('OVER_QUERY_LIMIT', googleErrorMessage || fallbackMessage, error);
+    }
+
+    if (googleStatus === 'INVALID_REQUEST' || httpStatus === 400) {
+      return this.createError('INVALID_REQUEST', googleErrorMessage || fallbackMessage, error);
+    }
+
+    if (typeof httpStatus === 'number' && httpStatus >= 500) {
+      return this.createError('NETWORK_ERROR', googleErrorMessage || fallbackMessage, error);
+    }
+
+    return null;
+  }
+
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.GOOGLE_MAPS_API_KEY || '';
     if (!this.apiKey) {
@@ -48,10 +161,14 @@ export class PlacesClient {
 
       throw this.createError(response.data.status, response.data.error_message);
     } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error) {
-        throw error as PlacesApiError;
+      if (this.isPlacesApiError(error)) {
+        throw error;
       }
-      throw this.createError('NETWORK_ERROR', String(error), error);
+      const parsedHttpError = this.parseGoogleHttpError(error);
+      if (parsedHttpError) {
+        throw parsedHttpError;
+      }
+      throw this.createError('NETWORK_ERROR', this.toReadableErrorMessage(error), error);
     }
   }
 
@@ -87,10 +204,14 @@ export class PlacesClient {
 
       throw this.createError(response.data.status, response.data.error_message);
     } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error) {
-        throw error as PlacesApiError;
+      if (this.isPlacesApiError(error)) {
+        throw error;
       }
-      throw this.createError('NETWORK_ERROR', String(error), error);
+      const parsedHttpError = this.parseGoogleHttpError(error);
+      if (parsedHttpError) {
+        throw parsedHttpError;
+      }
+      throw this.createError('NETWORK_ERROR', this.toReadableErrorMessage(error), error);
     }
   }
 
@@ -124,10 +245,14 @@ export class PlacesClient {
 
       throw this.createError(response.data.status, response.data.error_message);
     } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error) {
-        throw error as PlacesApiError;
+      if (this.isPlacesApiError(error)) {
+        throw error;
       }
-      throw this.createError('NETWORK_ERROR', String(error), error);
+      const parsedHttpError = this.parseGoogleHttpError(error);
+      if (parsedHttpError) {
+        throw parsedHttpError;
+      }
+      throw this.createError('NETWORK_ERROR', this.toReadableErrorMessage(error), error);
     }
   }
 
@@ -150,10 +275,14 @@ export class PlacesClient {
 
       throw this.createError('INVALID_REQUEST', `Could not geocode location: ${location}`);
     } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error) {
-        throw error as PlacesApiError;
+      if (this.isPlacesApiError(error)) {
+        throw error;
       }
-      throw this.createError('NETWORK_ERROR', String(error), error);
+      const parsedHttpError = this.parseGoogleHttpError(error);
+      if (parsedHttpError) {
+        throw parsedHttpError;
+      }
+      throw this.createError('NETWORK_ERROR', this.toReadableErrorMessage(error), error);
     }
   }
 
@@ -169,7 +298,35 @@ export class PlacesClient {
         break;
       case 'REQUEST_DENIED':
         code = 'INVALID_KEY';
-        errorMessage = 'Google Places API key is invalid or not authorized for this request.';
+        if (!message) {
+          errorMessage = 'Google Maps API key is invalid or not authorized for this request.';
+          break;
+        }
+
+        {
+          const normalizedMessage = message.toLowerCase();
+
+          if (
+            normalizedMessage.includes('billing') ||
+            normalizedMessage.includes('payment') ||
+            normalizedMessage.includes('trial')
+          ) {
+            errorMessage =
+              'Google Maps API billing is not active for this project (your free trial may have ended). Enable billing in Google Cloud and retry.';
+          } else if (normalizedMessage.includes('not activated') || normalizedMessage.includes('api is not activated')) {
+            errorMessage =
+              'Google Maps API access is denied because required setup is incomplete. Billing may not be active and/or Places API and Geocoding API are not enabled. Enable billing and both APIs in Google Cloud and retry.';
+          } else if (
+            normalizedMessage.includes('not authorized') ||
+            normalizedMessage.includes('referer') ||
+            normalizedMessage.includes('ip')
+          ) {
+            errorMessage =
+              'Google Maps API key restrictions are blocking this request. Verify API key restrictions for server-side calls.';
+          } else {
+            errorMessage = `Google Maps API request denied: ${message}`;
+          }
+        }
         break;
       case 'INVALID_REQUEST':
         code = 'INVALID_REQUEST';

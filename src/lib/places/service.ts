@@ -23,6 +23,40 @@ export class PlacesService {
   private jobQueue: JobQueueService;
   private jobProcessor: JobProcessor;
 
+  private toErrorMessage(error: unknown, fallback = 'An unknown error occurred'): string {
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (error && typeof error === 'object' && 'message' in error) {
+      const nestedMessage = (error as { message?: unknown }).message;
+      if (typeof nestedMessage === 'string') {
+        return nestedMessage;
+      }
+      if (nestedMessage !== undefined) {
+        try {
+          return JSON.stringify(nestedMessage);
+        } catch {
+          return String(nestedMessage);
+        }
+      }
+    }
+
+    if (error !== undefined) {
+      try {
+        return JSON.stringify(error);
+      } catch {
+        return String(error);
+      }
+    }
+
+    return fallback;
+  }
+
   constructor(apiKey?: string) {
     this.client = new PlacesClient(apiKey);
     // Conservative rate limiting: 100ms between calls, max 50 per minute
@@ -404,21 +438,21 @@ export class PlacesService {
         };
       } catch (error) {
         // Update search run status to failed
+        const errorMessage = this.toErrorMessage(error);
         await prisma.searchRun.update({
           where: { id: searchRun.id },
           data: {
             status: 'failed',
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage,
           },
         });
         throw error;
       }
     } catch (error) {
-      const errorObj = error as { code?: string; message?: string };
       return {
         results: [],
         status: 'error',
-        error: errorObj.message || 'An unknown error occurred',
+        error: this.toErrorMessage(error),
         metrics: finalizeMetrics(),
       };
     }

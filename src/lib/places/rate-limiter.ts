@@ -70,11 +70,39 @@ export async function retryWithBackoff<T>(
 ): Promise<T> {
   let lastError: Error | undefined;
 
+  const toError = (error: unknown): Error => {
+    if (error instanceof Error) {
+      return error;
+    }
+
+    if (typeof error === 'string' && error.trim().length > 0) {
+      return new Error(error);
+    }
+
+    if (error && typeof error === 'object') {
+      const messageCandidate = (error as { message?: unknown }).message;
+      if (typeof messageCandidate === 'string' && messageCandidate.trim().length > 0) {
+        return new Error(messageCandidate);
+      }
+
+      try {
+        const serialized = JSON.stringify(error);
+        if (serialized && serialized !== '{}') {
+          return new Error(serialized);
+        }
+      } catch {
+        // Fall through to generic fallback.
+      }
+    }
+
+    return new Error('Unknown error');
+  };
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+      lastError = toError(error);
 
       // Don't retry on certain errors
       const errorMessage = lastError.message.toLowerCase();

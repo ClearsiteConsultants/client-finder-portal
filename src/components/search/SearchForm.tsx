@@ -46,6 +46,36 @@ type SearchByOption = "location" | "business_name";
 
 const SEARCH_REQUEST_TIMEOUT_MS = 45000;
 
+function toReadableErrorMessage(errorValue: unknown, fallback: string): string {
+  if (typeof errorValue === "string" && errorValue.trim().length > 0) {
+    const trimmed = errorValue.trim();
+    if (trimmed === "[object Object]") {
+      return fallback;
+    }
+    return trimmed;
+  }
+
+  if (errorValue && typeof errorValue === "object") {
+    if ("message" in errorValue) {
+      const nestedMessage = (errorValue as { message?: unknown }).message;
+      if (typeof nestedMessage === "string" && nestedMessage.trim().length > 0) {
+        return nestedMessage;
+      }
+    }
+
+    try {
+      const serialized = JSON.stringify(errorValue);
+      if (serialized && serialized !== "{}") {
+        return serialized;
+      }
+    } catch {
+      // Fall through to fallback.
+    }
+  }
+
+  return fallback;
+}
+
 type SearchDebugSnapshot = {
   payload: {
     searchBy: SearchByOption;
@@ -303,14 +333,23 @@ export default function SearchForm() {
         }
       })();
 
-      const data: SearchResponse = await response.json();
+      let data: SearchResponse | null = null;
+      try {
+        data = (await response.json()) as SearchResponse;
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to search businesses");
+        throw new Error(toReadableErrorMessage(data?.error, "Failed to search businesses"));
+      }
+
+      if (!data) {
+        throw new Error("Failed to read search response from server");
       }
 
       if (data.status === "error") {
-        throw new Error(data.error || "Search failed");
+        throw new Error(toReadableErrorMessage(data.error, "Search failed"));
       }
 
       const responseResults = data.results || [];
@@ -389,7 +428,7 @@ export default function SearchForm() {
         });
       }
 
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(toReadableErrorMessage(err, "An error occurred"));
       setResults([]);
     } finally {
       setIsSearching(false);

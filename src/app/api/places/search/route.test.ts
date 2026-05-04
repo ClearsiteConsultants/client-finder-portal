@@ -170,4 +170,98 @@ describe("POST /api/places/search", () => {
     expect(data.error).toBe("Location is required for business name searches");
     expect(mockSearch).not.toHaveBeenCalled();
   });
+
+  it("returns 403 when Google Maps API is not activated", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "user-id" },
+    });
+    mockFindUnique.mockResolvedValueOnce({ id: "user-id" });
+    mockSearch.mockResolvedValueOnce({
+      status: "error",
+      results: [],
+      error:
+        "Google Maps API request denied: This API is not activated on your API project.",
+    });
+
+    const request = new Request("http://localhost/api/places/search", {
+      method: "POST",
+      body: JSON.stringify({
+        location: "84660",
+        radius: 1000,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toContain("not activated");
+  });
+
+  it("returns 403 with billing-specific message when Google billing is inactive", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "user-id" },
+    });
+    mockFindUnique.mockResolvedValueOnce({ id: "user-id" });
+    mockSearch.mockResolvedValueOnce({
+      status: "error",
+      results: [],
+      error:
+        "Google Maps API billing is not active for this project (your free trial may have ended). Enable billing in Google Cloud and retry.",
+    });
+
+    const request = new Request("http://localhost/api/places/search", {
+      method: "POST",
+      body: JSON.stringify({
+        location: "84660",
+        radius: 1000,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toContain("billing is not active");
+    expect(data.error).toContain("free trial");
+  });
+
+  it("stringifies object-shaped service errors instead of returning [object Object]", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "user-id" },
+    });
+    mockFindUnique.mockResolvedValueOnce({ id: "user-id" });
+    mockSearch.mockResolvedValueOnce({
+      status: "error",
+      results: [],
+      error: {
+        reason: "billing_inactive",
+        detail: "Billing has not been enabled on your account.",
+      },
+    });
+
+    const request = new Request("http://localhost/api/places/search", {
+      method: "POST",
+      body: JSON.stringify({
+        location: "84660",
+        radius: 1000,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toContain("billing_inactive");
+    expect(data.error).not.toBe("[object Object]");
+  });
 });
